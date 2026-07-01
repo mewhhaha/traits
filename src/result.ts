@@ -4,6 +4,7 @@ import {
   Foldable,
   Format,
   Functor,
+  impl,
   kind,
   Monad,
   require_this,
@@ -54,10 +55,10 @@ Result.from_number = function from_number(value: number): BoxedResult<number> {
   return Result.err("Expected a finite number");
 };
 
-Result.fmt = Format.method(function fmt(
-  this: Result<unknown> | void,
+Result.fmt = impl(function fmt(
+  this: BoxedResult<unknown> | void,
 ): string {
-  const result = require_this(this, "Result.fmt");
+  const result = require_this(this, "Result.fmt").value();
 
   if (result.tag === "err") {
     return "Err(" + Deno.inspect(result.error) + ")";
@@ -66,78 +67,80 @@ Result.fmt = Format.method(function fmt(
   return "Ok(" + Deno.inspect(result.value) + ")";
 });
 
-Result.eq = Equal.method(function eq(
-  this: Result<unknown> | void,
-  right: Result<unknown>,
+Result.eq = impl(function eq<item>(
+  this: BoxedResult<item> | void,
+  right: ResultInput<item>,
 ): boolean {
-  const left = require_this(this, "Result.eq");
+  const left = require_this(this, "Result.eq").value();
+  const right_value = untrait(right) as Result<item, string>;
 
-  if (left.tag === "err" && right.tag === "err") {
-    return Object.is(left.error, right.error);
+  if (left.tag === "err" && right_value.tag === "err") {
+    return Object.is(left.error, right_value.error);
   }
 
-  if (left.tag === "ok" && right.tag === "ok") {
-    return Object.is(left.value, right.value);
+  if (left.tag === "ok" && right_value.tag === "ok") {
+    return Object.is(left.value, right_value.value);
   }
 
   return false;
 });
 
-Result.map = Functor.method(function map<from, to>(
-  this: Result<from> | void,
+Result.map = impl(function map<from, to>(
+  this: BoxedResult<from> | void,
   fn: (value: from) => to,
-): Result<to> {
-  const result = require_this(this, "Result.map");
+): BoxedResult<to> {
+  const result = require_this(this, "Result.map").value();
 
   if (result.tag === "err") {
-    return result;
+    return Result.err<to>(result.error);
   }
 
-  return result_ok(fn(result.value));
+  return Result.ok(fn(result.value));
 });
 
-Result.pure = Applicative.pure_method(function pure<item>(
+Result.pure = impl(function pure<item>(
   value: item,
-): Result<item> {
-  return result_ok(value);
+): BoxedResult<item> {
+  return Result.ok(value);
 });
 
-Result.ap = Applicative.method(function ap<from, to>(
-  this: Result<(value: from) => to> | void,
-  value: Result<from>,
-): Result<to> {
-  const fn = require_this(this, "Result.ap");
+Result.ap = impl(function ap<from, to>(
+  this: BoxedResult<(value: from) => to> | void,
+  value: ResultInput<from>,
+): BoxedResult<to> {
+  const fn = require_this(this, "Result.ap").value();
+  const result = untrait(value) as Result<from, string>;
 
   if (fn.tag === "err") {
-    return fn;
+    return Result.err<to>(fn.error);
   }
-
-  if (value.tag === "err") {
-    return value;
-  }
-
-  return result_ok(fn.value(value.value));
-});
-
-Result.flat_map = Monad.method(function flat_map<from, to>(
-  this: Result<from> | void,
-  fn: (value: from) => TraitInput<typeof Result, Result<to, string>, to>,
-): Result<to> {
-  const result = require_this(this, "Result.flat_map");
 
   if (result.tag === "err") {
-    return result;
+    return Result.err<to>(result.error);
   }
 
-  return untrait(fn(result.value)) as Result<to>;
+  return Result.ok(fn.value(result.value));
 });
 
-Result.fold = Foldable.method(function fold<item, out>(
-  this: Result<item> | void,
+Result.flat_map = impl(function flat_map<from, to>(
+  this: BoxedResult<from> | void,
+  fn: (value: from) => TraitInput<typeof Result, Result<to, string>, to>,
+): BoxedResult<to> {
+  const result = require_this(this, "Result.flat_map").value();
+
+  if (result.tag === "err") {
+    return Result.err<to>(result.error);
+  }
+
+  return Result(fn(result.value));
+});
+
+Result.fold = impl(function fold<item, out>(
+  this: BoxedResult<item> | void,
   initial: out,
   fn: (state: out, item: item) => out,
 ): out {
-  const result = require_this(this, "Result.fold");
+  const result = require_this(this, "Result.fold").value();
 
   if (result.tag === "err") {
     return initial;
@@ -181,9 +184,9 @@ function result_err<item = never>(error: string): Result<item> {
 }
 
 Result satisfies
-  & Format<Result<unknown>>
-  & Equal<Result<unknown>>
-  & Functor<typeof result_kind>
-  & Applicative<typeof result_kind>
-  & Monad<typeof result_kind>
-  & Foldable<typeof result_kind>;
+  & Format<BoxedResult<unknown>>
+  & Equal<BoxedResult<unknown>>
+  & Functor<typeof Result>
+  & Applicative<typeof Result>
+  & Monad<typeof Result>
+  & Foldable<typeof Result>;

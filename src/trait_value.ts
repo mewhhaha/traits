@@ -1,145 +1,50 @@
-import { type Kind, kind, type TypeId } from "./registry.ts";
-
 const trait_brand: unique symbol = Symbol("Trait.brand");
 const trait_dictionary: unique symbol = Symbol("Trait.dictionary");
+const trait_item: unique symbol = Symbol("Trait.item");
 const trait_value: unique symbol = Symbol("Trait.value");
-
-type KindOf<dictionary> = dictionary extends {
-  readonly [kind]: infer type_id extends TypeId;
-} ? type_id
-  : never;
-
-export interface TraitBinding {
-  readonly dictionary: unknown;
-  readonly value: unknown;
-  readonly item: unknown;
-  readonly bound: unknown;
-}
 
 export type TraitInput<dictionary, value, item = unknown> =
   | value
   | Trait<dictionary, value, item>;
 
-type BindingValue<binding extends TraitBinding, dictionary, value, item> =
-  (binding & {
-    readonly dictionary: dictionary;
-    readonly value: value;
-    readonly item: item;
-  })["bound"];
+const trait_impl: unique symbol = Symbol("Trait.impl");
 
-type BoundArgument<dictionary, value> = value extends
-  Kind<KindOf<dictionary>, infer item> ? value | Trait<dictionary, value, item>
-  : value;
-
-type BoundArguments<dictionary, args extends unknown[]> = {
-  [key in keyof args]: BoundArgument<dictionary, args[key]>;
+export type TraitImpl<fn> = fn & {
+  readonly [trait_impl]: true;
 };
 
-type BoundReturn<dictionary, value> = value extends
-  Kind<KindOf<dictionary>, infer item> ? Trait<dictionary, value, item>
-  : value;
-
-const trait_binding: unique symbol = Symbol("Trait.binding");
-
-export type TraitMethod<fn, binding extends TraitBinding> = fn & {
-  readonly [trait_binding]: binding;
-};
-
-export interface FormatBinding extends TraitBinding {
-  readonly bound: () => string;
+export function impl<fn extends (this: any, ...args: any[]) => any>(
+  fn: fn,
+): TraitImpl<fn> {
+  Object.defineProperty(fn, trait_impl, { value: true });
+  return fn as TraitImpl<fn>;
 }
 
-export interface EqualBinding extends TraitBinding {
-  readonly bound: (
-    right: TraitInput<this["dictionary"], this["value"], this["item"]>,
-  ) => boolean;
-}
-
-export interface FunctorMapBinding extends TraitBinding {
-  readonly bound: <to>(
-    fn: (value: this["item"]) => to,
-  ) => Trait<this["dictionary"], Kind<KindOf<this["dictionary"]>, to>, to>;
-}
-
-export interface ApplicativeApBinding extends TraitBinding {
-  readonly bound: this["item"] extends (value: infer from) => infer to ? (
-      value: TraitInput<
-        this["dictionary"],
-        Kind<KindOf<this["dictionary"]>, from>,
-        from
-      >,
-    ) => Trait<this["dictionary"], Kind<KindOf<this["dictionary"]>, to>, to>
-    : never;
-}
-
-export interface ApplicativePureBinding extends TraitBinding {
-  readonly bound: <to>(
-    value: to,
-  ) => Trait<this["dictionary"], Kind<KindOf<this["dictionary"]>, to>, to>;
-}
-
-export interface MonadFlatMapBinding extends TraitBinding {
-  readonly bound: <to>(
-    fn: (value: this["item"]) => TraitInput<
-      this["dictionary"],
-      Kind<KindOf<this["dictionary"]>, to>,
-      to
-    >,
-  ) => Trait<this["dictionary"], Kind<KindOf<this["dictionary"]>, to>, to>;
-}
-
-export interface FoldableFoldBinding extends TraitBinding {
-  readonly bound: <out>(
-    initial: out,
-    fn: (state: out, item: this["item"]) => out,
-  ) => out;
-}
-
-export function trait_method<binding extends TraitBinding>() {
-  return function bind_trait_method<
-    fn extends (this: any, ...args: any[]) => any,
-  >(
-    fn: fn,
-  ): TraitMethod<fn, binding> {
-    return fn as TraitMethod<fn, binding>;
-  };
-}
-
-type TraitBase<value> = {
+type TraitBase<dictionary, value, item> = {
   readonly [trait_brand]: true;
+  readonly [trait_dictionary]: dictionary;
+  readonly [trait_item]: item;
+  readonly [trait_value]: value;
   value: () => value;
 };
 
-type BoundMethod<
-  dictionary,
-  value,
-  item,
-  key extends keyof dictionary,
-> = dictionary[key] extends {
-  readonly [trait_binding]: infer binding extends TraitBinding;
-} ? BindingValue<binding, dictionary, value, item>
-  : dictionary[key] extends
-    (this: value | void, ...args: infer args) => infer out ? (
-      ...args: BoundArguments<dictionary, args>
-    ) => BoundReturn<dictionary, out>
-  : never;
-
-type BoundDictionary<dictionary, value, item> = {
+type BoundDictionary<dictionary> = {
   [
     key in keyof dictionary as dictionary[key] extends {
-      readonly [trait_binding]: TraitBinding;
+      readonly [trait_impl]: true;
     } ? key
       : never
-  ]: BoundMethod<dictionary, value, item, key>;
+  ]: dictionary[key];
 };
 
 export type Trait<dictionary, value, item = unknown> =
-  & TraitBase<value>
-  & BoundDictionary<dictionary, value, item>;
+  & TraitBase<dictionary, value, item>
+  & BoundDictionary<dictionary>;
 
-type TraitTarget<dictionary, value> = {
+type TraitTarget<dictionary, value, item> = {
   readonly [trait_brand]: true;
   readonly [trait_dictionary]: dictionary;
+  readonly [trait_item]: item;
   readonly [trait_value]: value;
 };
 
@@ -148,16 +53,29 @@ export function trait<dictionary extends object, value, item = unknown>(
   value: value,
   is_value: (value: unknown) => value is value,
 ): Trait<dictionary, value, item> {
-  const target: TraitTarget<dictionary, value> = {
+  const target: TraitTarget<dictionary, value, item> = {
     [trait_brand]: true,
     [trait_dictionary]: dictionary,
+    [trait_item]: undefined as item,
     [trait_value]: value,
   };
 
   return new Proxy(target, {
-    get(current, property) {
+    get(current, property, receiver) {
       if (property === trait_brand) {
         return true;
+      }
+
+      if (property === trait_dictionary) {
+        return current[trait_dictionary];
+      }
+
+      if (property === trait_item) {
+        return current[trait_item];
+      }
+
+      if (property === trait_value) {
+        return current[trait_value];
       }
 
       if (property === "value") {
@@ -170,18 +88,19 @@ export function trait<dictionary extends object, value, item = unknown>(
         property as keyof dictionary
       ];
 
-      if (typeof dictionary_value !== "function") {
+      if (!is_trait_impl(dictionary_value)) {
         return dictionary_value;
       }
 
-      return function trait_method(...args: unknown[]) {
-        const untraited_args = args.map((arg) => {
-          return untrait(arg);
-        });
+      return function trait_impl(...args: unknown[]) {
         const result = dictionary_value.call(
-          current[trait_value],
-          ...untraited_args,
+          receiver,
+          ...args,
         );
+
+        if (is_trait(result)) {
+          return result;
+        }
 
         if (is_value(result)) {
           return trait(current[trait_dictionary], result, is_value);
@@ -193,7 +112,19 @@ export function trait<dictionary extends object, value, item = unknown>(
   }) as unknown as Trait<dictionary, value, item>;
 }
 
-export function is_trait(value: unknown): value is Trait<object, unknown> {
+function is_trait_impl(value: unknown): value is TraitImpl<
+  (this: any, ...args: any[]) => any
+> {
+  if (typeof value !== "function") {
+    return false;
+  }
+
+  return (value as { [trait_impl]?: unknown })[trait_impl] === true;
+}
+
+export function is_trait(
+  value: unknown,
+): value is Trait<object, unknown, unknown> {
   if (typeof value !== "object") {
     return false;
   }

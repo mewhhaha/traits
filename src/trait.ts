@@ -1,17 +1,8 @@
-import {
-  type ApplicativeApBinding,
-  type ApplicativePureBinding,
-  type EqualBinding,
-  type FoldableFoldBinding,
-  type FormatBinding,
-  type FunctorMapBinding,
-  type MonadFlatMapBinding,
-  trait_method,
-} from "./trait_value.ts";
-
 export { kind } from "./registry.ts";
 export type { Kind, Registry, TypeId } from "./registry.ts";
+export { impl } from "./trait_value.ts";
 import { type Kind, kind, type TypeId } from "./registry.ts";
+import type { Trait, TraitInput } from "./trait_value.ts";
 
 export type TraitThis<self> = self | void;
 
@@ -23,28 +14,67 @@ export function require_this<self>(value: TraitThis<self>, name: string): self {
   return value;
 }
 
-type BoundFormat = {
+type KindOf<dictionary> = dictionary extends {
+  readonly [kind]: infer type_id extends TypeId;
+} ? type_id
+  : never;
+
+type TraitItem<value> = value extends Trait<any, any, infer item> ? item
+  : never;
+
+type TraitValue<value> = value extends Trait<any, infer raw, any> ? raw
+  : never;
+
+type TraitDictionary<value> = value extends Trait<infer dictionary, any, any>
+  ? dictionary
+  : never;
+
+type Boxed<dictionary, item> = Trait<
+  dictionary,
+  Kind<KindOf<dictionary>, item>,
+  item
+>;
+
+type BoxedInput<dictionary, item> = TraitInput<
+  dictionary,
+  Kind<KindOf<dictionary>, item>,
+  item
+>;
+
+type Reboxed<value, item> = Boxed<TraitDictionary<value>, item>;
+
+type AppliedInput<value> = TraitItem<value> extends
+  (value: infer item) => unknown ? BoxedInput<TraitDictionary<value>, item>
+  : never;
+
+type AppliedReturn<value> = TraitItem<value> extends (value: any) => infer item
+  ? Reboxed<value, item>
+  : never;
+
+type BoxedTrait = Trait<any, any, any>;
+
+type BoundFormat = BoxedTrait & {
   fmt: () => string;
 };
 
-type BoundEqual = {
+type BoundEqual = BoxedTrait & {
   eq: (right: any) => boolean;
 };
 
-type BoundFunctor = {
+type BoundFunctor = BoxedTrait & {
   map: (fn: any) => any;
 };
 
-type BoundApplicative = {
+type BoundApplicative = BoxedTrait & {
   pure: (value: any) => any;
   ap: (value: any) => any;
 };
 
-type BoundMonad = {
+type BoundMonad = BoxedTrait & {
   flat_map: (fn: any) => any;
 };
 
-type BoundFoldable = {
+type BoundFoldable = BoxedTrait & {
   fold: (initial: any, fn: any) => any;
 };
 
@@ -53,8 +83,6 @@ export type Format<self> = {
 };
 
 export function Format() {}
-
-Format.method = trait_method<FormatBinding>();
 
 Format.fmt = function fmt<value extends BoundFormat>(
   value: value,
@@ -68,87 +96,82 @@ export type Equal<self> = {
 
 export function Equal() {}
 
-Equal.method = trait_method<EqualBinding>();
-
 Equal.eq = function eq<left extends BoundEqual>(
   left: left,
-  right: Parameters<left["eq"]>[0],
-): ReturnType<left["eq"]> {
-  return left.eq(right) as ReturnType<left["eq"]>;
+  right: TraitInput<TraitDictionary<left>, TraitValue<left>, TraitItem<left>>,
+): boolean {
+  return left.eq(right);
 };
 
-export type Functor<type_id extends TypeId> = {
-  readonly [kind]: type_id;
+type Dictionary = {
+  readonly [kind]: TypeId;
+};
+
+export type Functor<dictionary extends Dictionary> = {
+  readonly [kind]: KindOf<dictionary>;
   map: <from, to>(
-    this: TraitThis<Kind<type_id, from>>,
+    this: TraitThis<Boxed<dictionary, from>>,
     fn: (value: from) => to,
-  ) => Kind<type_id, to>;
+  ) => Boxed<dictionary, to>;
 };
 
 export function Functor() {}
 
-Functor.method = trait_method<FunctorMapBinding>();
-
-Functor.map = function map<value extends BoundFunctor>(
+Functor.map = function map<value extends BoundFunctor, to>(
   value: value,
-  fn: Parameters<value["map"]>[0],
-): ReturnType<value["map"]> {
-  return value.map(fn) as ReturnType<value["map"]>;
+  fn: (value: TraitItem<value>) => to,
+): Reboxed<value, to> {
+  return value.map(fn) as Reboxed<value, to>;
 };
 
-export type Applicative<type_id extends TypeId> =
-  & Functor<type_id>
+export type Applicative<dictionary extends Dictionary> =
+  & Functor<dictionary>
   & {
-    pure: <item>(value: item) => Kind<type_id, item>;
+    pure: <item>(value: item) => Boxed<dictionary, item>;
     ap: <from, to>(
-      this: TraitThis<Kind<type_id, (value: NoInfer<from>) => to>>,
-      value: Kind<type_id, from>,
-    ) => Kind<type_id, to>;
+      this: TraitThis<Boxed<dictionary, (value: NoInfer<from>) => to>>,
+      value: BoxedInput<dictionary, from>,
+    ) => Boxed<dictionary, to>;
   };
 
 export function Applicative() {}
 
-Applicative.method = trait_method<ApplicativeApBinding>();
-Applicative.pure_method = trait_method<ApplicativePureBinding>();
-
-Applicative.pure = function pure<value extends BoundApplicative>(
+Applicative.pure = function pure<value extends BoundApplicative, item>(
   value: value,
-  item: Parameters<value["pure"]>[0],
-): ReturnType<value["pure"]> {
-  return value.pure(item) as ReturnType<value["pure"]>;
+  item: item,
+): Reboxed<value, item> {
+  return value.pure(item) as Reboxed<value, item>;
 };
 
 Applicative.ap = function ap<value extends BoundApplicative>(
   value: value,
-  item: Parameters<value["ap"]>[0],
-): ReturnType<value["ap"]> {
-  return value.ap(item) as ReturnType<value["ap"]>;
+  item: AppliedInput<value>,
+): AppliedReturn<value> {
+  return value.ap(item) as AppliedReturn<value>;
 };
 
-export type Monad<type_id extends TypeId> =
-  & Applicative<type_id>
+export type Monad<dictionary extends Dictionary> =
+  & Applicative<dictionary>
   & {
     flat_map: <from, to>(
-      this: TraitThis<Kind<type_id, from>>,
-      fn: (value: from) => Kind<type_id, to>,
-    ) => Kind<type_id, to>;
+      this: TraitThis<Boxed<dictionary, from>>,
+      fn: (value: from) => BoxedInput<dictionary, to>,
+    ) => Boxed<dictionary, to>;
   };
 
 export function Monad() {}
 
-Monad.method = trait_method<MonadFlatMapBinding>();
-
-Monad.flat_map = function flat_map<value extends BoundMonad>(
+Monad.flat_map = function flat_map<value extends BoundMonad, to>(
   value: value,
-  fn: any,
-): any {
-  return value.flat_map(fn);
+  fn: (value: TraitItem<value>) => BoxedInput<TraitDictionary<value>, to>,
+): Reboxed<value, to> {
+  return value.flat_map(fn) as Reboxed<value, to>;
 };
 
-export type Foldable<type_id extends TypeId> = {
-  readonly [kind]: type_id;
+export type Foldable<dictionary extends Dictionary> = {
+  readonly [kind]: KindOf<dictionary>;
   fold: <item, out>(
-    this: TraitThis<Kind<type_id, item>>,
+    this: TraitThis<Boxed<dictionary, item>>,
     initial: out,
     fn: (state: out, item: item) => out,
   ) => out;
@@ -156,12 +179,10 @@ export type Foldable<type_id extends TypeId> = {
 
 export function Foldable() {}
 
-Foldable.method = trait_method<FoldableFoldBinding>();
-
-Foldable.fold = function fold<value extends BoundFoldable>(
+Foldable.fold = function fold<value extends BoundFoldable, out>(
   value: value,
-  initial: any,
-  fn: any,
-): any {
+  initial: out,
+  fn: (state: out, item: TraitItem<value>) => out,
+): out {
   return value.fold(initial, fn);
 };

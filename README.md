@@ -42,24 +42,28 @@ declare module "./registry.ts" {
 }
 
 export function Option<item>(
-  value: Option<item>,
+  value: TraitInput<typeof Option, Option<item>, item>,
 ): Trait<typeof Option, Option<item>, item> {
-  return trait<typeof Option, Option<item>, item>(Option, value, is_option);
+  return trait<typeof Option, Option<item>, item>(
+    Option,
+    untrait(value) as Option<item>,
+    is_option,
+  );
 }
 
 Option[kind] = option_kind;
 
-Option.map = Functor.method(function map<from, to>(
-  this: Option<from> | void,
+Option.map = impl(function map<from, to>(
+  this: Trait<typeof Option, Option<from>, from> | void,
   fn: (value: from) => to,
-): Option<to> {
-  const option = require_this(this, "Option.map");
+): Trait<typeof Option, Option<to>, to> {
+  const option = require_this(this, "Option.map").value();
 
   if (option.tag === "none") {
-    return option;
+    return Option.none<to>();
   }
 
-  return { tag: "some", value: fn(option.value) };
+  return Option.some(fn(option.value));
 });
 ```
 
@@ -89,12 +93,12 @@ The public trait-wrapped value protocol is `Trait<dictionary, value, item>` from
 type TraitOption<T> = Trait<typeof Option, Option<T>, T>;
 ```
 
-The generic `trait(...)` wrapper stores the dictionary internally. When a method
-is read from a wrapped value, it looks that method up on `typeof Option`, calls
-it with the wrapped option as `this`, unwraps trait-wrapped arguments, and wraps
-returned option values again. Fluent method types are provided by trait-specific
-helpers like `Functor.method(...)` and `Applicative.method(...)`, so the wrapper
-does not need special cases for `map`, `ap`, or other trait method names.
+The generic `trait(...)` wrapper stores the dictionary internally. `impl(...)`
+marks dictionary functions as fluent methods. When a method is read from a
+wrapped value, the wrapper looks that method up on `typeof Option` and calls it
+with the wrapped option as `this`. Methods that accept contextual values use
+`TraitInput<dictionary, value, item>`, and methods that preserve the context
+return boxed values directly.
 
 There is no `OptionBox` or `OptionTrait` type. The fluent methods are derived
 from the dictionary shape plus the wrapped value and item type.

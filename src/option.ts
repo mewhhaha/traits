@@ -4,6 +4,7 @@ import {
   Foldable,
   Format,
   Functor,
+  impl,
   kind,
   Monad,
   require_this,
@@ -60,10 +61,10 @@ Option.from_nullable = function from_nullable<item>(
   return Option(option_some<item>(value));
 };
 
-Option.fmt = Format.method(function fmt(
-  this: Option<unknown> | void,
+Option.fmt = impl(function fmt(
+  this: BoxedOption<unknown> | void,
 ): string {
-  const option = require_this(this, "Option.fmt");
+  const option = require_this(this, "Option.fmt").value();
 
   if (option.tag === "none") {
     return "None";
@@ -72,78 +73,80 @@ Option.fmt = Format.method(function fmt(
   return "Some(" + Deno.inspect(option.value) + ")";
 });
 
-Option.eq = Equal.method(function eq(
-  this: Option<unknown> | void,
-  right: Option<unknown>,
+Option.eq = impl(function eq<item>(
+  this: BoxedOption<item> | void,
+  right: OptionInput<item>,
 ): boolean {
-  const left = require_this(this, "Option.eq");
+  const left = require_this(this, "Option.eq").value();
+  const right_value = untrait(right) as Option<item>;
 
-  if (left.tag === "none" && right.tag === "none") {
+  if (left.tag === "none" && right_value.tag === "none") {
     return true;
   }
 
-  if (left.tag === "some" && right.tag === "some") {
-    return Object.is(left.value, right.value);
+  if (left.tag === "some" && right_value.tag === "some") {
+    return Object.is(left.value, right_value.value);
   }
 
   return false;
 });
 
-Option.map = Functor.method(function map<from, to>(
-  this: Option<from> | void,
+Option.map = impl(function map<from, to>(
+  this: BoxedOption<from> | void,
   fn: (value: from) => to,
-): Option<to> {
-  const option = require_this(this, "Option.map");
+): BoxedOption<to> {
+  const option = require_this(this, "Option.map").value();
 
   if (option.tag === "none") {
-    return option;
+    return Option.none<to>();
   }
 
-  return option_some(fn(option.value));
+  return Option.some(fn(option.value));
 });
 
-Option.pure = Applicative.pure_method(function pure<item>(
+Option.pure = impl(function pure<item>(
   value: item,
-): Option<item> {
-  return option_some(value);
+): BoxedOption<item> {
+  return Option.some(value);
 });
 
-Option.ap = Applicative.method(function ap<from, to>(
-  this: Option<(value: from) => to> | void,
-  value: Option<from>,
-): Option<to> {
-  const fn = require_this(this, "Option.ap");
+Option.ap = impl(function ap<from, to>(
+  this: BoxedOption<(value: from) => to> | void,
+  value: OptionInput<from>,
+): BoxedOption<to> {
+  const fn = require_this(this, "Option.ap").value();
+  const option = untrait(value) as Option<from>;
 
   if (fn.tag === "none") {
-    return fn;
+    return Option.none<to>();
   }
-
-  if (value.tag === "none") {
-    return value;
-  }
-
-  return option_some(fn.value(value.value));
-});
-
-Option.flat_map = Monad.method(function flat_map<from, to>(
-  this: Option<from> | void,
-  fn: (value: from) => TraitInput<typeof Option, Option<to>, to>,
-): Option<to> {
-  const option = require_this(this, "Option.flat_map");
 
   if (option.tag === "none") {
-    return option;
+    return Option.none<to>();
   }
 
-  return untrait(fn(option.value)) as Option<to>;
+  return Option.some(fn.value(option.value));
 });
 
-Option.fold = Foldable.method(function fold<item, out>(
-  this: Option<item> | void,
+Option.flat_map = impl(function flat_map<from, to>(
+  this: BoxedOption<from> | void,
+  fn: (value: from) => TraitInput<typeof Option, Option<to>, to>,
+): BoxedOption<to> {
+  const option = require_this(this, "Option.flat_map").value();
+
+  if (option.tag === "none") {
+    return Option.none<to>();
+  }
+
+  return Option(fn(option.value));
+});
+
+Option.fold = impl(function fold<item, out>(
+  this: BoxedOption<item> | void,
   initial: out,
   fn: (state: out, item: item) => out,
 ): out {
-  const option = require_this(this, "Option.fold");
+  const option = require_this(this, "Option.fold").value();
 
   if (option.tag === "none") {
     return initial;
@@ -183,9 +186,9 @@ function option_none<item = never>(): Option<item> {
 }
 
 Option satisfies
-  & Format<Option<unknown>>
-  & Equal<Option<unknown>>
-  & Functor<typeof option_kind>
-  & Applicative<typeof option_kind>
-  & Monad<typeof option_kind>
-  & Foldable<typeof option_kind>;
+  & Format<BoxedOption<unknown>>
+  & Equal<BoxedOption<unknown>>
+  & Functor<typeof Option>
+  & Applicative<typeof Option>
+  & Monad<typeof Option>
+  & Foldable<typeof Option>;

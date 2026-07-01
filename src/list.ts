@@ -4,6 +4,7 @@ import {
   Foldable,
   Format,
   Functor,
+  impl,
   kind,
   Monad,
   require_this,
@@ -75,21 +76,21 @@ function list_from_array<item>(items: item[]): List<item> {
   return list;
 }
 
-List.fmt = Format.method(function fmt(
-  this: List<unknown> | void,
+List.fmt = impl(function fmt(
+  this: BoxedList<unknown> | void,
 ): string {
   const list = require_this(this, "List.fmt");
   const items = List.to_array(list).map((item) => Deno.inspect(item));
   return "[" + items.join(", ") + "]";
 });
 
-List.eq = Equal.method(function eq(
-  this: List<unknown> | void,
-  right: List<unknown>,
+List.eq = impl(function eq<item>(
+  this: BoxedList<item> | void,
+  right: ListInput<item>,
 ): boolean {
   const left = require_this(this, "List.eq");
-  let left_rest = left;
-  let right_rest = right;
+  let left_rest = left.value();
+  let right_rest = untrait(right) as List<item>;
 
   while (left_rest.tag === "cons" && right_rest.tag === "cons") {
     if (!Object.is(left_rest.head, right_rest.head)) {
@@ -103,10 +104,10 @@ List.eq = Equal.method(function eq(
   return left_rest.tag === "nil" && right_rest.tag === "nil";
 });
 
-List.map = Functor.method(function map<from, to>(
-  this: List<from> | void,
+List.map = impl(function map<from, to>(
+  this: BoxedList<from> | void,
   fn: (value: from) => to,
-): List<to> {
+): BoxedList<to> {
   const list = require_this(this, "List.map");
   const items = List.to_array(list);
   const mapped: to[] = [];
@@ -115,19 +116,19 @@ List.map = Functor.method(function map<from, to>(
     mapped.push(fn(item));
   }
 
-  return list_from_array(mapped);
+  return List(list_from_array(mapped));
 });
 
-List.pure = Applicative.pure_method(function pure<item>(
+List.pure = impl(function pure<item>(
   value: item,
-): List<item> {
-  return list_cons(value, list_nil());
+): BoxedList<item> {
+  return List(list_cons(value, list_nil()));
 });
 
-List.ap = Applicative.method(function ap<from, to>(
-  this: List<(value: from) => to> | void,
-  values: List<from>,
-): List<to> {
+List.ap = impl(function ap<from, to>(
+  this: BoxedList<(value: from) => to> | void,
+  values: ListInput<from>,
+): BoxedList<to> {
   const fns = require_this(this, "List.ap");
   const out: to[] = [];
 
@@ -137,13 +138,13 @@ List.ap = Applicative.method(function ap<from, to>(
     }
   }
 
-  return list_from_array(out);
+  return List(list_from_array(out));
 });
 
-List.flat_map = Monad.method(function flat_map<from, to>(
-  this: List<from> | void,
+List.flat_map = impl(function flat_map<from, to>(
+  this: BoxedList<from> | void,
   fn: (value: from) => TraitInput<typeof List, List<to>, to>,
-): List<to> {
+): BoxedList<to> {
   const list = require_this(this, "List.flat_map");
   const out: to[] = [];
 
@@ -155,11 +156,11 @@ List.flat_map = Monad.method(function flat_map<from, to>(
     }
   }
 
-  return list_from_array(out);
+  return List(list_from_array(out));
 });
 
-List.fold = Foldable.method(function fold<item, out>(
-  this: List<item> | void,
+List.fold = impl(function fold<item, out>(
+  this: BoxedList<item> | void,
   initial: out,
   fn: (state: out, item: item) => out,
 ): out {
@@ -206,9 +207,9 @@ function list_cons<item>(head: item, tail: List<item>): List<item> {
 }
 
 List satisfies
-  & Format<List<unknown>>
-  & Equal<List<unknown>>
-  & Functor<typeof list_kind>
-  & Applicative<typeof list_kind>
-  & Monad<typeof list_kind>
-  & Foldable<typeof list_kind>;
+  & Format<BoxedList<unknown>>
+  & Equal<BoxedList<unknown>>
+  & Functor<typeof List>
+  & Applicative<typeof List>
+  & Monad<typeof List>
+  & Foldable<typeof List>;

@@ -35,9 +35,9 @@ existing contextual value as a fluent `Trait<dictionary, value, item>` and also
 acts as the trait dictionary. Constructors and other helpers are normal exported
 functions that return wrapped values.
 
-The `Registry` interface in `src/registry.ts` is the type-level map from a data
-type's unique symbol to its contextual shape. That lets the short
-`Value<typeof Option, item>` type recover that `Option` stores `Option<item>`.
+The dictionary carries a phantom associated value type. That lets the short
+`Value<typeof Option, item>` type recover that `Option` stores `Option<item>`
+without a global registry or module augmentation.
 
 Trait implementation functions use `this` as their receiver and assert it at
 runtime. The canonical trait slot is a unique symbol, so two traits can both
@@ -46,7 +46,15 @@ also expose direct fluent aliases like `.fmt()` or `.map()` when those names are
 useful for examples.
 
 ```ts
-import { kind, require_this, trait_constructor, type Value } from "./trait.ts";
+import {
+  type Dictionary,
+  item_type,
+  kind,
+  require_this,
+  trait_constructor,
+  type Value,
+  value_type,
+} from "./trait.ts";
 import { Format, Monad } from "./traits.ts";
 
 export type Option<item> =
@@ -55,15 +63,10 @@ export type Option<item> =
 
 export const option_kind: unique symbol = Symbol("Option");
 
-declare module "./registry.ts" {
-  interface Registry<item> {
-    [option_kind]: Option<item>;
-  }
-}
-
-export interface OptionDictionary {
+export interface OptionDictionary extends Dictionary {
   <item>(value: Option<item>): OptionValue<item>;
   [kind]: typeof option_kind;
+  readonly [value_type]?: Option<this[typeof item_type]>;
 }
 
 type OptionValue<item> = Value<OptionDictionary, item>;

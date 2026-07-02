@@ -1,4 +1,12 @@
-import { kind, require_this, trait_constructor, type Value } from "./trait.ts";
+import {
+  type Dictionary,
+  item_type,
+  kind,
+  require_this,
+  trait_constructor,
+  type Value,
+  value_type,
+} from "./trait.ts";
 import {
   Alternative,
   Applicative,
@@ -18,15 +26,10 @@ type Some<item> = { tag: "some"; value: item };
 
 export const option_kind: unique symbol = Symbol("Option");
 
-declare module "./registry.ts" {
-  interface Registry<item> {
-    [option_kind]: Option<item>;
-  }
-}
-
-export interface OptionDictionary {
+export interface OptionDictionary extends Dictionary {
   <item>(value: Option<item>): OptionValue<item>;
   [kind]: typeof option_kind;
+  readonly [value_type]?: Option<this[typeof item_type]>;
 }
 
 type OptionValue<item> = Value<OptionDictionary, item>;

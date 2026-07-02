@@ -1,4 +1,12 @@
-import { kind, require_this, trait_constructor, type Value } from "./trait.ts";
+import {
+  type Dictionary,
+  item_type,
+  kind,
+  require_this,
+  trait_constructor,
+  type Value,
+  value_type,
+} from "./trait.ts";
 import {
   Applicative,
   Equal,
@@ -14,15 +22,10 @@ export type MapT<item> = ReadonlyMap<string, item>;
 
 export const map_kind: unique symbol = Symbol("MapT");
 
-declare module "./registry.ts" {
-  interface Registry<item> {
-    [map_kind]: MapT<item>;
-  }
-}
-
-export interface MapDictionary {
+export interface MapDictionary extends Dictionary {
   <item>(map: MapT<item>): MapValue<item>;
   [kind]: typeof map_kind;
+  readonly [value_type]?: MapT<this[typeof item_type]>;
 }
 
 type MapValue<item> = Value<MapDictionary, item>;

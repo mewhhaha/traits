@@ -1,4 +1,12 @@
-import { kind, require_this, trait_constructor, type Value } from "./trait.ts";
+import {
+  type Dictionary,
+  item_type,
+  kind,
+  require_this,
+  trait_constructor,
+  type Value,
+  value_type,
+} from "./trait.ts";
 import {
   Applicative,
   Equal,
@@ -14,15 +22,10 @@ export type RecordT<item> = Readonly<Record<string, item>>;
 
 export const record_kind: unique symbol = Symbol("RecordT");
 
-declare module "./registry.ts" {
-  interface Registry<item> {
-    [record_kind]: RecordT<item>;
-  }
-}
-
-export interface RecordDictionary {
+export interface RecordDictionary extends Dictionary {
   <item>(record: RecordT<item>): RecordValue<item>;
   [kind]: typeof record_kind;
+  readonly [value_type]?: RecordT<this[typeof item_type]>;
 }
 
 type RecordValue<item> = Value<RecordDictionary, item>;

@@ -1,4 +1,12 @@
-import { kind, require_this, trait_constructor, type Value } from "./trait.ts";
+import {
+  type Dictionary,
+  item_type,
+  kind,
+  require_this,
+  trait_constructor,
+  type Value,
+  value_type,
+} from "./trait.ts";
 import {
   Alternative,
   Applicative,
@@ -16,15 +24,10 @@ export type ArrayT<item> = readonly item[];
 
 export const array_kind: unique symbol = Symbol("ArrayT");
 
-declare module "./registry.ts" {
-  interface Registry<item> {
-    [array_kind]: ArrayT<item>;
-  }
-}
-
-export interface ArrayDictionary {
+export interface ArrayDictionary extends Dictionary {
   <item>(items: ArrayT<item>): ArrayValue<item>;
   [kind]: typeof array_kind;
+  readonly [value_type]?: ArrayT<this[typeof item_type]>;
 }
 
 type ArrayValue<item> = Value<ArrayDictionary, item>;

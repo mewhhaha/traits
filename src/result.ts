@@ -1,4 +1,12 @@
-import { kind, require_this, trait_constructor, type Value } from "./trait.ts";
+import {
+  type Dictionary,
+  item_type,
+  kind,
+  require_this,
+  trait_constructor,
+  type Value,
+  value_type,
+} from "./trait.ts";
 import {
   Applicative,
   Equal,
@@ -17,15 +25,10 @@ type Ok<item> = { tag: "ok"; value: item };
 
 export const result_kind: unique symbol = Symbol("Result");
 
-declare module "./registry.ts" {
-  interface Registry<item> {
-    [result_kind]: Result<item, string>;
-  }
-}
-
-export interface ResultDictionary {
+export interface ResultDictionary extends Dictionary {
   <item>(value: Result<item, string>): ResultValue<item>;
   [kind]: typeof result_kind;
+  readonly [value_type]?: Result<this[typeof item_type], string>;
 }
 
 type ResultValue<item> = Value<ResultDictionary, item>;

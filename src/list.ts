@@ -1,4 +1,12 @@
-import { kind, require_this, trait_constructor, type Value } from "./trait.ts";
+import {
+  type Dictionary,
+  item_type,
+  kind,
+  require_this,
+  trait_constructor,
+  type Value,
+  value_type,
+} from "./trait.ts";
 import {
   Alternative,
   Applicative,
@@ -18,15 +26,10 @@ export type List<item> =
 
 export const list_kind: unique symbol = Symbol("List");
 
-declare module "./registry.ts" {
-  interface Registry<item> {
-    [list_kind]: List<item>;
-  }
-}
-
-export interface ListDictionary {
+export interface ListDictionary extends Dictionary {
   <item>(value: List<item>): ListValue<item>;
   [kind]: typeof list_kind;
+  readonly [value_type]?: List<this[typeof item_type]>;
 }
 
 type ListValue<item> = Value<ListDictionary, item>;

@@ -1,19 +1,22 @@
-import { kind, require_this, trait_constructor, type Value } from "./trait.ts";
+import {
+  type Dictionary,
+  item_type,
+  kind,
+  require_this,
+  trait_constructor,
+  type Value,
+  value_type,
+} from "./trait.ts";
 import { Applicative, Format, Functor, Monad } from "./traits.ts";
 
 export type Task<item> = () => Promise<item>;
 
 export const task_kind: unique symbol = Symbol("Task");
 
-declare module "./registry.ts" {
-  interface Registry<item> {
-    [task_kind]: Task<item>;
-  }
-}
-
-export interface TaskDictionary {
+export interface TaskDictionary extends Dictionary {
   <item>(run: Task<item>): TaskValue<item>;
   [kind]: typeof task_kind;
+  readonly [value_type]?: Task<this[typeof item_type]>;
 }
 
 type TaskValue<item> = Value<TaskDictionary, item>;

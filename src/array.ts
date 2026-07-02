@@ -49,7 +49,7 @@ export function to_array<item>(array: ArrayValue<item>): item[] {
 
 Format.implement(ArrayT, {
   fmt() {
-    const array = require_this(this, "ArrayT.Format.fmt").value();
+    const array = require_this(this).value();
     return Deno.inspect(array);
   },
 });
@@ -61,7 +61,7 @@ Equal.implement(ArrayT, {
     this: ArrayValue<item> | void,
     right: ArrayValue<item>,
   ) {
-    const left = require_this(this, "ArrayT.Equal.eq").value();
+    const left = require_this(this).value();
     const right_value = right.value();
 
     if (left.length !== right_value.length) {
@@ -85,7 +85,7 @@ Functor.implement(ArrayT, {
     this: ArrayValue<from> | void,
     fn: (value: from) => to,
   ) {
-    const array = require_this(this, "ArrayT.Functor.map").value();
+    const array = require_this(this).value();
     const out: to[] = [];
 
     for (const item of array) {
@@ -107,7 +107,7 @@ Applicative.implement(ArrayT, {
     this: ArrayValue<(value: from) => to> | void,
     values: ArrayValue<from>,
   ) {
-    const fns = require_this(this, "ArrayT.Applicative.ap").value();
+    const fns = require_this(this).value();
     const out: to[] = [];
 
     for (const fn of fns) {
@@ -127,7 +127,7 @@ Semigroup.implement(ArrayT, {
     this: ArrayValue<item> | void,
     right: ArrayValue<item>,
   ) {
-    const left = require_this(this, "ArrayT.Semigroup.concat").value();
+    const left = require_this(this).value();
     return ArrayT([...left, ...right.value()]);
   },
 });
@@ -151,7 +151,7 @@ Alternative.implement(ArrayT, {
     this: ArrayValue<item> | void,
     right: ArrayValue<item>,
   ) {
-    const left = require_this(this, "ArrayT.Alternative.alt").value();
+    const left = require_this(this).value();
     return ArrayT([...left, ...right.value()]);
   },
 });
@@ -163,7 +163,7 @@ Monad.implement(ArrayT, {
     this: ArrayValue<from> | void,
     fn: (value: from) => ArrayValue<to>,
   ) {
-    const array = require_this(this, "ArrayT.Monad.bind").value();
+    const array = require_this(this).value();
     const out: to[] = [];
 
     for (const item of array) {
@@ -182,7 +182,7 @@ Foldable.implement(ArrayT, {
     initial: out,
     fn: (state: out, item: item) => out,
   ) {
-    const array = require_this(this, "ArrayT.Foldable.fold").value();
+    const array = require_this(this).value();
     let state = initial;
 
     for (const item of array) {
@@ -201,7 +201,7 @@ Traversable.implement(ArrayT, {
     applicative: Value<applicative, unknown>,
     fn: (value: from) => Value<applicative, to>,
   ) {
-    const array = require_this(this, "ArrayT.Traversable.traverse").value();
+    const array = require_this(this).value();
     let out = Applicative.pure(applicative, ArrayT<to>([]));
 
     for (let index = array.length - 1; index >= 0; index -= 1) {

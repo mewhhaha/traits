@@ -58,7 +58,7 @@ export function from_number(value: number): ResultValue<number> {
 
 Format.implement(Result, {
   fmt() {
-    const result = require_this(this, "Result.Format.fmt").value();
+    const result = require_this(this).value();
 
     if (result.tag === "err") {
       return "Err(" + Deno.inspect(result.error) + ")";
@@ -75,7 +75,7 @@ Equal.implement(Result, {
     this: ResultValue<item> | void,
     right: ResultValue<item>,
   ) {
-    const left = require_this(this, "Result.Equal.eq").value();
+    const left = require_this(this).value();
     const right_value = right.value();
 
     if (left.tag === "err" && right_value.tag === "err") {
@@ -97,7 +97,7 @@ Functor.implement(Result, {
     this: ResultValue<from> | void,
     fn: (value: from) => to,
   ) {
-    const result = require_this(this, "Result.Functor.map").value();
+    const result = require_this(this).value();
 
     if (result.tag === "err") {
       return err<to>(result.error);
@@ -118,7 +118,7 @@ Applicative.implement(Result, {
     this: ResultValue<(value: from) => to> | void,
     value: ResultValue<from>,
   ) {
-    const fn = require_this(this, "Result.Applicative.ap").value();
+    const fn = require_this(this).value();
     const result = value.value();
 
     if (fn.tag === "err") {
@@ -140,7 +140,7 @@ Monad.implement(Result, {
     this: ResultValue<from> | void,
     fn: (value: from) => ResultValue<to>,
   ) {
-    const result = require_this(this, "Result.Monad.bind").value();
+    const result = require_this(this).value();
 
     if (result.tag === "err") {
       return err<to>(result.error);
@@ -158,7 +158,7 @@ Foldable.implement(Result, {
     initial: out,
     fn: (state: out, item: item) => out,
   ) {
-    const result = require_this(this, "Result.Foldable.fold").value();
+    const result = require_this(this).value();
 
     if (result.tag === "err") {
       return initial;
@@ -176,7 +176,7 @@ Traversable.implement(Result, {
     applicative: Value<applicative, unknown>,
     fn: (value: from) => Value<applicative, to>,
   ) {
-    const result = require_this(this, "Result.Traversable.traverse").value();
+    const result = require_this(this).value();
 
     if (result.tag === "err") {
       return Applicative.pure(applicative, err<to>(result.error));

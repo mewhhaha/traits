@@ -160,7 +160,7 @@ Deno.test("Trait dictionary methods assert a missing receiver at runtime", () =>
 
   assert_trait_receiver_error(
     () => map((value: number) => value + 1),
-    "Option.Functor.map requires a trait receiver",
+    "trait method requires a receiver",
   );
 });
 

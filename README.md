@@ -24,6 +24,9 @@ deno task example
 deno task bench
 ```
 
+The comparison benchmarks use pinned npm packages through `deno.json` imports,
+so the first run may download `fp-ts`, `effect`, and `purify-ts`.
+
 ## Shape
 
 The core wrapper and trait-definition machinery lives in `src/trait.ts` and
@@ -90,7 +93,7 @@ export function none<item = never>(): OptionValue<item> {
 
 Format.implement(Option, {
   fmt() {
-    const option = require_this(this, "Option.Format.fmt").value();
+    const option = require_this(this).value();
     return option.tag === "none" ? "None" : "Some(" + option.value + ")";
   },
 });
@@ -102,7 +105,7 @@ Monad.implement(Option, {
     this: OptionValue<from> | void,
     fn: (value: from) => OptionValue<to>,
   ) {
-    const option = require_this(this, "Option.Monad.bind").value();
+    const option = require_this(this).value();
 
     if (option.tag === "none") {
       return none<to>();
@@ -206,7 +209,7 @@ declare module "./list.ts" {
 
 Size.implement(List, {
   size() {
-    const list = require_this(this, "List.Size.size");
+    const list = require_this(this);
     return to_array(list).length;
   },
 });
@@ -300,6 +303,19 @@ constructions or read cycles:
 - record `{ dictionary, raw }` construction
 - prototype-backed symbol object construction
 - `value()` or direct payload reads for the current, tuple, and prototype shapes
+
+`bench/library_comparison.bench.ts` compares this repository's `Option` and
+`Result` wrappers with similar data types from `fp-ts`, `effect`, and
+`purify-ts`:
+
+- `Option`/`Maybe` and `Result`/`Either` construction.
+- Happy-path `map` plus `bind`/`chain`/`flatMap` composition.
+- Failure-path `none`/`left`/`err` composition.
+
+These are microbenchmarks, not a full library ranking. The libraries expose
+different runtime shapes: this repo boxes values with a trait dictionary,
+`fp-ts` uses standalone combinators over plain tagged objects, `effect` uses
+optimized module functions, and `purify-ts` uses methods on ADT instances.
 
 Run it with:
 

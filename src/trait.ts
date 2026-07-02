@@ -12,9 +12,9 @@ export const value_type: unique symbol = Symbol("Trait.value");
 
 export type This<self> = self | void;
 
-export function require_this<self>(value: This<self>, name: string): self {
+export function require_this<self>(value: This<self>): self {
   if (value === undefined) {
-    throw new TypeError(name + " requires a trait receiver");
+    throw new TypeError("trait method requires a receiver");
   }
 
   return value;

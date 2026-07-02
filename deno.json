@@ -1,4 +1,12 @@
 {
+  "imports": {
+    "effect": "npm:effect@3.21.4",
+    "fp-ts/Either": "npm:fp-ts@2.16.11/lib/Either.js",
+    "fp-ts/Option": "npm:fp-ts@2.16.11/lib/Option.js",
+    "fp-ts/function": "npm:fp-ts@2.16.11/lib/function.js",
+    "purify-ts/Either": "npm:purify-ts@2.1.4/Either",
+    "purify-ts/Maybe": "npm:purify-ts@2.1.4/Maybe"
+  },
   "tasks": {
     "bench": "deno bench bench/*.bench.ts",
     "check": "deno check src/mod.ts src/*.test.ts examples/main.ts bench/*.bench.ts",

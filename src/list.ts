@@ -81,7 +81,7 @@ function list_from_array<item>(items: item[]): List<item> {
 
 Format.implement(List, {
   fmt() {
-    const list = require_this(this, "List.Format.fmt");
+    const list = require_this(this);
     const items = to_array(list).map((item) => Deno.inspect(item));
     return "[" + items.join(", ") + "]";
   },
@@ -94,7 +94,7 @@ Equal.implement(List, {
     this: ListValue<item> | void,
     right: ListValue<item>,
   ) {
-    const left = require_this(this, "List.Equal.eq");
+    const left = require_this(this);
     let left_rest = left.value();
     let right_rest = right.value();
 
@@ -118,7 +118,7 @@ Functor.implement(List, {
     this: ListValue<from> | void,
     fn: (value: from) => to,
   ) {
-    const list = require_this(this, "List.Functor.map");
+    const list = require_this(this);
     const items = to_array(list);
     const mapped: to[] = [];
 
@@ -143,7 +143,7 @@ Applicative.implement(List, {
     this: ListValue<(value: from) => to> | void,
     values: ListValue<from>,
   ) {
-    const fns = require_this(this, "List.Applicative.ap");
+    const fns = require_this(this);
     const out: to[] = [];
 
     for (const fn of to_array(fns)) {
@@ -163,7 +163,7 @@ Semigroup.implement(List, {
     this: ListValue<item> | void,
     right: ListValue<item>,
   ) {
-    const left = require_this(this, "List.Semigroup.concat");
+    const left = require_this(this);
     return from_array([...to_array(left), ...to_array(right)]);
   },
 });
@@ -187,7 +187,7 @@ Alternative.implement(List, {
     this: ListValue<item> | void,
     right: ListValue<item>,
   ) {
-    const left = require_this(this, "List.Alternative.alt");
+    const left = require_this(this);
     return from_array([...to_array(left), ...to_array(right)]);
   },
 });
@@ -199,7 +199,7 @@ Monad.implement(List, {
     this: ListValue<from> | void,
     fn: (value: from) => ListValue<to>,
   ) {
-    const list = require_this(this, "List.Monad.bind");
+    const list = require_this(this);
     const out: to[] = [];
 
     for (const item of to_array(list)) {
@@ -222,7 +222,7 @@ Foldable.implement(List, {
     initial: out,
     fn: (state: out, item: item) => out,
   ) {
-    const list = require_this(this, "List.Foldable.fold");
+    const list = require_this(this);
     let state = initial;
 
     for (const item of to_array(list)) {
@@ -241,7 +241,7 @@ Traversable.implement(List, {
     applicative: Value<applicative, unknown>,
     fn: (value: from) => Value<applicative, to>,
   ) {
-    const list = require_this(this, "List.Traversable.traverse");
+    const list = require_this(this);
     const items = to_array(list);
     let out = Applicative.pure(applicative, nil<to>());
 

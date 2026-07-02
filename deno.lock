@@ -1,0 +1,48 @@
+{
+  "version": "5",
+  "specifiers": {
+    "npm:effect@3.21.4": "3.21.4",
+    "npm:fp-ts@2.16.11": "2.16.11",
+    "npm:purify-ts@2.1.4": "2.1.4"
+  },
+  "npm": {
+    "@standard-schema/spec@1.1.0": {
+      "integrity": "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="
+    },
+    "@types/json-schema@7.0.15": {
+      "integrity": "sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA=="
+    },
+    "effect@3.21.4": {
+      "integrity": "sha512-B89v/xSgPbl1J2Ai2u18jxq3odpFauU1rC6/eSs4FeNHi72kwKdJp12VGigvRV2lK+kRnx+OOz41XV8guZd4gQ==",
+      "dependencies": [
+        "@standard-schema/spec",
+        "fast-check"
+      ]
+    },
+    "fast-check@3.23.2": {
+      "integrity": "sha512-h5+1OzzfCC3Ef7VbtKdcv7zsstUQwUDlYpUTvjeUsJAssPgLn7QzbboPtL5ro04Mq0rPOsMzl7q5hIbRs2wD1A==",
+      "dependencies": [
+        "pure-rand"
+      ]
+    },
+    "fp-ts@2.16.11": {
+      "integrity": "sha512-LaI+KaX2NFkfn1ZGHoKCmcfv7yrZsC3b8NtWsTVQeHkq4F27vI5igUuO53sxqDEa2gNQMHFPmpojDw/1zmUK7w=="
+    },
+    "pure-rand@6.1.0": {
+      "integrity": "sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA=="
+    },
+    "purify-ts@2.1.4": {
+      "integrity": "sha512-PKSMYPJRoxxHdsI9I2/caXmMDoAFd15lHmOAJsq55cl9o2gHH6NWaPTuwRW6cNkTRhZRkmoTN7U6062mRMcIsA==",
+      "dependencies": [
+        "@types/json-schema"
+      ]
+    }
+  },
+  "workspace": {
+    "dependencies": [
+      "npm:effect@3.21.4",
+      "npm:fp-ts@2.16.11",
+      "npm:purify-ts@2.1.4"
+    ]
+  }
+}

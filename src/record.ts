@@ -51,7 +51,7 @@ export function to_record<item>(
 
 Format.implement(RecordT, {
   fmt() {
-    const record = require_this(this, "RecordT.Format.fmt").value();
+    const record = require_this(this).value();
     return Deno.inspect(record);
   },
 });
@@ -63,7 +63,7 @@ Equal.implement(RecordT, {
     this: RecordValue<item> | void,
     right: RecordValue<item>,
   ) {
-    const left = require_this(this, "RecordT.Equal.eq").value();
+    const left = require_this(this).value();
     const right_value = right.value();
     const left_keys = Object.keys(left);
     const right_keys = Object.keys(right_value);
@@ -93,7 +93,7 @@ Functor.implement(RecordT, {
     this: RecordValue<from> | void,
     fn: (value: from) => to,
   ) {
-    const record = require_this(this, "RecordT.Functor.map").value();
+    const record = require_this(this).value();
     const out: Record<string, to> = {};
 
     for (const [key, value] of Object.entries(record)) {
@@ -111,7 +111,7 @@ Semigroup.implement(RecordT, {
     this: RecordValue<item> | void,
     right: RecordValue<item>,
   ) {
-    const left = require_this(this, "RecordT.Semigroup.concat").value();
+    const left = require_this(this).value();
     return RecordT({ ...left, ...right.value() });
   },
 });
@@ -132,7 +132,7 @@ Foldable.implement(RecordT, {
     initial: out,
     fn: (state: out, item: item) => out,
   ) {
-    const record = require_this(this, "RecordT.Foldable.fold").value();
+    const record = require_this(this).value();
     let state = initial;
 
     for (const value of Object.values(record)) {
@@ -151,7 +151,7 @@ Traversable.implement(RecordT, {
     applicative: Value<applicative, unknown>,
     fn: (value: from) => Value<applicative, to>,
   ) {
-    const record = require_this(this, "RecordT.Traversable.traverse").value();
+    const record = require_this(this).value();
     const entries = Object.entries(record);
     let out = Applicative.pure(applicative, RecordT<to>({}));
 

@@ -50,7 +50,7 @@ export function run<item>(task: TaskValue<item>): Promise<item> {
 
 Format.implement(Task, {
   fmt() {
-    require_this(this, "Task.Format.fmt");
+    require_this(this);
     return "Task(?)";
   },
 });
@@ -62,7 +62,7 @@ Functor.implement(Task, {
     this: TaskValue<from> | void,
     fn: (value: from) => to,
   ) {
-    const task = require_this(this, "Task.Functor.map");
+    const task = require_this(this);
 
     return Task(async () => fn(await run(task)));
   },
@@ -81,7 +81,7 @@ Applicative.implement(Task, {
     this: TaskValue<(value: from) => to> | void,
     value: TaskValue<from>,
   ) {
-    const task = require_this(this, "Task.Applicative.ap");
+    const task = require_this(this);
 
     return Task(async () => {
       const [fn, item] = await Promise.all([run(task), run(value)]);
@@ -97,7 +97,7 @@ Monad.implement(Task, {
     this: TaskValue<from> | void,
     fn: (value: from) => TaskValue<to>,
   ) {
-    const task = require_this(this, "Task.Monad.bind");
+    const task = require_this(this);
 
     return Task(async () => {
       const value = await run(task);

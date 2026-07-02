@@ -55,7 +55,7 @@ declare module "../src/list.ts" {
 
 Size.implement(List, {
   size() {
-    const list = require_this(this, "List.Size.size");
+    const list = require_this(this);
     return to_array(list).length;
   },
 });

@@ -61,7 +61,7 @@ export function to_record<item>(
 
 Format.implement(MapT, {
   fmt() {
-    const map = require_this(this, "MapT.Format.fmt").value();
+    const map = require_this(this).value();
     return Deno.inspect(map);
   },
 });
@@ -73,7 +73,7 @@ Equal.implement(MapT, {
     this: MapValue<item> | void,
     right: MapValue<item>,
   ) {
-    const left = require_this(this, "MapT.Equal.eq").value();
+    const left = require_this(this).value();
     const right_value = right.value();
 
     if (left.size !== right_value.size) {
@@ -97,7 +97,7 @@ Functor.implement(MapT, {
     this: MapValue<from> | void,
     fn: (value: from) => to,
   ) {
-    const map = require_this(this, "MapT.Functor.map").value();
+    const map = require_this(this).value();
     const out = new Map<string, to>();
 
     for (const [key, value] of map) {
@@ -115,7 +115,7 @@ Semigroup.implement(MapT, {
     this: MapValue<item> | void,
     right: MapValue<item>,
   ) {
-    const left = require_this(this, "MapT.Semigroup.concat").value();
+    const left = require_this(this).value();
     const out = new Map(left);
 
     for (const [key, value] of right.value()) {
@@ -142,7 +142,7 @@ Foldable.implement(MapT, {
     initial: out,
     fn: (state: out, item: item) => out,
   ) {
-    const map = require_this(this, "MapT.Foldable.fold").value();
+    const map = require_this(this).value();
     let state = initial;
 
     for (const value of map.values()) {
@@ -161,7 +161,7 @@ Traversable.implement(MapT, {
     applicative: Value<applicative, unknown>,
     fn: (value: from) => Value<applicative, to>,
   ) {
-    const map = require_this(this, "MapT.Traversable.traverse").value();
+    const map = require_this(this).value();
     const entries = [...map.entries()];
     let out = Applicative.pure(applicative, MapT<to>(new Map()));
 

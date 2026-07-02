@@ -1,7 +1,7 @@
-import type { Dictionary, TraitThis, Value } from "./trait.ts";
+import type { Dictionary, Receiver, Value } from "./trait.ts";
 
 export interface Format<dictionary extends Dictionary & Format<dictionary>> {
-  fmt: (this: TraitThis<Value<dictionary, unknown>>) => string;
+  fmt: (this: Receiver<dictionary, unknown>) => string;
 }
 
 export interface FormatImpl {}
@@ -16,7 +16,7 @@ Format.fmt = function fmt<dictionary extends Dictionary & Format<dictionary>>(
 
 export interface Equal<dictionary extends Dictionary & Equal<dictionary>> {
   eq: <item>(
-    this: TraitThis<Value<dictionary, item>>,
+    this: Receiver<dictionary, item>,
     right: Value<dictionary, item>,
   ) => boolean;
 }
@@ -37,7 +37,7 @@ Equal.eq = function eq<
 
 export interface Functor<dictionary extends Dictionary & Functor<dictionary>> {
   map: <from, to>(
-    this: TraitThis<Value<dictionary, from>>,
+    this: Receiver<dictionary, from>,
     fn: (value: from) => to,
   ) => Value<dictionary, to>;
 }
@@ -62,7 +62,7 @@ export interface Applicative<
 > extends Functor<dictionary> {
   pure: <item>(value: item) => Value<dictionary, item>;
   ap: <from, to>(
-    this: TraitThis<Value<dictionary, (value: NoInfer<from>) => to>>,
+    this: Receiver<dictionary, (value: NoInfer<from>) => to>,
     value: Value<dictionary, from>,
   ) => Value<dictionary, to>;
 }
@@ -95,7 +95,7 @@ Applicative.ap = function ap<
 export interface Monad<dictionary extends Dictionary & Monad<dictionary>>
   extends Applicative<dictionary> {
   bind: <from, to>(
-    this: TraitThis<Value<dictionary, from>>,
+    this: Receiver<dictionary, from>,
     fn: (value: from) => Value<dictionary, to>,
   ) => Value<dictionary, to>;
 }
@@ -169,7 +169,7 @@ export interface Foldable<
   dictionary extends Dictionary & Foldable<dictionary>,
 > {
   fold: <item, out>(
-    this: TraitThis<Value<dictionary, item>>,
+    this: Receiver<dictionary, item>,
     initial: out,
     fn: (state: out, item: item) => out,
   ) => out;

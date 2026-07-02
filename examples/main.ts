@@ -1,7 +1,14 @@
-import { from_array } from "../src/list.ts";
+import { from_array, List, to_array } from "../src/list.ts";
 import { some } from "../src/option.ts";
 import { err, from_number, ok } from "../src/result.ts";
 import { from_fn, run } from "../src/task.ts";
+import {
+  type Dictionary,
+  implement,
+  type Receiver,
+  require_this,
+  trait_constructor,
+} from "../src/trait.ts";
 import {
   add_values,
   keep_positive,
@@ -10,12 +17,30 @@ import {
 } from "../src/examples.ts";
 import { Format, perform } from "../src/traits.ts";
 
+interface Size<dictionary extends Dictionary> {
+  size: <item>(this: Receiver<dictionary, item>) => number;
+}
+
+function Size() {}
+
+Size.size = function size(value: { size: () => number }): number {
+  return value.size();
+};
+
+const SizedList = implement(List, {
+  size<item>(this: Receiver<typeof List, item>): number {
+    const list = require_this(this, "List.size");
+    return to_array(list).length;
+  },
+}) satisfies typeof List & Size<typeof List>;
+
 const option = some(21);
 const doubled_option = option.map((value: number) => {
   return value * 2;
 });
 
 const list = from_array([1, 2, 3]);
+const sized_list = trait_constructor(SizedList)(list.value());
 const labeled_list = label_values(list);
 
 const result = ok("42")
@@ -59,6 +84,8 @@ const task_result = perform(function* () {
 console.log("option", doubled_option.fmt());
 console.log("list labels", Format.fmt(labeled_list));
 console.log("list sum", sum_values(list));
+console.log("custom trait list size", Size.size(sized_list));
+console.log("custom fluent list size", sized_list.size());
 console.log("result", result.fmt());
 console.log("applicative list", applicative_list.fmt());
 console.log("generic option sum", Format.fmt(generic_option_sum));

@@ -40,14 +40,14 @@ the generic wrapper can rebind dictionary functions as methods on wrapped
 values.
 
 ```ts
-import { kind, require_this, type Trait, trait, type Value } from "./trait.ts";
+import { kind, require_this, trait_constructor, type Value } from "./trait.ts";
 import { Format, Monad } from "./traits.ts";
 
 export type Option<item> =
   | { tag: "some"; value: item }
   | { tag: "none" };
 
-type OptionValue<item> = Trait<typeof Option, Option<item>, item>;
+type OptionValue<item> = Value<typeof Option, item>;
 
 export const option_kind: unique symbol = Symbol("Option");
 
@@ -60,10 +60,12 @@ declare module "./registry.ts" {
 export function Option<item>(
   value: Option<item>,
 ): OptionValue<item> {
-  return trait<typeof Option, Option<item>, item>(Option, value);
+  return option_trait(value);
 }
 
 Option[kind] = option_kind;
+
+const option_trait = trait_constructor(Option);
 
 export function some<item>(
   value: item,
@@ -76,7 +78,7 @@ export function none<item = never>(): OptionValue<item> {
 }
 
 Option.fmt = function fmt(
-  this: Trait<typeof Option, Option<unknown>, unknown> | void,
+  this: OptionValue<unknown> | void,
 ): string {
   const option = require_this(this, "Option.fmt").value();
   return option.tag === "none" ? "None" : "Some(" + option.value + ")";
@@ -147,6 +149,23 @@ return wrapped values directly.
 
 Data type constructors can use `trait_constructor(dictionary)` to cache the
 shared prototype once instead of looking it up for every value.
+
+External experiments can use `implement(dictionary, methods)` to attach methods
+to an existing dictionary and get back a widened dictionary type. `Receiver`
+keeps custom trait method receivers short:
+
+```ts
+interface Size<dictionary extends Dictionary> {
+  size: <item>(this: Receiver<dictionary, item>) => number;
+}
+
+const SizedList = implement(List, {
+  size<item>(this: Receiver<typeof List, item>): number {
+    const list = require_this(this, "List.size");
+    return to_array(list).length;
+  },
+}) satisfies typeof List & Size<typeof List>;
+```
 
 There is no `OptionBox` or `OptionTrait` type. The fluent methods are derived
 from the dictionary shape plus the wrapped value and item type.

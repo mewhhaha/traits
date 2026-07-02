@@ -31,7 +31,7 @@ import {
   Monad,
   perform,
 } from "./traits.ts";
-import { type Trait, trait } from "./trait.ts";
+import { implement, type Trait, trait } from "./trait.ts";
 
 Deno.test("Format and Equal traits dispatch through pseudo-trait helpers", () => {
   assert_equals(Format.fmt(option_some(42)), "Some(42)");
@@ -156,11 +156,11 @@ Deno.test("Trait values inherit methods added after construction", () => {
   const dictionary: DynamicDictionary = {};
   const value = trait<DynamicDictionary, number, number>(dictionary, 41);
 
-  dictionary.inc = function inc(
-    this: Trait<DynamicDictionary, number, number>,
-  ): number {
-    return this.value() + 1;
-  };
+  implement(dictionary, {
+    inc(this: Trait<DynamicDictionary, number, number>): number {
+      return this.value() + 1;
+    },
+  });
 
   if (value.inc === undefined) {
     throw new Error("expected dynamic dictionary method");

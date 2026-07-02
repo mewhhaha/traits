@@ -1,4 +1,4 @@
-import { kind, require_this, type Trait, trait_constructor } from "./trait.ts";
+import { kind, require_this, trait_constructor, type Value } from "./trait.ts";
 import {
   Applicative,
   Equal,
@@ -13,7 +13,7 @@ export type Option<item> =
   | { tag: "none" };
 
 type Some<item> = { tag: "some"; value: item };
-type OptionValue<item> = Trait<typeof Option, Option<item>, item>;
+type OptionValue<item> = Value<typeof Option, item>;
 
 export const option_kind: unique symbol = Symbol("Option");
 
@@ -26,12 +26,12 @@ declare module "./registry.ts" {
 export function Option<item>(
   value: Option<item>,
 ): OptionValue<item> {
-  return option_trait<Option<item>, item>(value);
+  return option_trait(value);
 }
 
 Option[kind] = option_kind;
 
-const option_trait = trait_constructor<typeof Option>(Option);
+const option_trait = trait_constructor(Option);
 
 export function some<item>(value: item): OptionValue<item> {
   return Option(option_some(value));

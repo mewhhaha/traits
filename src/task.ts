@@ -1,9 +1,9 @@
-import { kind, require_this, type Trait, trait_constructor } from "./trait.ts";
+import { kind, require_this, trait_constructor, type Value } from "./trait.ts";
 import { Applicative, Format, Functor, Monad } from "./traits.ts";
 
 export type Task<item> = () => Promise<item>;
 
-type TaskValue<item> = Trait<typeof Task, Task<item>, item>;
+type TaskValue<item> = Value<typeof Task, item>;
 
 export const task_kind: unique symbol = Symbol("Task");
 
@@ -16,12 +16,12 @@ declare module "./registry.ts" {
 export function Task<item>(
   run: Task<item>,
 ): TaskValue<item> {
-  return task_trait<Task<item>, item>(run);
+  return task_trait(run);
 }
 
 Task[kind] = task_kind;
 
-const task_trait = trait_constructor<typeof Task>(Task);
+const task_trait = trait_constructor(Task);
 
 export function succeed<item>(value: item): TaskValue<item> {
   return Task(() => Promise.resolve(value));

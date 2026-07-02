@@ -1,4 +1,4 @@
-import { kind, require_this, type Trait, trait_constructor } from "./trait.ts";
+import { kind, require_this, trait_constructor, type Value } from "./trait.ts";
 import {
   Applicative,
   Equal,
@@ -13,7 +13,7 @@ export type Result<item, error = string> =
   | { tag: "err"; error: error };
 
 type Ok<item> = { tag: "ok"; value: item };
-type ResultValue<item> = Trait<typeof Result, Result<item, string>, item>;
+type ResultValue<item> = Value<typeof Result, item>;
 
 export const result_kind: unique symbol = Symbol("Result");
 
@@ -26,12 +26,12 @@ declare module "./registry.ts" {
 export function Result<item>(
   value: Result<item, string>,
 ): ResultValue<item> {
-  return result_trait<Result<item, string>, item>(value);
+  return result_trait(value);
 }
 
 Result[kind] = result_kind;
 
-const result_trait = trait_constructor<typeof Result>(Result);
+const result_trait = trait_constructor(Result);
 
 export function ok<item>(value: item): ResultValue<item> {
   return Result(result_ok(value));

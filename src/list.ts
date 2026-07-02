@@ -1,4 +1,4 @@
-import { kind, require_this, type Trait, trait_constructor } from "./trait.ts";
+import { kind, require_this, trait_constructor, type Value } from "./trait.ts";
 import {
   Applicative,
   Equal,
@@ -12,7 +12,7 @@ export type List<item> =
   | { tag: "nil" }
   | { tag: "cons"; head: item; tail: List<item> };
 
-type ListValue<item> = Trait<typeof List, List<item>, item>;
+type ListValue<item> = Value<typeof List, item>;
 
 export const list_kind: unique symbol = Symbol("List");
 
@@ -25,12 +25,12 @@ declare module "./registry.ts" {
 export function List<item>(
   value: List<item>,
 ): ListValue<item> {
-  return list_trait<List<item>, item>(value);
+  return list_trait(value);
 }
 
 List[kind] = list_kind;
 
-const list_trait = trait_constructor<typeof List>(List);
+const list_trait = trait_constructor(List);
 
 export function nil<item>(): ListValue<item> {
   return List(list_nil<item>());

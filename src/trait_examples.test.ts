@@ -454,9 +454,33 @@ Deno.test("Traversable flips structures through an applicative", () => {
     result_ok(undefined),
     (value) => result_ok(value + 1),
   );
+  const empty_array = Traversable.traverse(
+    array_from_array<number>([]),
+    result_ok(undefined),
+    (value) => result_ok(value.toString()),
+  );
+  const empty_list = Traversable.traverse(
+    list_from_array<number>([]),
+    result_ok(undefined),
+    (value) => result_ok(value.toString()),
+  );
+  const empty_map = Traversable.traverse(
+    map_from_entries<number>([]),
+    result_ok(undefined),
+    (value) => result_ok(value.toString()),
+  );
+  const empty_record = Traversable.traverse(
+    record_from_entries<number>([]),
+    result_ok(undefined),
+    (value) => result_ok(value.toString()),
+  );
 
   const array_result = array.value();
   const map_result = map.value();
+  const empty_array_result = empty_array.value();
+  const empty_list_result = empty_list.value();
+  const empty_map_result = empty_map.value();
+  const empty_record_result = empty_record.value();
 
   if (array_result.tag !== "ok") {
     throw new Error("expected traversed array to succeed");
@@ -464,6 +488,22 @@ Deno.test("Traversable flips structures through an applicative", () => {
 
   if (map_result.tag !== "ok") {
     throw new Error("expected traversed map to succeed");
+  }
+
+  if (empty_array_result.tag !== "ok") {
+    throw new Error("expected empty traversed array to succeed");
+  }
+
+  if (empty_list_result.tag !== "ok") {
+    throw new Error("expected empty traversed list to succeed");
+  }
+
+  if (empty_map_result.tag !== "ok") {
+    throw new Error("expected empty traversed map to succeed");
+  }
+
+  if (empty_record_result.tag !== "ok") {
+    throw new Error("expected empty traversed record to succeed");
   }
 
   assert_equals(array_to_array(array_result.value), [
@@ -477,6 +517,10 @@ Deno.test("Traversable flips structures through an applicative", () => {
     [option_some(21).value(), option_some(42).value()],
   );
   assert_equals(map_to_record(map_result.value), { x: 2, y: 3 });
+  assert_equals(array_to_array(empty_array_result.value), []);
+  assert_equals(list_to_array(empty_list_result.value), []);
+  assert_equals(map_to_record(empty_map_result.value), {});
+  assert_equals(record_to_record(empty_record_result.value), {});
 });
 
 Deno.test("Generic helpers work against trait interfaces", () => {

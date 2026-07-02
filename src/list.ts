@@ -182,20 +182,18 @@ Foldable.implement(List)({
 export interface ListDictionary extends Foldable<typeof List> {}
 
 Traversable.implement(List)({
-  traverse<applicative extends Applicative<applicative>, from, to>(
-    list: ListValue<from>,
-    applicative: Value<applicative, unknown>,
-    fn: (value: from) => Value<applicative, to>,
-  ) {
+  traverse(list, applicative, fn) {
     const items = to_array(list);
-    let out = Applicative.pure(applicative, nil<to>());
 
-    for (let index = items.length - 1; index >= 0; index -= 1) {
-      const item = items[index];
-      const cons_head = Functor.map(fn(item), (head) => {
-        return (tail: ListValue<to>) => cons(head, tail);
-      });
-      out = Applicative.ap(cons_head, out);
+    if (items.length === 0) {
+      return Applicative.pure(applicative, nil());
+    }
+
+    let index = items.length - 1;
+    let out = Functor.map(fn(items[index]), list_single);
+
+    for (index -= 1; index >= 0; index -= 1) {
+      out = Applicative.ap(Functor.map(fn(items[index]), list_prepend), out);
     }
 
     return out;
@@ -210,4 +208,12 @@ function list_nil<item>(): List<item> {
 
 function list_cons<item>(head: item, tail: List<item>): List<item> {
   return { tag: "cons", head, tail };
+}
+
+function list_single<item>(item: item): ListValue<item> {
+  return cons(item, nil());
+}
+
+function list_prepend<item>(head: item) {
+  return (tail: ListValue<item>) => cons(head, tail);
 }

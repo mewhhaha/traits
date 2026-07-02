@@ -142,23 +142,21 @@ Foldable.implement(MapT)({
 export interface MapDictionary extends Foldable<typeof MapT> {}
 
 Traversable.implement(MapT)({
-  traverse<applicative extends Applicative<applicative>, from, to>(
-    value: MapValue<from>,
-    applicative: Value<applicative, unknown>,
-    fn: (value: from) => Value<applicative, to>,
-  ) {
+  traverse(value, applicative, fn) {
     const map = value.value();
     const entries = [...map.entries()];
-    let out = Applicative.pure(applicative, MapT<to>(new Map()));
 
-    for (let index = entries.length - 1; index >= 0; index -= 1) {
+    if (entries.length === 0) {
+      return Applicative.pure(applicative, MapT(new Map()));
+    }
+
+    let index = entries.length - 1;
+    const [key, item] = entries[index];
+    let out = Functor.map(fn(item), map_single(key));
+
+    for (index -= 1; index >= 0; index -= 1) {
       const [key, value] = entries[index];
-      const insert = Functor.map(fn(value), (mapped) => {
-        return (tail: MapValue<to>) => {
-          return MapT(new Map([[key, mapped], ...tail.value()]));
-        };
-      });
-      out = Applicative.ap(insert, out);
+      out = Applicative.ap(Functor.map(fn(value), map_prepend(key)), out);
     }
 
     return out;
@@ -166,3 +164,15 @@ Traversable.implement(MapT)({
 });
 
 export interface MapDictionary extends Traversable<typeof MapT> {}
+
+function map_single<item>(key: string) {
+  return (value: item): MapValue<item> => MapT(new Map([[key, value]]));
+}
+
+function map_prepend<item>(key: string) {
+  return (value: item) => {
+    return (tail: MapValue<item>) => {
+      return MapT(new Map([[key, value], ...tail.value()]));
+    };
+  };
+}

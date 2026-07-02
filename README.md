@@ -169,10 +169,11 @@ the same `this.invoke(...)` dispatch. Outside the declaring module, use the same
 extension point through module augmentation. `Receiver` keeps fluent method
 receivers short:
 
-Most implementation methods do not need explicit generic parameters. The main
-exception is an implementation such as `Traversable.traverse` that must create
-an empty target structure before any mapped `to` value exists; that body still
-needs to name `to` for the empty seed.
+Implementation methods usually do not need explicit generic parameters. For
+`Traversable.traverse`, collection implementations split empty and non-empty
+inputs: the empty branch returns the contextual empty structure, while the
+non-empty branch seeds the accumulator from the last mapped value so TypeScript
+can infer the output item type before the fold continues.
 
 ```ts
 import {

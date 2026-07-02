@@ -155,20 +155,18 @@ Foldable.implement(ArrayT)({
 export interface ArrayDictionary extends Foldable<typeof ArrayT> {}
 
 Traversable.implement(ArrayT)({
-  traverse<applicative extends Applicative<applicative>, from, to>(
-    value: ArrayValue<from>,
-    applicative: Value<applicative, unknown>,
-    fn: (value: from) => Value<applicative, to>,
-  ) {
+  traverse(value, applicative, fn) {
     const array = value.value();
-    let out = Applicative.pure(applicative, ArrayT<to>([]));
 
-    for (let index = array.length - 1; index >= 0; index -= 1) {
-      const item = array[index];
-      const cons_head = Functor.map(fn(item), (head) => {
-        return (tail: ArrayValue<to>) => ArrayT([head, ...tail.value()]);
-      });
-      out = Applicative.ap(cons_head, out);
+    if (array.length === 0) {
+      return Applicative.pure(applicative, ArrayT([]));
+    }
+
+    let index = array.length - 1;
+    let out = Functor.map(fn(array[index]), array_single);
+
+    for (index -= 1; index >= 0; index -= 1) {
+      out = Applicative.ap(Functor.map(fn(array[index]), array_prepend), out);
     }
 
     return out;
@@ -176,3 +174,11 @@ Traversable.implement(ArrayT)({
 });
 
 export interface ArrayDictionary extends Traversable<typeof ArrayT> {}
+
+function array_single<item>(item: item): ArrayValue<item> {
+  return ArrayT([item]);
+}
+
+function array_prepend<item>(head: item) {
+  return (tail: ArrayValue<item>) => ArrayT([head, ...tail.value()]);
+}

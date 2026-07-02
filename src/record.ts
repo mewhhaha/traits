@@ -132,23 +132,21 @@ Foldable.implement(RecordT)({
 export interface RecordDictionary extends Foldable<typeof RecordT> {}
 
 Traversable.implement(RecordT)({
-  traverse<applicative extends Applicative<applicative>, from, to>(
-    value: RecordValue<from>,
-    applicative: Value<applicative, unknown>,
-    fn: (value: from) => Value<applicative, to>,
-  ) {
+  traverse(value, applicative, fn) {
     const record = value.value();
     const entries = Object.entries(record);
-    let out = Applicative.pure(applicative, RecordT<to>({}));
 
-    for (let index = entries.length - 1; index >= 0; index -= 1) {
+    if (entries.length === 0) {
+      return Applicative.pure(applicative, RecordT({}));
+    }
+
+    let index = entries.length - 1;
+    const [key, item] = entries[index];
+    let out = Functor.map(fn(item), record_single(key));
+
+    for (index -= 1; index >= 0; index -= 1) {
       const [key, value] = entries[index];
-      const insert = Functor.map(fn(value), (mapped) => {
-        return (tail: RecordValue<to>) => {
-          return RecordT({ [key]: mapped, ...tail.value() });
-        };
-      });
-      out = Applicative.ap(insert, out);
+      out = Applicative.ap(Functor.map(fn(value), record_prepend(key)), out);
     }
 
     return out;
@@ -156,3 +154,15 @@ Traversable.implement(RecordT)({
 });
 
 export interface RecordDictionary extends Traversable<typeof RecordT> {}
+
+function record_single<item>(key: string) {
+  return (value: item): RecordValue<item> => RecordT({ [key]: value });
+}
+
+function record_prepend<item>(key: string) {
+  return (value: item) => {
+    return (tail: RecordValue<item>) => {
+      return RecordT({ [key]: value, ...tail.value() });
+    };
+  };
+}

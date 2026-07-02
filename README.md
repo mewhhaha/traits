@@ -18,6 +18,7 @@ complete functional programming library:
 deno task test
 deno task check
 deno task example
+deno task bench
 ```
 
 ## Shape
@@ -138,11 +139,14 @@ Most code can use the shorter `Value<dictionary, item>` helper:
 type WrappedOption<item> = Value<typeof Option, item>;
 ```
 
-`trait(dictionary, value)` stores the dictionary internally. Any function on
-that dictionary becomes a fluent method on the wrapped value. When a function is
-read from a wrapped value, the wrapper looks it up on `typeof Option` and calls
-it with the wrapped option as `this`. Methods that preserve the context return
-wrapped values directly.
+`trait(dictionary, value)` stores the dictionary internally. The wrapped value's
+prototype points at a shared trait prototype, which delegates to the dictionary.
+Any function on that dictionary becomes a fluent method through normal prototype
+dispatch, with the wrapped value as `this`. Methods that preserve the context
+return wrapped values directly.
+
+Data type constructors can use `trait_constructor(dictionary)` to cache the
+shared prototype once instead of looking it up for every value.
 
 There is no `OptionBox` or `OptionTrait` type. The fluent methods are derived
 from the dictionary shape plus the wrapped value and item type.
@@ -188,3 +192,24 @@ Each trait has an open implementation registry such as `FormatImpl` or
 `FunctorImpl`. Entries are added one trait at a time next to the implementation.
 Because `Format<typeof Option>` is self-constrained, registering it also proves
 that `typeof Option` has the required `fmt` implementation.
+
+## Benchmarks
+
+`bench/value_construction.bench.ts` compares the current prototype-chain wrapper
+against the previous proxy-style baseline and cheaper construction shapes. Each
+benchmark iteration performs 10,000 inner-loop constructions or read cycles:
+
+- raw option payload construction
+- current `some(...)`, `Option(raw)`, and `trait(dictionary, raw)` construction
+- cached `trait_constructor(dictionary)` construction
+- legacy proxy-style `trait(dictionary, raw)` construction
+- tuple `[dictionary, raw]` construction
+- record `{ dictionary, raw }` construction
+- prototype-backed symbol object construction
+- `value()` or direct payload reads for the current, tuple, and prototype shapes
+
+Run it with:
+
+```sh
+deno task bench
+```

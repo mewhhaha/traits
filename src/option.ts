@@ -1,4 +1,4 @@
-import { kind, require_this, type Trait, trait } from "./trait.ts";
+import { kind, require_this, type Trait, trait_constructor } from "./trait.ts";
 import {
   Applicative,
   Equal,
@@ -26,13 +26,12 @@ declare module "./registry.ts" {
 export function Option<item>(
   value: Option<item>,
 ): OptionValue<item> {
-  return trait<typeof Option, Option<item>, item>(
-    Option,
-    value,
-  );
+  return option_trait<Option<item>, item>(value);
 }
 
 Option[kind] = option_kind;
+
+const option_trait = trait_constructor<typeof Option>(Option);
 
 export function some<item>(value: item): OptionValue<item> {
   return Option(option_some(value));

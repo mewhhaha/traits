@@ -31,6 +31,7 @@ import {
   Monad,
   perform,
 } from "./traits.ts";
+import { type Trait, trait } from "./trait.ts";
 
 Deno.test("Format and Equal traits dispatch through pseudo-trait helpers", () => {
   assert_equals(Format.fmt(option_some(42)), "Some(42)");
@@ -145,6 +146,27 @@ Deno.test("Trait dictionary methods assert a missing receiver at runtime", () =>
     () => map((value: number) => value + 1),
     "Option.map requires a trait receiver",
   );
+});
+
+Deno.test("Trait values inherit methods added after construction", () => {
+  type DynamicDictionary = {
+    inc?: (this: Trait<DynamicDictionary, number, number>) => number;
+  };
+
+  const dictionary: DynamicDictionary = {};
+  const value = trait<DynamicDictionary, number, number>(dictionary, 41);
+
+  dictionary.inc = function inc(
+    this: Trait<DynamicDictionary, number, number>,
+  ): number {
+    return this.value() + 1;
+  };
+
+  if (value.inc === undefined) {
+    throw new Error("expected dynamic dictionary method");
+  }
+
+  assert_equals(value.inc(), 42);
 });
 
 Deno.test("Result callable wrapper derives fluent methods from its dictionary", () => {

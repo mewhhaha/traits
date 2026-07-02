@@ -1,6 +1,7 @@
 {
   "tasks": {
-    "check": "deno check src/mod.ts src/*.test.ts examples/main.ts",
+    "bench": "deno bench bench/*.bench.ts",
+    "check": "deno check src/mod.ts src/*.test.ts examples/main.ts bench/*.bench.ts",
     "example": "deno run examples/main.ts",
     "test": "deno test"
   }

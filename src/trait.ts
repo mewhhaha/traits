@@ -1,6 +1,6 @@
 export { kind } from "./registry.ts";
 export type { Kind, Registry, TypeId } from "./registry.ts";
-export { is_trait, trait } from "./trait_value.ts";
+export { is_trait, trait, trait_constructor } from "./trait_value.ts";
 export type { Trait } from "./trait_value.ts";
 import { type Kind, kind, type TypeId } from "./registry.ts";
 import type { Trait } from "./trait_value.ts";

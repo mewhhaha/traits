@@ -80,8 +80,6 @@ export function implement_trait<implementation extends object>(
   return implementation;
 }
 
-type Callable = (...args: unknown[]) => unknown;
-
 function fluent_trait_methods(implementation: object): object {
   const methods: PropertyDescriptorMap = {};
   const implementation_record = implementation as Record<PropertyKey, unknown>;
@@ -115,18 +113,61 @@ type TraitImplementation<
   dictionary extends { [key in token]: object },
 > = dictionary[token];
 
-type TraitDefinitionConstructor<token extends PropertyKey = PropertyKey> = {
+export type TraitDefinition<token extends PropertyKey = PropertyKey> =
+  & TraitDefinitionPrototype<token>
+  & {
+    readonly token: token;
+  };
+
+type TraitDefinitionPrototype<token extends PropertyKey = PropertyKey> = {
+  implement<
+    dictionary extends Dictionary & { [key in token]: object },
+  >(
+    this: TraitDefinition<token>,
+    dictionary: dictionary,
+  ): (
+    implementation: TraitImplementation<token, dictionary>,
+  ) => TraitImplementation<token, dictionary>;
+
+  implementation<
+    receiver extends { [key in token]: object },
+  >(
+    this: TraitDefinition<token>,
+    receiver: receiver,
+  ): TraitImplementation<token, receiver>;
+};
+
+type TraitMethods<token extends PropertyKey, methods extends object> =
+  & methods
+  & ThisType<TraitDefinition<token> & methods>;
+
+export function define_trait<token extends PropertyKey, methods extends object>(
+  token: token,
+  methods: TraitMethods<token, methods>,
+): TraitDefinition<token> & methods {
+  const definition = Object.assign(
+    Object.create(TraitDefinition) as TraitDefinition<token> & methods,
+    methods,
+  );
+
+  Object.defineProperty(definition, "token", {
+    enumerable: true,
+    value: token,
+  });
+
+  return definition;
+}
+
+type TraitDefinitionReceiver<token extends PropertyKey = PropertyKey> = {
   readonly token: token;
 };
 
-export abstract class TraitDefinition {
-  declare static token: PropertyKey;
-
-  static implement<
+export const TraitDefinition: TraitDefinitionPrototype = {
+  implement<
     token extends PropertyKey,
     dictionary extends Dictionary & { [key in token]: object },
   >(
-    this: TraitDefinitionConstructor<token>,
+    this: TraitDefinitionReceiver<token>,
     dictionary: dictionary,
   ): (
     implementation: TraitImplementation<token, dictionary>,
@@ -140,18 +181,15 @@ export abstract class TraitDefinition {
         implementation,
       ) as TraitImplementation<token, dictionary>;
     };
-  }
+  },
 
-  protected static invoke<out>(
-    this: TraitDefinitionConstructor,
-    receiver: object,
-    method: PropertyKey,
-    args: readonly unknown[] = [],
-  ): out {
-    const implementation = (receiver as {
-      [key: PropertyKey]: { [key: PropertyKey]: Callable };
-    })[this.token];
-
-    return implementation[method](receiver, ...args) as out;
-  }
-}
+  implementation<
+    token extends PropertyKey,
+    receiver extends { [key in token]: object },
+  >(
+    this: TraitDefinitionReceiver<token>,
+    receiver: receiver,
+  ): TraitImplementation<token, receiver> {
+    return receiver[this.token];
+  },
+};

@@ -12,9 +12,9 @@ import {
 import { err, from_number, ok } from "../src/result.ts";
 import { from_fn, run } from "../src/task.ts";
 import {
+  define_trait,
   type Dictionary,
   type Receiver,
-  TraitDefinition,
   type TraitDictionary,
   type Value,
 } from "../src/trait.ts";
@@ -40,16 +40,14 @@ interface Size<dictionary extends Dictionary> extends
     }
   > {}
 
-abstract class Size<dictionary extends Dictionary> extends TraitDefinition {
-  static override readonly token: typeof size_trait = size_trait;
-
-  static size<
+const Size = define_trait(size_trait, {
+  size<
     dictionary extends Size<dictionary>,
     item,
   >(value: Value<dictionary, item>) {
-    return this.invoke<number>(value, "size");
-  }
-}
+    return this.implementation(value).size(value);
+  },
+});
 
 declare module "../src/list.ts" {
   interface ListDictionary extends Size<typeof List> {}

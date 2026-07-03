@@ -1,7 +1,7 @@
 import {
+  define_trait,
   type Dictionary,
   type Receiver,
-  TraitDefinition,
   type TraitDictionary,
   type Value,
 } from "./trait.ts";
@@ -20,16 +20,13 @@ export interface Format<dictionary extends Dictionary> extends
     }
   > {}
 
-export abstract class Format<dictionary extends Dictionary>
-  extends TraitDefinition {
-  static override readonly token: typeof format_trait = format_trait;
-
-  static fmt<dictionary extends Format<dictionary>>(
+export const Format = define_trait(format_trait, {
+  fmt<dictionary extends Format<dictionary>>(
     value: Value<dictionary, unknown>,
   ): string {
-    return this.invoke<string>(value, "fmt");
-  }
-}
+    return this.implementation(value).fmt(value);
+  },
+});
 
 export const equal_trait: unique symbol = Symbol("Equal");
 
@@ -51,20 +48,17 @@ export interface Equal<dictionary extends Dictionary> extends
     }
   > {}
 
-export abstract class Equal<dictionary extends Dictionary>
-  extends TraitDefinition {
-  static override readonly token: typeof equal_trait = equal_trait;
-
-  static eq<
+export const Equal = define_trait(equal_trait, {
+  eq<
     dictionary extends Equal<dictionary>,
     item,
   >(
     left: Value<dictionary, item>,
     right: Value<dictionary, item>,
   ): boolean {
-    return this.invoke<boolean>(left, "eq", [right]);
-  }
-}
+    return this.implementation(left).eq(left, right);
+  },
+});
 
 export const semigroup_trait: unique symbol = Symbol("Semigroup");
 
@@ -87,20 +81,17 @@ export interface Semigroup<dictionary extends Dictionary>
       }
     > {}
 
-export abstract class Semigroup<dictionary extends Dictionary>
-  extends TraitDefinition {
-  static override readonly token: typeof semigroup_trait = semigroup_trait;
-
-  static concat<
+export const Semigroup = define_trait(semigroup_trait, {
+  concat<
     dictionary extends Semigroup<dictionary>,
     item,
   >(
     left: Value<dictionary, item>,
     right: Value<dictionary, item>,
   ): Value<dictionary, item> {
-    return this.invoke<Value<dictionary, item>>(left, "concat", [right]);
-  }
-}
+    return this.implementation(left).concat(left, right);
+  },
+});
 
 export const monoid_trait: unique symbol = Symbol("Monoid");
 
@@ -123,20 +114,17 @@ export interface Monoid<dictionary extends Dictionary> extends
   >,
   Semigroup<dictionary> {}
 
-export abstract class Monoid<dictionary extends Dictionary>
-  extends TraitDefinition {
-  static override readonly token: typeof monoid_trait = monoid_trait;
-
-  static empty<
+export const Monoid = define_trait(monoid_trait, {
+  empty<
     dictionary extends Monoid<dictionary>,
     item,
   >(
     value: Value<dictionary, unknown>,
   ): Value<dictionary, item> {
-    return this.invoke<Value<dictionary, item>>(value, "empty");
-  }
+    return this.implementation(value).empty(value);
+  },
 
-  static concat<
+  concat<
     dictionary extends Monoid<dictionary>,
     item,
   >(
@@ -144,8 +132,8 @@ export abstract class Monoid<dictionary extends Dictionary>
     right: Value<dictionary, item>,
   ): Value<dictionary, item> {
     return Semigroup.concat(left, right);
-  }
-}
+  },
+});
 
 export const functor_trait: unique symbol = Symbol("Functor");
 
@@ -167,11 +155,8 @@ export interface Functor<dictionary extends Dictionary> extends
     }
   > {}
 
-export abstract class Functor<dictionary extends Dictionary>
-  extends TraitDefinition {
-  static override readonly token: typeof functor_trait = functor_trait;
-
-  static map<
+export const Functor = define_trait(functor_trait, {
+  map<
     dictionary extends Functor<dictionary>,
     from,
     to,
@@ -179,9 +164,9 @@ export abstract class Functor<dictionary extends Dictionary>
     value: Value<dictionary, from>,
     fn: (value: from) => to,
   ): Value<dictionary, to> {
-    return this.invoke<Value<dictionary, to>>(value, "map", [fn]);
-  }
-}
+    return this.implementation(value).map(value, fn);
+  },
+});
 
 export const applicative_trait: unique symbol = Symbol("Applicative");
 
@@ -213,21 +198,18 @@ export interface Applicative<dictionary extends Dictionary>
     >,
     Functor<dictionary> {}
 
-export abstract class Applicative<dictionary extends Dictionary>
-  extends TraitDefinition {
-  static override readonly token: typeof applicative_trait = applicative_trait;
-
-  static pure<
+export const Applicative = define_trait(applicative_trait, {
+  pure<
     dictionary extends Applicative<dictionary>,
     item,
   >(
     value: Value<dictionary, unknown>,
     item: item,
   ): Value<dictionary, item> {
-    return this.invoke<Value<dictionary, item>>(value, "pure", [item]);
-  }
+    return this.implementation(value).pure(value, item);
+  },
 
-  static ap<
+  ap<
     dictionary extends Applicative<dictionary>,
     from,
     to,
@@ -235,9 +217,9 @@ export abstract class Applicative<dictionary extends Dictionary>
     value: Value<dictionary, (value: NoInfer<from>) => to>,
     item: Value<dictionary, from>,
   ): Value<dictionary, to> {
-    return this.invoke<Value<dictionary, to>>(value, "ap", [item]);
-  }
-}
+    return this.implementation(value).ap(value, item);
+  },
+});
 
 export const alternative_trait: unique symbol = Symbol("Alternative");
 
@@ -269,29 +251,26 @@ export interface Alternative<dictionary extends Dictionary>
     >,
     Applicative<dictionary> {}
 
-export abstract class Alternative<dictionary extends Dictionary>
-  extends TraitDefinition {
-  static override readonly token: typeof alternative_trait = alternative_trait;
-
-  static empty<
+export const Alternative = define_trait(alternative_trait, {
+  empty<
     dictionary extends Alternative<dictionary>,
     item,
   >(
     value: Value<dictionary, unknown>,
   ): Value<dictionary, item> {
-    return this.invoke<Value<dictionary, item>>(value, "empty");
-  }
+    return this.implementation(value).empty(value);
+  },
 
-  static alt<
+  alt<
     dictionary extends Alternative<dictionary>,
     item,
   >(
     left: Value<dictionary, item>,
     right: Value<dictionary, item>,
   ): Value<dictionary, item> {
-    return this.invoke<Value<dictionary, item>>(left, "alt", [right]);
-  }
-}
+    return this.implementation(left).alt(left, right);
+  },
+});
 
 export const monad_trait: unique symbol = Symbol("Monad");
 
@@ -319,11 +298,8 @@ type PerformGenerator<
   out,
 > = Generator<Value<dictionary, unknown>, out, unknown>;
 
-export abstract class Monad<dictionary extends Dictionary>
-  extends TraitDefinition {
-  static override readonly token: typeof monad_trait = monad_trait;
-
-  static override bind<
+export const Monad = define_trait(monad_trait, {
+  bind<
     dictionary extends Monad<dictionary>,
     from,
     to,
@@ -331,9 +307,9 @@ export abstract class Monad<dictionary extends Dictionary>
     value: Value<dictionary, from>,
     fn: (value: from) => Value<dictionary, to>,
   ): Value<dictionary, to> {
-    return this.invoke<Value<dictionary, to>>(value, "bind", [fn]);
-  }
-}
+    return this.implementation(value).bind(value, fn);
+  },
+});
 
 export function perform<dictionary extends Monad<dictionary>, out>(
   run: () => PerformGenerator<dictionary, out>,
@@ -403,11 +379,8 @@ export interface Foldable<dictionary extends Dictionary>
       }
     > {}
 
-export abstract class Foldable<dictionary extends Dictionary>
-  extends TraitDefinition {
-  static override readonly token: typeof foldable_trait = foldable_trait;
-
-  static fold<
+export const Foldable = define_trait(foldable_trait, {
+  fold<
     dictionary extends Foldable<dictionary>,
     item,
     out,
@@ -416,9 +389,9 @@ export abstract class Foldable<dictionary extends Dictionary>
     initial: out,
     fn: (state: out, item: item) => out,
   ): out {
-    return this.invoke<out>(value, "fold", [initial, fn]);
-  }
-}
+    return this.implementation(value).fold(value, initial, fn);
+  },
+});
 
 export const traversable_trait: unique symbol = Symbol("Traversable");
 
@@ -453,11 +426,8 @@ export interface Traversable<dictionary extends Dictionary>
     Functor<dictionary>,
     Foldable<dictionary> {}
 
-export abstract class Traversable<dictionary extends Dictionary>
-  extends TraitDefinition {
-  static override readonly token: typeof traversable_trait = traversable_trait;
-
-  static traverse<
+export const Traversable = define_trait(traversable_trait, {
+  traverse<
     dictionary extends Traversable<dictionary>,
     applicative extends Applicative<applicative>,
     from,
@@ -467,14 +437,14 @@ export abstract class Traversable<dictionary extends Dictionary>
     applicative: Value<applicative, unknown>,
     fn: (value: from) => Value<applicative, to>,
   ): Value<applicative, Value<dictionary, to>> {
-    return this.invoke<Value<applicative, Value<dictionary, to>>>(
+    return this.implementation(value).traverse(
       value,
-      "traverse",
-      [applicative, fn],
+      applicative,
+      fn,
     );
-  }
+  },
 
-  static sequence<
+  sequence<
     dictionary extends Traversable<dictionary>,
     applicative extends Applicative<applicative>,
     item,
@@ -482,15 +452,12 @@ export abstract class Traversable<dictionary extends Dictionary>
     value: Value<dictionary, Value<applicative, item>>,
     applicative: Value<applicative, unknown>,
   ): Value<applicative, Value<dictionary, item>> {
-    return this.invoke<Value<applicative, Value<dictionary, item>>>(
+    return this.implementation(value).traverse(
       value,
-      "traverse",
-      [
-        applicative,
-        (value: Value<applicative, item>) => {
-          return value;
-        },
-      ],
+      applicative,
+      (value: Value<applicative, item>) => {
+        return value;
+      },
     );
-  }
-}
+  },
+});

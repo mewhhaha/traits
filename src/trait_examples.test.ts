@@ -47,7 +47,17 @@ import {
   Semigroup,
   Traversable,
 } from "./traits.ts";
-import { as_trait, type Trait } from "./trait.ts";
+import { as_trait, type Trait, TraitDefinition } from "./trait.ts";
+
+Deno.test("Trait definitions inherit shared prototype helpers", () => {
+  assert_equals(Object.getPrototypeOf(Format), TraitDefinition);
+  assert_equals(Object.getPrototypeOf(Functor), TraitDefinition);
+  assert_true(!Object.hasOwn(Format, "implement"), "Format inherits installer");
+  assert_true(
+    !Object.hasOwn(Functor, "implementation"),
+    "Functor inherits implementation accessor",
+  );
+});
 
 Deno.test("Format and Equal traits dispatch through pseudo-trait helpers", () => {
   assert_equals(Format.fmt(option_some(42)), "Some(42)");

@@ -163,11 +163,12 @@ Each data type exports an open dictionary interface. Trait implementations are
 validated and installed through curried trait-level installers like
 `Format.implement(Option)({ ... })`. The first call fixes the dictionary, which
 lets TypeScript infer generic implementation parameters from the receiver-first
-method shape. Trait definitions inherit that installer from `TraitDefinition`;
-public helper methods keep trait-specific types, but their bodies are usually
-the same `this.invoke(...)` dispatch. Outside the declaring module, use the same
-extension point through module augmentation. `Receiver` keeps fluent method
-receivers short:
+method shape. Trait definitions are prototype-backed objects made with
+`define_trait`; each definition inherits the shared installer and implementation
+accessor, while public helper methods keep trait-specific types. Their bodies
+are usually the same `this.implementation(value).method(...)` dispatch. Outside
+the declaring module, use the same extension point through module augmentation.
+`Receiver` keeps fluent method receivers short:
 
 Implementation methods usually do not need explicit generic parameters. For
 `Traversable.traverse`, collection implementations split empty and non-empty
@@ -177,9 +178,9 @@ can infer the output item type before the fold continues.
 
 ```ts
 import {
+  define_trait,
   type Dictionary,
   type Receiver,
-  TraitDefinition,
   type TraitDictionary,
   type Value,
 } from "./trait.ts";
@@ -198,16 +199,14 @@ interface Size<dictionary extends Dictionary> extends
     }
   > {}
 
-abstract class Size<dictionary extends Dictionary> extends TraitDefinition {
-  static override readonly token: typeof size_trait = size_trait;
-
-  static size<
+const Size = define_trait(size_trait, {
+  size<
     dictionary extends Size<dictionary>,
     item,
   >(value: Value<dictionary, item>) {
-    return this.invoke<number>(value, "size");
-  }
-}
+    return this.implementation(value).size(value);
+  },
+});
 
 declare module "./list.ts" {
   interface ListDictionary extends Size<typeof List> {}

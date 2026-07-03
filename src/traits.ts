@@ -271,6 +271,49 @@ type DoApGenerator<
   DoApBinding<unknown>
 >;
 
+const do_ap_scope = Symbol("DoAp.scope");
+const do_ap_accessor_index = Symbol("DoAp.accessor.index");
+
+type DoApScope = unknown[] & {
+  [do_ap_scope]: true;
+};
+
+type DoApAccessorTarget = ((value: DoApValue) => unknown) & {
+  [do_ap_accessor_index]: number;
+};
+
+const do_ap_accessor_handler: ProxyHandler<DoApAccessorTarget> = {
+  get() {
+    throw do_ap_scope_error();
+  },
+
+  apply(target, _this, args) {
+    const value = args[0] as DoApValue;
+
+    if (!is_do_ap_scope(value)) {
+      throw do_ap_scope_error();
+    }
+
+    return value[target[do_ap_accessor_index]];
+  },
+
+  construct() {
+    throw do_ap_scope_error();
+  },
+
+  has() {
+    throw do_ap_scope_error();
+  },
+
+  ownKeys() {
+    throw do_ap_scope_error();
+  },
+
+  getOwnPropertyDescriptor() {
+    throw do_ap_scope_error();
+  },
+};
+
 type DoPath = {
   readonly previous: DoPath | undefined;
   readonly value: unknown;
@@ -394,7 +437,6 @@ function values_from_path(path: DoPath | undefined): unknown[] {
 export function DoAp<dictionary extends Applicative<dictionary>, out>(
   run: () => DoApGenerator<dictionary, out>,
 ): Value<dictionary, out> {
-  const scopes = new WeakSet<object>();
   const iterator = run();
   const values: Value<dictionary, unknown>[] = [];
   let next = iterator.next();
@@ -402,7 +444,7 @@ export function DoAp<dictionary extends Applicative<dictionary>, out>(
   while (!next.done) {
     const index = values.length;
     values.push(next.value);
-    next = iterator.next(do_ap_accessor(index, scopes));
+    next = iterator.next(do_ap_accessor(index));
   }
 
   if (values.length === 0) {
@@ -411,79 +453,99 @@ export function DoAp<dictionary extends Applicative<dictionary>, out>(
 
   const combine = next.value;
 
-  let combined = Functor.map(values[0], (value): unknown[] => {
-    return [value];
-  });
+  if (values.length === 1) {
+    return values[0].map((value) => {
+      return combine(do_ap_scope_one(value) as unknown as DoApValue);
+    });
+  }
+
+  if (values.length === 2) {
+    const combined = values[0].map((left) => {
+      return (right: unknown) => do_ap_scope_two(left, right);
+    }).ap(values[1]);
+
+    return combined.map((value) => {
+      return combine(value as unknown as DoApValue);
+    });
+  }
+
+  if (values.length === 3) {
+    const combined = values[0].map((left) => {
+      return (middle: unknown) => {
+        return (right: unknown) => do_ap_scope_three(left, middle, right);
+      };
+    }).ap(values[1]).ap(values[2]);
+
+    return combined.map((value) => {
+      return combine(value as unknown as DoApValue);
+    });
+  }
+
+  let combined = values[0].map((value) => do_ap_scope_one(value));
 
   for (let index = 1; index < values.length; index += 1) {
     const current = values[index];
-    const append = Functor.map(combined, (items) => {
-      return (item: unknown) => [...items, item];
+    const append = combined.map((items) => {
+      return (item: unknown) => do_ap_scope_append(items, item);
     });
 
-    combined = Applicative.ap(append, current);
+    combined = append.ap(current);
   }
 
-  return Functor.map(combined, (values) => {
-    scopes.add(values);
-    return combine(values as unknown as DoApValue);
+  return combined.map((value) => {
+    return combine(value as unknown as DoApValue);
   });
 }
 
-function do_ap_accessor(
-  index: number,
-  scopes: WeakSet<object>,
-): DoApBinding<unknown> {
-  const target = function do_ap_accessor_target(
-    value: DoApValue,
-  ): unknown {
-    if (!is_do_ap_scope(value, scopes)) {
-      throw do_ap_scope_error();
-    }
-
-    return (value as unknown as unknown[])[index];
-  };
-
-  return new Proxy(target, {
-    get() {
-      throw do_ap_scope_error();
-    },
-
-    apply(target, _this, [value]) {
-      return target(value as DoApValue);
-    },
-
-    construct() {
-      throw do_ap_scope_error();
-    },
-
-    has() {
-      throw do_ap_scope_error();
-    },
-
-    ownKeys() {
-      throw do_ap_scope_error();
-    },
-
-    getOwnPropertyDescriptor() {
-      throw do_ap_scope_error();
-    },
-  }) as DoApBinding<unknown>;
+function do_ap_scope_one(first: unknown): DoApScope {
+  const values = [first] as DoApScope;
+  values[do_ap_scope] = true;
+  return values;
 }
 
-function is_do_ap_scope(
-  value: DoApValue,
-  scopes: WeakSet<object>,
-): value is DoApValue & object {
-  if (typeof value !== "object") {
+function do_ap_scope_two(first: unknown, second: unknown): DoApScope {
+  const values = [first, second] as DoApScope;
+  values[do_ap_scope] = true;
+  return values;
+}
+
+function do_ap_scope_three(
+  first: unknown,
+  second: unknown,
+  third: unknown,
+): DoApScope {
+  const values = [first, second, third] as DoApScope;
+  values[do_ap_scope] = true;
+  return values;
+}
+
+function do_ap_scope_append(values: DoApScope, item: unknown): DoApScope {
+  const next = new Array<unknown>(values.length + 1) as DoApScope;
+
+  for (let index = 0; index < values.length; index += 1) {
+    next[index] = values[index];
+  }
+
+  next[values.length] = item;
+  next[do_ap_scope] = true;
+
+  return next;
+}
+
+function do_ap_accessor(index: number): DoApBinding<unknown> {
+  const target =
+    function do_ap_accessor_target() {} as unknown as DoApAccessorTarget;
+  target[do_ap_accessor_index] = index;
+
+  return new Proxy(target, do_ap_accessor_handler) as DoApBinding<unknown>;
+}
+
+function is_do_ap_scope(value: DoApValue): value is DoApValue & DoApScope {
+  if (!Array.isArray(value)) {
     return false;
   }
 
-  if (value === null) {
-    return false;
-  }
-
-  return scopes.has(value);
+  return (value as unknown as DoApScope)[do_ap_scope] === true;
 }
 
 function do_ap_scope_error(): TypeError {

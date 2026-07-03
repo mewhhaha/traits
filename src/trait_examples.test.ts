@@ -166,10 +166,11 @@ Deno.test("Option callable wrapper chains applicative ap through this", () => {
 });
 
 Deno.test("Trait dictionary methods assert a missing receiver at runtime", () => {
-  const map = Option.map;
-
   assert_trait_receiver_error(
-    () => map((value: number) => value + 1),
+    () =>
+      Reflect.apply(Option.map, undefined, [
+        (value: number) => value + 1,
+      ]),
     "trait method requires a receiver",
   );
 });

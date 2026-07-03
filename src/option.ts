@@ -53,8 +53,8 @@ export function from_nullable<item>(
 }
 
 Format.implement(Option)({
-  fmt(value) {
-    const option = value.value();
+  fmt() {
+    const option = this.value();
 
     if (option.tag === "none") {
       return "None";
@@ -67,8 +67,8 @@ Format.implement(Option)({
 export interface AsOption extends Format<AsOption> {}
 
 Equal.implement(Option)({
-  eq(left_value, right) {
-    const left = left_value.value();
+  eq(right) {
+    const left = this.value();
     const right_value = right.value();
 
     if (left.tag === "none" && right_value.tag === "none") {
@@ -86,8 +86,8 @@ Equal.implement(Option)({
 export interface AsOption extends Equal<AsOption> {}
 
 Functor.implement(Option)({
-  map(value, fn) {
-    const option = value.value();
+  map(fn) {
+    const option = this.value();
 
     if (option.tag === "none") {
       return none();
@@ -100,12 +100,12 @@ Functor.implement(Option)({
 export interface AsOption extends Functor<AsOption> {}
 
 Applicative.implement(Option)({
-  pure(_value, value) {
+  pure(value) {
     return some(value);
   },
 
-  ap(fn_value, value) {
-    const fn = fn_value.value();
+  ap(value) {
+    const fn = this.value();
     const option = value.value();
 
     if (fn.tag === "none") {
@@ -123,12 +123,12 @@ Applicative.implement(Option)({
 export interface AsOption extends Applicative<AsOption> {}
 
 Alternative.implement(Option)({
-  empty(_value) {
+  empty() {
     return none();
   },
 
-  alt(value, right) {
-    const option = value.value();
+  alt(right) {
+    const option = this.value();
 
     if (option.tag === "some") {
       return Option(option);
@@ -141,8 +141,8 @@ Alternative.implement(Option)({
 export interface AsOption extends Alternative<AsOption> {}
 
 Monad.implement(Option)({
-  bind(value, fn) {
-    const option = value.value();
+  bind(fn) {
+    const option = this.value();
 
     if (option.tag === "none") {
       return none();
@@ -155,8 +155,8 @@ Monad.implement(Option)({
 export interface AsOption extends Monad<AsOption> {}
 
 Foldable.implement(Option)({
-  fold(value, initial, fn) {
-    const option = value.value();
+  fold(initial, fn) {
+    const option = this.value();
 
     if (option.tag === "none") {
       return initial;
@@ -169,8 +169,8 @@ Foldable.implement(Option)({
 export interface AsOption extends Foldable<AsOption> {}
 
 Traversable.implement(Option)({
-  traverse(value, applicative, fn) {
-    const option = value.value();
+  traverse(applicative, fn) {
+    const option = this.value();
 
     if (option.tag === "none") {
       return Applicative.pure(applicative, none());

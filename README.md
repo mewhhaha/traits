@@ -141,14 +141,15 @@ calls through a cached constructor. The lower-level
 `as_trait(dictionary, value)` and `as_trait_cached(dictionary)` helpers remain
 available for experiments that need to manage construction directly.
 
-Each data type registers its raw value once in `TraitTypes<item>`. `Value` and
-`Receiver` use that registry to type both helper functions and fluent methods.
+Each data type registers its raw value once in `TraitTypes<item>`. `Value` uses
+that registry to type helper functions, trait implementations, and fluent
+methods.
 
 The wrapped value's prototype points at a shared trait prototype, which
 delegates to the dictionary. Symbol-scoped implementations and direct fluent
 aliases are inherited through that prototype. Fluent wrappers assert that they
-were called with a receiver and then pass the wrapped value as the first
-implementation argument.
+were called with a receiver and then call the implementation with the wrapped
+value as `this`.
 
 Data type modules use the same callable dictionary for public wrapping and their
 own constructors.
@@ -156,13 +157,12 @@ own constructors.
 Each data type exports an open dictionary interface. Trait implementations are
 validated and installed through curried trait-level installers like
 `Format.implement(Option)({ ... })`. The first call fixes the dictionary, which
-lets TypeScript infer generic implementation parameters from the receiver-first
+lets TypeScript infer generic implementation parameters from the `this`-based
 method shape. Trait definitions are prototype-backed objects made with
 `define_trait`; each definition inherits the shared installer and implementation
 accessor, while public helper methods keep trait-specific types. Their bodies
-are usually the same `this.implementation(value).method(...)` dispatch. Outside
-the declaring module, use the same extension point through module augmentation.
-`Receiver` keeps fluent method receivers short:
+usually dispatch through `call_trait_method`. Outside the declaring module, use
+the same extension point through module augmentation.
 
 Implementation methods usually do not need explicit generic parameters. For
 `Traversable.traverse`, collection implementations split empty and non-empty
@@ -172,9 +172,9 @@ can infer the output item type before the fold continues.
 
 ```ts
 import {
+  call_trait_method,
   define_trait,
   type Dictionary,
-  type Receiver,
   type TraitDictionary,
   type Value,
 } from "./trait.ts";
@@ -186,10 +186,7 @@ interface Size<dictionary extends Dictionary> extends
     dictionary,
     typeof size_trait,
     {
-      size: <item>(value: Value<dictionary, item>) => number;
-    },
-    {
-      size: <item>(this: Receiver<dictionary, item>) => number;
+      size: <item>(this: Value<dictionary, item>) => number;
     }
   > {}
 
@@ -198,7 +195,7 @@ const Size = define_trait(size_trait, {
     dictionary extends Size<dictionary>,
     item,
   >(value: Value<dictionary, item>) {
-    return this.implementation(value).size(value);
+    return call_trait_method(this.implementation(value).size<item>, value);
   },
 });
 
@@ -207,8 +204,8 @@ declare module "./list.ts" {
 }
 
 Size.implement(List)({
-  size(list) {
-    return to_array(list).length;
+  size() {
+    return to_array(this).length;
   },
 });
 ```

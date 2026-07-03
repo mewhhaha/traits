@@ -12,9 +12,9 @@ import {
 import { err, from_number, ok } from "../src/result.ts";
 import { from_fn, run } from "../src/task.ts";
 import {
+  call_trait_method,
   define_trait,
   type Dictionary,
-  type Receiver,
   type TraitDictionary,
   type Value,
 } from "../src/trait.ts";
@@ -33,10 +33,7 @@ interface Size<dictionary extends Dictionary> extends
     dictionary,
     typeof size_trait,
     {
-      size: <item>(value: Value<dictionary, item>) => number;
-    },
-    {
-      size: <item>(this: Receiver<dictionary, item>) => number;
+      size: <item>(this: Value<dictionary, item>) => number;
     }
   > {}
 
@@ -45,7 +42,7 @@ const Size = define_trait(size_trait, {
     dictionary extends Size<dictionary>,
     item,
   >(value: Value<dictionary, item>) {
-    return this.implementation(value).size(value);
+    return call_trait_method(this.implementation(value).size<item>, value);
   },
 });
 
@@ -54,8 +51,8 @@ declare module "../src/list.ts" {
 }
 
 Size.implement(List)({
-  size(list) {
-    return to_array(list).length;
+  size() {
+    return to_array(this).length;
   },
 });
 

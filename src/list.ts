@@ -71,8 +71,8 @@ function list_from_array<item>(items: item[]): List<item> {
 }
 
 Format.implement(List)({
-  fmt(list) {
-    const items = to_array(list).map((item) => Deno.inspect(item));
+  fmt() {
+    const items = to_array(this).map((item) => Deno.inspect(item));
     return "[" + items.join(", ") + "]";
   },
 });
@@ -80,8 +80,8 @@ Format.implement(List)({
 export interface AsList extends Format<AsList> {}
 
 Equal.implement(List)({
-  eq(left, right) {
-    let left_rest = left.value();
+  eq(right) {
+    let left_rest = this.value();
     let right_rest = right.value();
 
     while (left_rest.tag === "cons" && right_rest.tag === "cons") {
@@ -100,8 +100,8 @@ Equal.implement(List)({
 export interface AsList extends Equal<AsList> {}
 
 Functor.implement(List)({
-  map(list, fn) {
-    const items = to_array(list);
+  map(fn) {
+    const items = to_array(this);
     return List(list_from_array(items.map(fn)));
   },
 });
@@ -109,15 +109,15 @@ Functor.implement(List)({
 export interface AsList extends Functor<AsList> {}
 
 Applicative.implement(List)({
-  pure(_list, value) {
+  pure(value) {
     return List(list_cons(value, list_nil()));
   },
 
-  ap(fns, values) {
+  ap(values) {
     const items = to_array(values);
 
     return List(
-      list_from_array(to_array(fns).flatMap((fn) => items.map(fn))),
+      list_from_array(to_array(this).flatMap((fn) => items.map(fn))),
     );
   },
 });
@@ -125,15 +125,15 @@ Applicative.implement(List)({
 export interface AsList extends Applicative<AsList> {}
 
 Semigroup.implement(List)({
-  concat(left, right) {
-    return from_array([...to_array(left), ...to_array(right)]);
+  concat(right) {
+    return from_array([...to_array(this), ...to_array(right)]);
   },
 });
 
 export interface AsList extends Semigroup<AsList> {}
 
 Monoid.implement(List)({
-  empty(_list) {
+  empty() {
     return nil();
   },
 });
@@ -141,20 +141,20 @@ Monoid.implement(List)({
 export interface AsList extends Monoid<AsList> {}
 
 Alternative.implement(List)({
-  empty(_list) {
+  empty() {
     return nil();
   },
 
-  alt(left, right) {
-    return from_array([...to_array(left), ...to_array(right)]);
+  alt(right) {
+    return from_array([...to_array(this), ...to_array(right)]);
   },
 });
 
 export interface AsList extends Alternative<AsList> {}
 
 Monad.implement(List)({
-  bind(list, fn) {
-    const out = to_array(list).flatMap((item) => to_array(fn(item)));
+  bind(fn) {
+    const out = to_array(this).flatMap((item) => to_array(fn(item)));
     return List(list_from_array(out));
   },
 });
@@ -162,10 +162,10 @@ Monad.implement(List)({
 export interface AsList extends Monad<AsList> {}
 
 Foldable.implement(List)({
-  fold(list, initial, fn) {
+  fold(initial, fn) {
     let state = initial;
 
-    for (const item of to_array(list)) {
+    for (const item of to_array(this)) {
       state = fn(state, item);
     }
 
@@ -176,8 +176,8 @@ Foldable.implement(List)({
 export interface AsList extends Foldable<AsList> {}
 
 Traversable.implement(List)({
-  traverse(list, applicative, fn) {
-    const items = to_array(list);
+  traverse(applicative, fn) {
+    const items = to_array(this);
 
     if (items.length === 0) {
       return Applicative.pure(applicative, nil());

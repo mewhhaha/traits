@@ -46,8 +46,8 @@ export function from_number(value: number) {
 }
 
 Format.implement(Result)({
-  fmt(value) {
-    const result = value.value();
+  fmt() {
+    const result = this.value();
 
     if (result.tag === "err") {
       return "Err(" + Deno.inspect(result.error) + ")";
@@ -60,8 +60,8 @@ Format.implement(Result)({
 export interface AsResult extends Format<AsResult> {}
 
 Equal.implement(Result)({
-  eq(left_value, right) {
-    const left = left_value.value();
+  eq(right) {
+    const left = this.value();
     const right_value = right.value();
 
     if (left.tag === "err" && right_value.tag === "err") {
@@ -79,8 +79,8 @@ Equal.implement(Result)({
 export interface AsResult extends Equal<AsResult> {}
 
 Functor.implement(Result)({
-  map(value, fn) {
-    const result = value.value();
+  map(fn) {
+    const result = this.value();
 
     if (result.tag === "err") {
       return err(result.error);
@@ -93,12 +93,12 @@ Functor.implement(Result)({
 export interface AsResult extends Functor<AsResult> {}
 
 Applicative.implement(Result)({
-  pure(_value, value) {
+  pure(value) {
     return ok(value);
   },
 
-  ap(fn_value, value) {
-    const fn = fn_value.value();
+  ap(value) {
+    const fn = this.value();
     const result = value.value();
 
     if (fn.tag === "err") {
@@ -116,8 +116,8 @@ Applicative.implement(Result)({
 export interface AsResult extends Applicative<AsResult> {}
 
 Monad.implement(Result)({
-  bind(value, fn) {
-    const result = value.value();
+  bind(fn) {
+    const result = this.value();
 
     if (result.tag === "err") {
       return err(result.error);
@@ -130,8 +130,8 @@ Monad.implement(Result)({
 export interface AsResult extends Monad<AsResult> {}
 
 Foldable.implement(Result)({
-  fold(value, initial, fn) {
-    const result = value.value();
+  fold(initial, fn) {
+    const result = this.value();
 
     if (result.tag === "err") {
       return initial;
@@ -144,8 +144,8 @@ Foldable.implement(Result)({
 export interface AsResult extends Foldable<AsResult> {}
 
 Traversable.implement(Result)({
-  traverse(value, applicative, fn) {
-    const result = value.value();
+  traverse(applicative, fn) {
+    const result = this.value();
 
     if (result.tag === "err") {
       return Applicative.pure(applicative, err(result.error));

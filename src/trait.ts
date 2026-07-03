@@ -8,8 +8,6 @@ import type { Trait } from "./trait_value.ts";
 
 export const kind = Symbol("Trait.kind");
 
-export type This<self> = self | void;
-
 export interface TraitTypes<item> {}
 
 export type ContextValue<dictionary extends Dictionary, item> =
@@ -21,10 +19,6 @@ export type Value<dictionary extends Dictionary, item> = Trait<
   dictionary,
   ContextValue<dictionary, item>,
   item
->;
-
-export type Receiver<dictionary extends Dictionary, item> = This<
-  Value<dictionary, item>
 >;
 
 export type Dictionary<type_id = unknown> = {
@@ -114,12 +108,19 @@ export function define<dictionary extends Dictionary>(
 export type TraitDictionary<
   dictionary extends Dictionary,
   token extends PropertyKey,
-  implementation extends object,
-  methods extends object = implementation,
+  methods extends object,
 > =
   & Dictionary<dictionary[typeof kind]>
-  & { [key in token]: implementation }
+  & { [key in token]: methods }
   & methods;
+
+export function call_trait_method<self, args extends unknown[], out>(
+  method: (this: self, ...args: args) => out,
+  self: self,
+  ...args: args
+): out {
+  return Reflect.apply(method, self, args) as out;
+}
 
 export function implement_trait<implementation extends object>(
   dictionary: object,
@@ -151,7 +152,7 @@ function fluent_trait_methods(implementation: object): object {
           throw new TypeError("trait method requires a receiver");
         }
 
-        return method(this, ...args);
+        return Reflect.apply(method, this, args);
       },
       writable: true,
     };

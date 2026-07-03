@@ -44,8 +44,8 @@ export function to_record<item>(
 }
 
 Format.implement(RecordT)({
-  fmt(value) {
-    const record = value.value();
+  fmt() {
+    const record = this.value();
     return Deno.inspect(record);
   },
 });
@@ -53,8 +53,8 @@ Format.implement(RecordT)({
 export interface AsRecord extends Format<AsRecord> {}
 
 Equal.implement(RecordT)({
-  eq(left_value, right) {
-    const left = left_value.value();
+  eq(right) {
+    const left = this.value();
     const right_value = right.value();
     const left_keys = Object.keys(left);
     const right_keys = Object.keys(right_value);
@@ -80,8 +80,8 @@ Equal.implement(RecordT)({
 export interface AsRecord extends Equal<AsRecord> {}
 
 Functor.implement(RecordT)({
-  map(value, fn) {
-    const record = value.value();
+  map(fn) {
+    const record = this.value();
     const out: Record<string, ReturnType<typeof fn>> = {};
 
     for (const [key, value] of Object.entries(record)) {
@@ -95,8 +95,8 @@ Functor.implement(RecordT)({
 export interface AsRecord extends Functor<AsRecord> {}
 
 Semigroup.implement(RecordT)({
-  concat(left_value, right) {
-    const left = left_value.value();
+  concat(right) {
+    const left = this.value();
     return RecordT({ ...left, ...right.value() });
   },
 });
@@ -104,7 +104,7 @@ Semigroup.implement(RecordT)({
 export interface AsRecord extends Semigroup<AsRecord> {}
 
 Monoid.implement(RecordT)({
-  empty(_record) {
+  empty() {
     return RecordT({});
   },
 });
@@ -112,8 +112,8 @@ Monoid.implement(RecordT)({
 export interface AsRecord extends Monoid<AsRecord> {}
 
 Foldable.implement(RecordT)({
-  fold(value, initial, fn) {
-    const record = value.value();
+  fold(initial, fn) {
+    const record = this.value();
     let state = initial;
 
     for (const value of Object.values(record)) {
@@ -127,8 +127,8 @@ Foldable.implement(RecordT)({
 export interface AsRecord extends Foldable<AsRecord> {}
 
 Traversable.implement(RecordT)({
-  traverse(value, applicative, fn) {
-    const record = value.value();
+  traverse(applicative, fn) {
+    const record = this.value();
     const entries = Object.entries(record);
 
     if (entries.length === 0) {

@@ -54,8 +54,8 @@ export function to_record<item>(
 }
 
 Format.implement(MapT)({
-  fmt(value) {
-    const map = value.value();
+  fmt() {
+    const map = this.value();
     return Deno.inspect(map);
   },
 });
@@ -63,8 +63,8 @@ Format.implement(MapT)({
 export interface AsMap extends Format<AsMap> {}
 
 Equal.implement(MapT)({
-  eq(left_value, right) {
-    const left = left_value.value();
+  eq(right) {
+    const left = this.value();
     const right_value = right.value();
 
     if (left.size !== right_value.size) {
@@ -84,8 +84,8 @@ Equal.implement(MapT)({
 export interface AsMap extends Equal<AsMap> {}
 
 Functor.implement(MapT)({
-  map(value, fn) {
-    const map = value.value();
+  map(fn) {
+    const map = this.value();
     const out = new Map<string, ReturnType<typeof fn>>();
 
     for (const [key, value] of map) {
@@ -99,8 +99,8 @@ Functor.implement(MapT)({
 export interface AsMap extends Functor<AsMap> {}
 
 Semigroup.implement(MapT)({
-  concat(left_value, right) {
-    const left = left_value.value();
+  concat(right) {
+    const left = this.value();
     const out = new Map(left);
 
     for (const [key, value] of right.value()) {
@@ -114,7 +114,7 @@ Semigroup.implement(MapT)({
 export interface AsMap extends Semigroup<AsMap> {}
 
 Monoid.implement(MapT)({
-  empty(_map) {
+  empty() {
     return MapT(new Map());
   },
 });
@@ -122,8 +122,8 @@ Monoid.implement(MapT)({
 export interface AsMap extends Monoid<AsMap> {}
 
 Foldable.implement(MapT)({
-  fold(value, initial, fn) {
-    const map = value.value();
+  fold(initial, fn) {
+    const map = this.value();
     let state = initial;
 
     for (const value of map.values()) {
@@ -137,8 +137,8 @@ Foldable.implement(MapT)({
 export interface AsMap extends Foldable<AsMap> {}
 
 Traversable.implement(MapT)({
-  traverse(value, applicative, fn) {
-    const map = value.value();
+  traverse(applicative, fn) {
+    const map = this.value();
     const entries = [...map.entries()];
 
     if (entries.length === 0) {

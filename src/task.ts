@@ -40,7 +40,7 @@ export function run<item>(task: TaskValue<item>): Promise<item> {
 }
 
 Format.implement(Task)({
-  fmt(_task) {
+  fmt() {
     return "Task(?)";
   },
 });
@@ -48,21 +48,21 @@ Format.implement(Task)({
 export interface AsTask extends Format<AsTask> {}
 
 Functor.implement(Task)({
-  map(task, fn) {
-    return Task(async () => fn(await run(task)));
+  map(fn) {
+    return Task(async () => fn(await run(this)));
   },
 });
 
 export interface AsTask extends Functor<AsTask> {}
 
 Applicative.implement(Task)({
-  pure(_task, value) {
+  pure(value) {
     return succeed(value);
   },
 
-  ap(task, value) {
+  ap(value) {
     return Task(async () => {
-      const [fn, item] = await Promise.all([run(task), run(value)]);
+      const [fn, item] = await Promise.all([run(this), run(value)]);
       return fn(item);
     });
   },
@@ -71,9 +71,9 @@ Applicative.implement(Task)({
 export interface AsTask extends Applicative<AsTask> {}
 
 Monad.implement(Task)({
-  bind(task, fn) {
+  bind(fn) {
     return Task(async () => {
-      const value = await run(task);
+      const value = await run(this);
       return await run(fn(value));
     });
   },

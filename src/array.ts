@@ -39,8 +39,8 @@ export function to_array<item>(array: ArrayValue<item>): item[] {
 }
 
 Format.implement(ArrayT)({
-  fmt(value) {
-    const array = value.value();
+  fmt() {
+    const array = this.value();
     return Deno.inspect(array);
   },
 });
@@ -48,8 +48,8 @@ Format.implement(ArrayT)({
 export interface AsArray extends Format<AsArray> {}
 
 Equal.implement(ArrayT)({
-  eq(left_value, right) {
-    const left = left_value.value();
+  eq(right) {
+    const left = this.value();
     const right_value = right.value();
 
     if (left.length !== right_value.length) {
@@ -69,8 +69,8 @@ Equal.implement(ArrayT)({
 export interface AsArray extends Equal<AsArray> {}
 
 Functor.implement(ArrayT)({
-  map(value, fn) {
-    const array = value.value();
+  map(fn) {
+    const array = this.value();
     return ArrayT(array.map(fn));
   },
 });
@@ -78,12 +78,12 @@ Functor.implement(ArrayT)({
 export interface AsArray extends Functor<AsArray> {}
 
 Applicative.implement(ArrayT)({
-  pure(_array, value) {
+  pure(value) {
     return ArrayT([value]);
   },
 
-  ap(functions, values) {
-    const fns = functions.value();
+  ap(values) {
+    const fns = this.value();
     const items = values.value();
 
     return ArrayT(fns.flatMap((fn) => items.map(fn)));
@@ -93,8 +93,8 @@ Applicative.implement(ArrayT)({
 export interface AsArray extends Applicative<AsArray> {}
 
 Semigroup.implement(ArrayT)({
-  concat(left_value, right) {
-    const left = left_value.value();
+  concat(right) {
+    const left = this.value();
     return ArrayT([...left, ...right.value()]);
   },
 });
@@ -102,7 +102,7 @@ Semigroup.implement(ArrayT)({
 export interface AsArray extends Semigroup<AsArray> {}
 
 Monoid.implement(ArrayT)({
-  empty(_array) {
+  empty() {
     return ArrayT([]);
   },
 });
@@ -110,12 +110,12 @@ Monoid.implement(ArrayT)({
 export interface AsArray extends Monoid<AsArray> {}
 
 Alternative.implement(ArrayT)({
-  empty(_array) {
+  empty() {
     return ArrayT([]);
   },
 
-  alt(left_value, right) {
-    const left = left_value.value();
+  alt(right) {
+    const left = this.value();
     return ArrayT([...left, ...right.value()]);
   },
 });
@@ -123,8 +123,8 @@ Alternative.implement(ArrayT)({
 export interface AsArray extends Alternative<AsArray> {}
 
 Monad.implement(ArrayT)({
-  bind(value, fn) {
-    const array = value.value();
+  bind(fn) {
+    const array = this.value();
     return ArrayT(array.flatMap((item) => fn(item).value()));
   },
 });
@@ -132,8 +132,8 @@ Monad.implement(ArrayT)({
 export interface AsArray extends Monad<AsArray> {}
 
 Foldable.implement(ArrayT)({
-  fold(value, initial, fn) {
-    const array = value.value();
+  fold(initial, fn) {
+    const array = this.value();
     let state = initial;
 
     for (const item of array) {
@@ -147,8 +147,8 @@ Foldable.implement(ArrayT)({
 export interface AsArray extends Foldable<AsArray> {}
 
 Traversable.implement(ArrayT)({
-  traverse(value, applicative, fn) {
-    const array = value.value();
+  traverse(applicative, fn) {
+    const array = this.value();
 
     if (array.length === 0) {
       return Applicative.pure(applicative, ArrayT([]));

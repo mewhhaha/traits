@@ -1,7 +1,7 @@
 import {
+  call_trait_method,
   define_trait,
   type Dictionary,
-  type Receiver,
   type TraitDictionary,
   type Value,
 } from "./trait.ts";
@@ -13,10 +13,7 @@ export interface Format<dictionary extends Dictionary> extends
     dictionary,
     typeof format_trait,
     {
-      fmt: (self: Value<dictionary, unknown>) => string;
-    },
-    {
-      fmt: (this: Receiver<dictionary, unknown>) => string;
+      fmt: (this: Value<dictionary, unknown>) => string;
     }
   > {}
 
@@ -24,7 +21,7 @@ export const Format = define_trait(format_trait, {
   fmt<dictionary extends Format<dictionary>>(
     value: Value<dictionary, unknown>,
   ): string {
-    return this.implementation(value).fmt(value);
+    return call_trait_method(this.implementation(value).fmt, value);
   },
 });
 
@@ -36,13 +33,7 @@ export interface Equal<dictionary extends Dictionary> extends
     typeof equal_trait,
     {
       eq: <item>(
-        left: Value<dictionary, item>,
-        right: Value<dictionary, item>,
-      ) => boolean;
-    },
-    {
-      eq: <item>(
-        this: Receiver<dictionary, item>,
+        this: Value<dictionary, item>,
         right: Value<dictionary, item>,
       ) => boolean;
     }
@@ -56,7 +47,7 @@ export const Equal = define_trait(equal_trait, {
     left: Value<dictionary, item>,
     right: Value<dictionary, item>,
   ): boolean {
-    return this.implementation(left).eq(left, right);
+    return call_trait_method(this.implementation(left).eq<item>, left, right);
   },
 });
 
@@ -69,13 +60,7 @@ export interface Semigroup<dictionary extends Dictionary>
       typeof semigroup_trait,
       {
         concat: <item>(
-          left: Value<dictionary, item>,
-          right: Value<dictionary, item>,
-        ) => Value<dictionary, item>;
-      },
-      {
-        concat: <item>(
-          this: Receiver<dictionary, item>,
+          this: Value<dictionary, item>,
           right: Value<dictionary, item>,
         ) => Value<dictionary, item>;
       }
@@ -89,7 +74,11 @@ export const Semigroup = define_trait(semigroup_trait, {
     left: Value<dictionary, item>,
     right: Value<dictionary, item>,
   ): Value<dictionary, item> {
-    return this.implementation(left).concat(left, right);
+    return call_trait_method(
+      this.implementation(left).concat<item>,
+      left,
+      right,
+    );
   },
 });
 
@@ -100,13 +89,7 @@ export interface Monoid<dictionary extends Dictionary> extends
     dictionary,
     typeof monoid_trait,
     {
-      empty: <item>(self: Value<dictionary, unknown>) => Value<
-        dictionary,
-        item
-      >;
-    },
-    {
-      empty: <item>(this: Receiver<dictionary, unknown>) => Value<
+      empty: <item>(this: Value<dictionary, unknown>) => Value<
         dictionary,
         item
       >;
@@ -121,7 +104,7 @@ export const Monoid = define_trait(monoid_trait, {
   >(
     value: Value<dictionary, unknown>,
   ): Value<dictionary, item> {
-    return this.implementation(value).empty(value);
+    return call_trait_method(this.implementation(value).empty<item>, value);
   },
 
   concat<
@@ -143,13 +126,7 @@ export interface Functor<dictionary extends Dictionary> extends
     typeof functor_trait,
     {
       map: <from, to>(
-        value: Value<dictionary, from>,
-        fn: (value: from) => to,
-      ) => Value<dictionary, to>;
-    },
-    {
-      map: <from, to>(
-        this: Receiver<dictionary, from>,
+        this: Value<dictionary, from>,
         fn: (value: from) => to,
       ) => Value<dictionary, to>;
     }
@@ -164,7 +141,11 @@ export const Functor = define_trait(functor_trait, {
     value: Value<dictionary, from>,
     fn: (value: from) => to,
   ): Value<dictionary, to> {
-    return this.implementation(value).map(value, fn);
+    return call_trait_method(
+      this.implementation(value).map<from, to>,
+      value,
+      fn,
+    );
   },
 });
 
@@ -177,21 +158,11 @@ export interface Applicative<dictionary extends Dictionary>
       typeof applicative_trait,
       {
         pure: <item>(
-          self: Value<dictionary, unknown>,
+          this: Value<dictionary, unknown>,
           value: item,
         ) => Value<dictionary, item>;
         ap: <from, to>(
-          self: Value<dictionary, (value: NoInfer<from>) => to>,
-          value: Value<dictionary, from>,
-        ) => Value<dictionary, to>;
-      },
-      {
-        pure: <item>(
-          this: Receiver<dictionary, unknown>,
-          value: item,
-        ) => Value<dictionary, item>;
-        ap: <from, to>(
-          this: Receiver<dictionary, (value: NoInfer<from>) => to>,
+          this: Value<dictionary, (value: NoInfer<from>) => to>,
           value: Value<dictionary, from>,
         ) => Value<dictionary, to>;
       }
@@ -206,7 +177,11 @@ export const Applicative = define_trait(applicative_trait, {
     value: Value<dictionary, unknown>,
     item: item,
   ): Value<dictionary, item> {
-    return this.implementation(value).pure(value, item);
+    return call_trait_method(
+      this.implementation(value).pure<item>,
+      value,
+      item,
+    );
   },
 
   ap<
@@ -217,7 +192,11 @@ export const Applicative = define_trait(applicative_trait, {
     value: Value<dictionary, (value: NoInfer<from>) => to>,
     item: Value<dictionary, from>,
   ): Value<dictionary, to> {
-    return this.implementation(value).ap(value, item);
+    return call_trait_method(
+      this.implementation(value).ap<from, to>,
+      value,
+      item,
+    );
   },
 });
 
@@ -229,22 +208,12 @@ export interface Alternative<dictionary extends Dictionary>
       dictionary,
       typeof alternative_trait,
       {
-        empty: <item>(self: Value<dictionary, unknown>) => Value<
+        empty: <item>(this: Value<dictionary, unknown>) => Value<
           dictionary,
           item
         >;
         alt: <item>(
-          left: Value<dictionary, item>,
-          right: Value<dictionary, item>,
-        ) => Value<dictionary, item>;
-      },
-      {
-        empty: <item>(this: Receiver<dictionary, unknown>) => Value<
-          dictionary,
-          item
-        >;
-        alt: <item>(
-          this: Receiver<dictionary, item>,
+          this: Value<dictionary, item>,
           right: Value<dictionary, item>,
         ) => Value<dictionary, item>;
       }
@@ -258,7 +227,7 @@ export const Alternative = define_trait(alternative_trait, {
   >(
     value: Value<dictionary, unknown>,
   ): Value<dictionary, item> {
-    return this.implementation(value).empty(value);
+    return call_trait_method(this.implementation(value).empty<item>, value);
   },
 
   alt<
@@ -268,7 +237,7 @@ export const Alternative = define_trait(alternative_trait, {
     left: Value<dictionary, item>,
     right: Value<dictionary, item>,
   ): Value<dictionary, item> {
-    return this.implementation(left).alt(left, right);
+    return call_trait_method(this.implementation(left).alt<item>, left, right);
   },
 });
 
@@ -280,13 +249,7 @@ export interface Monad<dictionary extends Dictionary> extends
     typeof monad_trait,
     {
       bind: <from, to>(
-        value: Value<dictionary, from>,
-        fn: (value: from) => Value<dictionary, to>,
-      ) => Value<dictionary, to>;
-    },
-    {
-      bind: <from, to>(
-        this: Receiver<dictionary, from>,
+        this: Value<dictionary, from>,
         fn: (value: from) => Value<dictionary, to>,
       ) => Value<dictionary, to>;
     }
@@ -307,7 +270,11 @@ export const Monad = define_trait(monad_trait, {
     value: Value<dictionary, from>,
     fn: (value: from) => Value<dictionary, to>,
   ): Value<dictionary, to> {
-    return this.implementation(value).bind(value, fn);
+    return call_trait_method(
+      this.implementation(value).bind<from, to>,
+      value,
+      fn,
+    );
   },
 });
 
@@ -365,14 +332,7 @@ export interface Foldable<dictionary extends Dictionary>
       typeof foldable_trait,
       {
         fold: <item, out>(
-          value: Value<dictionary, item>,
-          initial: out,
-          fn: (state: out, item: item) => out,
-        ) => out;
-      },
-      {
-        fold: <item, out>(
-          this: Receiver<dictionary, item>,
+          this: Value<dictionary, item>,
           initial: out,
           fn: (state: out, item: item) => out,
         ) => out;
@@ -389,7 +349,12 @@ export const Foldable = define_trait(foldable_trait, {
     initial: out,
     fn: (state: out, item: item) => out,
   ): out {
-    return this.implementation(value).fold(value, initial, fn);
+    return call_trait_method(
+      this.implementation(value).fold<item, out>,
+      value,
+      initial,
+      fn,
+    );
   },
 });
 
@@ -406,18 +371,7 @@ export interface Traversable<dictionary extends Dictionary>
           from,
           to,
         >(
-          value: Value<dictionary, from>,
-          applicative: Value<applicative, unknown>,
-          fn: (value: from) => Value<applicative, to>,
-        ) => Value<applicative, Value<dictionary, to>>;
-      },
-      {
-        traverse: <
-          applicative extends Applicative<applicative>,
-          from,
-          to,
-        >(
-          this: Receiver<dictionary, from>,
+          this: Value<dictionary, from>,
           applicative: Value<applicative, unknown>,
           fn: (value: from) => Value<applicative, to>,
         ) => Value<applicative, Value<dictionary, to>>;
@@ -437,7 +391,8 @@ export const Traversable = define_trait(traversable_trait, {
     applicative: Value<applicative, unknown>,
     fn: (value: from) => Value<applicative, to>,
   ): Value<applicative, Value<dictionary, to>> {
-    return this.implementation(value).traverse(
+    return call_trait_method(
+      this.implementation(value).traverse<applicative, from, to>,
       value,
       applicative,
       fn,
@@ -452,7 +407,9 @@ export const Traversable = define_trait(traversable_trait, {
     value: Value<dictionary, Value<applicative, item>>,
     applicative: Value<applicative, unknown>,
   ): Value<applicative, Value<dictionary, item>> {
-    return this.implementation(value).traverse(
+    return call_trait_method(
+      this.implementation(value)
+        .traverse<applicative, Value<applicative, item>, item>,
       value,
       applicative,
       (value: Value<applicative, item>) => {

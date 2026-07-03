@@ -10,11 +10,11 @@ export const kind = Symbol("Trait.kind");
 
 export type This<self> = self | void;
 
-export interface ContextValues<item> {}
+export interface TraitTypes<item> {}
 
 export type ContextValue<dictionary extends Dictionary, item> =
-  dictionary[typeof kind] extends keyof ContextValues<item>
-    ? ContextValues<item>[dictionary[typeof kind]]
+  dictionary[typeof kind] extends keyof TraitTypes<item>
+    ? TraitTypes<item>[dictionary[typeof kind]]
     : never;
 
 export type Value<dictionary extends Dictionary, item> = Trait<
@@ -31,8 +31,7 @@ export type Dictionary<type_id = unknown> = {
   [kind]: type_id;
 };
 
-export interface DefinedDictionary<type_id extends PropertyKey>
-  extends Dictionary<type_id> {
+export interface As<type_id extends PropertyKey> extends Dictionary<type_id> {
   <item>(value: ContextValue<this, item>): Value<this, item>;
 }
 
@@ -76,7 +75,7 @@ export type DictionaryConstructor<dictionary extends Dictionary> = <item>(
   value: ContextValue<dictionary, item>,
 ) => Value<dictionary, item>;
 
-export function define_dictionary<dictionary extends Dictionary>(
+export function define<dictionary extends Dictionary>(
   type_id: dictionary[typeof kind],
   construct?: DictionaryConstructor<dictionary>,
 ): dictionary {

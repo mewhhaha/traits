@@ -1,4 +1,4 @@
-import { define_dictionary, type DefinedDictionary } from "./trait.ts";
+import { type As, define } from "./trait.ts";
 import {
   Alternative,
   Applicative,
@@ -19,15 +19,14 @@ type Some<item> = { tag: "some"; value: item };
 export const option_kind = Symbol("Option");
 
 declare module "./trait.ts" {
-  interface ContextValues<item> {
+  interface TraitTypes<item> {
     [option_kind]: Option<item>;
   }
 }
 
-export interface OptionDictionary
-  extends DefinedDictionary<typeof option_kind> {}
+export interface AsOption extends As<typeof option_kind> {}
 
-export const Option = define_dictionary<OptionDictionary>(
+export const Option = define<AsOption>(
   option_kind,
 );
 
@@ -65,7 +64,7 @@ Format.implement(Option)({
   },
 });
 
-export interface OptionDictionary extends Format<OptionDictionary> {}
+export interface AsOption extends Format<AsOption> {}
 
 Equal.implement(Option)({
   eq(left_value, right) {
@@ -84,7 +83,7 @@ Equal.implement(Option)({
   },
 });
 
-export interface OptionDictionary extends Equal<OptionDictionary> {}
+export interface AsOption extends Equal<AsOption> {}
 
 Functor.implement(Option)({
   map(value, fn) {
@@ -98,7 +97,7 @@ Functor.implement(Option)({
   },
 });
 
-export interface OptionDictionary extends Functor<OptionDictionary> {}
+export interface AsOption extends Functor<AsOption> {}
 
 Applicative.implement(Option)({
   pure(_value, value) {
@@ -121,7 +120,7 @@ Applicative.implement(Option)({
   },
 });
 
-export interface OptionDictionary extends Applicative<OptionDictionary> {}
+export interface AsOption extends Applicative<AsOption> {}
 
 Alternative.implement(Option)({
   empty(_value) {
@@ -139,7 +138,7 @@ Alternative.implement(Option)({
   },
 });
 
-export interface OptionDictionary extends Alternative<OptionDictionary> {}
+export interface AsOption extends Alternative<AsOption> {}
 
 Monad.implement(Option)({
   bind(value, fn) {
@@ -153,7 +152,7 @@ Monad.implement(Option)({
   },
 });
 
-export interface OptionDictionary extends Monad<OptionDictionary> {}
+export interface AsOption extends Monad<AsOption> {}
 
 Foldable.implement(Option)({
   fold(value, initial, fn) {
@@ -167,7 +166,7 @@ Foldable.implement(Option)({
   },
 });
 
-export interface OptionDictionary extends Foldable<OptionDictionary> {}
+export interface AsOption extends Foldable<AsOption> {}
 
 Traversable.implement(Option)({
   traverse(value, applicative, fn) {
@@ -181,7 +180,7 @@ Traversable.implement(Option)({
   },
 });
 
-export interface OptionDictionary extends Traversable<OptionDictionary> {}
+export interface AsOption extends Traversable<AsOption> {}
 
 function option_some<item>(value: item): Some<item> {
   return { tag: "some", value };

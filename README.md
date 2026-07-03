@@ -38,10 +38,10 @@ existing contextual value as a fluent `Trait<dictionary, value, item>` and also
 acts as the trait dictionary. Constructors and other helpers are normal exported
 functions that return wrapped values.
 
-Each data type registers its contextual value shape in `ContextValues<item>`.
-That lets the short `Value<typeof Option, item>` type recover that `Option`
-stores `Option<item>` without putting a phantom value member on every
-dictionary.
+Each data type registers its raw value shape in `TraitTypes<item>`. That maps a
+dictionary kind to the value it wraps, so `Value<typeof Option, item>` can
+recover that `Option` stores `Option<item>` without putting a phantom value
+member on every dictionary.
 
 Trait implementation functions receive the wrapped value as their first
 argument. The installer stores that receiver-first implementation in the
@@ -50,7 +50,7 @@ The canonical trait slot is a unique symbol, so two traits can both have a
 method named `fmt` without sharing a runtime property.
 
 ```ts
-import { define_dictionary, type DefinedDictionary } from "./trait.ts";
+import { type As, define } from "./trait.ts";
 import { Format, Monad } from "./traits.ts";
 
 export type Option<item> =
@@ -60,15 +60,14 @@ export type Option<item> =
 export const option_kind = Symbol("Option");
 
 declare module "./trait.ts" {
-  interface ContextValues<item> {
+  interface TraitTypes<item> {
     [option_kind]: Option<item>;
   }
 }
 
-export interface OptionDictionary
-  extends DefinedDictionary<typeof option_kind> {}
+export interface AsOption extends As<typeof option_kind> {}
 
-export const Option = define_dictionary<OptionDictionary>(
+export const Option = define<AsOption>(
   option_kind,
 );
 
@@ -89,7 +88,7 @@ Format.implement(Option)({
   },
 });
 
-export interface OptionDictionary extends Format<OptionDictionary> {}
+export interface AsOption extends Format<AsOption> {}
 
 Monad.implement(Option)({
   bind(value, fn) {
@@ -103,7 +102,7 @@ Monad.implement(Option)({
   },
 });
 
-export interface OptionDictionary extends Monad<OptionDictionary> {}
+export interface AsOption extends Monad<AsOption> {}
 ```
 
 See `src/option.ts`, `src/result.ts`, `src/list.ts`, `src/task.ts`,
@@ -137,14 +136,13 @@ Most code can use the shorter `Value<dictionary, item>` helper:
 type WrappedOption<item> = Value<typeof Option, item>;
 ```
 
-`define_dictionary(type_id)` creates the callable dictionary, assigns its kind,
-and routes calls through a cached constructor. The lower-level
+`define(type_id)` creates the callable dictionary, assigns its kind, and routes
+calls through a cached constructor. The lower-level
 `as_trait(dictionary, value)` and `as_trait_cached(dictionary)` helpers remain
 available for experiments that need to manage construction directly.
 
-Each data type registers its raw context once in `ContextValues<item>`. That
-keeps `Value<OptionDictionary, item>` tied to `Option<item>` without requiring a
-per-dictionary phantom value property.
+Each data type registers its raw value once in `TraitTypes<item>`. `Value` and
+`Receiver` use that registry to type both helper functions and fluent methods.
 
 The wrapped value's prototype points at a shared trait prototype, which
 delegates to the dictionary. Symbol-scoped implementations and direct fluent
@@ -205,7 +203,7 @@ const Size = define_trait(size_trait, {
 });
 
 declare module "./list.ts" {
-  interface ListDictionary extends Size<ListDictionary> {}
+  interface AsList extends Size<AsList> {}
 }
 
 Size.implement(List)({
@@ -280,11 +278,11 @@ helper-name collisions:
 import { array, map, record } from "./src/mod.ts";
 ```
 
-Each data type has an open dictionary interface such as `OptionDictionary` or
-`ListDictionary`. Entries are added one trait at a time next to the
-implementation. `Format.implement(Option)({ ... })` validates that every
-required `Format` method exists, installs the collision-free symbol slot, and
-copies direct fluent aliases onto the dictionary.
+Each data type has an open dictionary interface such as `AsOption` or `AsList`.
+Entries are added one trait at a time next to the implementation.
+`Format.implement(Option)({ ... })` validates that every required `Format`
+method exists, installs the collision-free symbol slot, and copies direct fluent
+aliases onto the dictionary.
 
 ## Benchmarks
 

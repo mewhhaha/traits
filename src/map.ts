@@ -1,8 +1,4 @@
-import {
-  define_dictionary,
-  type DefinedDictionary,
-  type Value,
-} from "./trait.ts";
+import { type As, define, type Value } from "./trait.ts";
 import {
   Applicative,
   Equal,
@@ -19,16 +15,16 @@ export type MapT<item> = ReadonlyMap<string, item>;
 export const map_kind = Symbol("MapT");
 
 declare module "./trait.ts" {
-  interface ContextValues<item> {
+  interface TraitTypes<item> {
     [map_kind]: MapT<item>;
   }
 }
 
-export interface MapDictionary extends DefinedDictionary<typeof map_kind> {}
+export interface AsMap extends As<typeof map_kind> {}
 
-type MapValue<item> = Value<MapDictionary, item>;
+type MapValue<item> = Value<AsMap, item>;
 
-export const MapT = define_dictionary<MapDictionary>(
+export const MapT = define<AsMap>(
   map_kind,
   function (map) {
     return this.as_trait(new Map(map));
@@ -64,7 +60,7 @@ Format.implement(MapT)({
   },
 });
 
-export interface MapDictionary extends Format<MapDictionary> {}
+export interface AsMap extends Format<AsMap> {}
 
 Equal.implement(MapT)({
   eq(left_value, right) {
@@ -85,7 +81,7 @@ Equal.implement(MapT)({
   },
 });
 
-export interface MapDictionary extends Equal<MapDictionary> {}
+export interface AsMap extends Equal<AsMap> {}
 
 Functor.implement(MapT)({
   map(value, fn) {
@@ -100,7 +96,7 @@ Functor.implement(MapT)({
   },
 });
 
-export interface MapDictionary extends Functor<MapDictionary> {}
+export interface AsMap extends Functor<AsMap> {}
 
 Semigroup.implement(MapT)({
   concat(left_value, right) {
@@ -115,7 +111,7 @@ Semigroup.implement(MapT)({
   },
 });
 
-export interface MapDictionary extends Semigroup<MapDictionary> {}
+export interface AsMap extends Semigroup<AsMap> {}
 
 Monoid.implement(MapT)({
   empty(_map) {
@@ -123,7 +119,7 @@ Monoid.implement(MapT)({
   },
 });
 
-export interface MapDictionary extends Monoid<MapDictionary> {}
+export interface AsMap extends Monoid<AsMap> {}
 
 Foldable.implement(MapT)({
   fold(value, initial, fn) {
@@ -138,7 +134,7 @@ Foldable.implement(MapT)({
   },
 });
 
-export interface MapDictionary extends Foldable<MapDictionary> {}
+export interface AsMap extends Foldable<AsMap> {}
 
 Traversable.implement(MapT)({
   traverse(value, applicative, fn) {
@@ -162,7 +158,7 @@ Traversable.implement(MapT)({
   },
 });
 
-export interface MapDictionary extends Traversable<MapDictionary> {}
+export interface AsMap extends Traversable<AsMap> {}
 
 function map_single<item>(key: string) {
   return (value: item): MapValue<item> => MapT(new Map([[key, value]]));

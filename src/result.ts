@@ -1,4 +1,4 @@
-import { define_dictionary, type DefinedDictionary } from "./trait.ts";
+import { type As, define } from "./trait.ts";
 import {
   Applicative,
   Equal,
@@ -18,15 +18,14 @@ type Ok<item> = { tag: "ok"; value: item };
 export const result_kind = Symbol("Result");
 
 declare module "./trait.ts" {
-  interface ContextValues<item> {
+  interface TraitTypes<item> {
     [result_kind]: Result<item, string>;
   }
 }
 
-export interface ResultDictionary
-  extends DefinedDictionary<typeof result_kind> {}
+export interface AsResult extends As<typeof result_kind> {}
 
-export const Result = define_dictionary<ResultDictionary>(
+export const Result = define<AsResult>(
   result_kind,
 );
 
@@ -58,7 +57,7 @@ Format.implement(Result)({
   },
 });
 
-export interface ResultDictionary extends Format<ResultDictionary> {}
+export interface AsResult extends Format<AsResult> {}
 
 Equal.implement(Result)({
   eq(left_value, right) {
@@ -77,7 +76,7 @@ Equal.implement(Result)({
   },
 });
 
-export interface ResultDictionary extends Equal<ResultDictionary> {}
+export interface AsResult extends Equal<AsResult> {}
 
 Functor.implement(Result)({
   map(value, fn) {
@@ -91,7 +90,7 @@ Functor.implement(Result)({
   },
 });
 
-export interface ResultDictionary extends Functor<ResultDictionary> {}
+export interface AsResult extends Functor<AsResult> {}
 
 Applicative.implement(Result)({
   pure(_value, value) {
@@ -114,7 +113,7 @@ Applicative.implement(Result)({
   },
 });
 
-export interface ResultDictionary extends Applicative<ResultDictionary> {}
+export interface AsResult extends Applicative<AsResult> {}
 
 Monad.implement(Result)({
   bind(value, fn) {
@@ -128,7 +127,7 @@ Monad.implement(Result)({
   },
 });
 
-export interface ResultDictionary extends Monad<ResultDictionary> {}
+export interface AsResult extends Monad<AsResult> {}
 
 Foldable.implement(Result)({
   fold(value, initial, fn) {
@@ -142,7 +141,7 @@ Foldable.implement(Result)({
   },
 });
 
-export interface ResultDictionary extends Foldable<ResultDictionary> {}
+export interface AsResult extends Foldable<AsResult> {}
 
 Traversable.implement(Result)({
   traverse(value, applicative, fn) {
@@ -156,7 +155,7 @@ Traversable.implement(Result)({
   },
 });
 
-export interface ResultDictionary extends Traversable<ResultDictionary> {}
+export interface AsResult extends Traversable<AsResult> {}
 
 function result_ok<item>(value: item): Ok<item> {
   return { tag: "ok", value };

@@ -1,8 +1,4 @@
-import {
-  define_dictionary,
-  type DefinedDictionary,
-  type Value,
-} from "./trait.ts";
+import { type As, define, type Value } from "./trait.ts";
 import {
   Alternative,
   Applicative,
@@ -23,16 +19,16 @@ export type List<item> =
 export const list_kind = Symbol("List");
 
 declare module "./trait.ts" {
-  interface ContextValues<item> {
+  interface TraitTypes<item> {
     [list_kind]: List<item>;
   }
 }
 
-export interface ListDictionary extends DefinedDictionary<typeof list_kind> {}
+export interface AsList extends As<typeof list_kind> {}
 
-type ListValue<item> = Value<ListDictionary, item>;
+type ListValue<item> = Value<AsList, item>;
 
-export const List = define_dictionary<ListDictionary>(
+export const List = define<AsList>(
   list_kind,
 );
 
@@ -81,7 +77,7 @@ Format.implement(List)({
   },
 });
 
-export interface ListDictionary extends Format<ListDictionary> {}
+export interface AsList extends Format<AsList> {}
 
 Equal.implement(List)({
   eq(left, right) {
@@ -101,7 +97,7 @@ Equal.implement(List)({
   },
 });
 
-export interface ListDictionary extends Equal<ListDictionary> {}
+export interface AsList extends Equal<AsList> {}
 
 Functor.implement(List)({
   map(list, fn) {
@@ -110,7 +106,7 @@ Functor.implement(List)({
   },
 });
 
-export interface ListDictionary extends Functor<ListDictionary> {}
+export interface AsList extends Functor<AsList> {}
 
 Applicative.implement(List)({
   pure(_list, value) {
@@ -126,7 +122,7 @@ Applicative.implement(List)({
   },
 });
 
-export interface ListDictionary extends Applicative<ListDictionary> {}
+export interface AsList extends Applicative<AsList> {}
 
 Semigroup.implement(List)({
   concat(left, right) {
@@ -134,7 +130,7 @@ Semigroup.implement(List)({
   },
 });
 
-export interface ListDictionary extends Semigroup<ListDictionary> {}
+export interface AsList extends Semigroup<AsList> {}
 
 Monoid.implement(List)({
   empty(_list) {
@@ -142,7 +138,7 @@ Monoid.implement(List)({
   },
 });
 
-export interface ListDictionary extends Monoid<ListDictionary> {}
+export interface AsList extends Monoid<AsList> {}
 
 Alternative.implement(List)({
   empty(_list) {
@@ -154,7 +150,7 @@ Alternative.implement(List)({
   },
 });
 
-export interface ListDictionary extends Alternative<ListDictionary> {}
+export interface AsList extends Alternative<AsList> {}
 
 Monad.implement(List)({
   bind(list, fn) {
@@ -163,7 +159,7 @@ Monad.implement(List)({
   },
 });
 
-export interface ListDictionary extends Monad<ListDictionary> {}
+export interface AsList extends Monad<AsList> {}
 
 Foldable.implement(List)({
   fold(list, initial, fn) {
@@ -177,7 +173,7 @@ Foldable.implement(List)({
   },
 });
 
-export interface ListDictionary extends Foldable<ListDictionary> {}
+export interface AsList extends Foldable<AsList> {}
 
 Traversable.implement(List)({
   traverse(list, applicative, fn) {
@@ -198,7 +194,7 @@ Traversable.implement(List)({
   },
 });
 
-export interface ListDictionary extends Traversable<ListDictionary> {}
+export interface AsList extends Traversable<AsList> {}
 
 function list_nil<item>(): List<item> {
   return { tag: "nil" };

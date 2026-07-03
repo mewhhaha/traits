@@ -1,8 +1,4 @@
-import {
-  define_dictionary,
-  type DefinedDictionary,
-  type Value,
-} from "./trait.ts";
+import { type As, define, type Value } from "./trait.ts";
 import {
   Alternative,
   Applicative,
@@ -21,16 +17,16 @@ export type ArrayT<item> = readonly item[];
 export const array_kind = Symbol("ArrayT");
 
 declare module "./trait.ts" {
-  interface ContextValues<item> {
+  interface TraitTypes<item> {
     [array_kind]: ArrayT<item>;
   }
 }
 
-export interface ArrayDictionary extends DefinedDictionary<typeof array_kind> {}
+export interface AsArray extends As<typeof array_kind> {}
 
-type ArrayValue<item> = Value<ArrayDictionary, item>;
+type ArrayValue<item> = Value<AsArray, item>;
 
-export const ArrayT = define_dictionary<ArrayDictionary>(
+export const ArrayT = define<AsArray>(
   array_kind,
 );
 
@@ -49,7 +45,7 @@ Format.implement(ArrayT)({
   },
 });
 
-export interface ArrayDictionary extends Format<ArrayDictionary> {}
+export interface AsArray extends Format<AsArray> {}
 
 Equal.implement(ArrayT)({
   eq(left_value, right) {
@@ -70,7 +66,7 @@ Equal.implement(ArrayT)({
   },
 });
 
-export interface ArrayDictionary extends Equal<ArrayDictionary> {}
+export interface AsArray extends Equal<AsArray> {}
 
 Functor.implement(ArrayT)({
   map(value, fn) {
@@ -79,7 +75,7 @@ Functor.implement(ArrayT)({
   },
 });
 
-export interface ArrayDictionary extends Functor<ArrayDictionary> {}
+export interface AsArray extends Functor<AsArray> {}
 
 Applicative.implement(ArrayT)({
   pure(_array, value) {
@@ -94,7 +90,7 @@ Applicative.implement(ArrayT)({
   },
 });
 
-export interface ArrayDictionary extends Applicative<ArrayDictionary> {}
+export interface AsArray extends Applicative<AsArray> {}
 
 Semigroup.implement(ArrayT)({
   concat(left_value, right) {
@@ -103,7 +99,7 @@ Semigroup.implement(ArrayT)({
   },
 });
 
-export interface ArrayDictionary extends Semigroup<ArrayDictionary> {}
+export interface AsArray extends Semigroup<AsArray> {}
 
 Monoid.implement(ArrayT)({
   empty(_array) {
@@ -111,7 +107,7 @@ Monoid.implement(ArrayT)({
   },
 });
 
-export interface ArrayDictionary extends Monoid<ArrayDictionary> {}
+export interface AsArray extends Monoid<AsArray> {}
 
 Alternative.implement(ArrayT)({
   empty(_array) {
@@ -124,7 +120,7 @@ Alternative.implement(ArrayT)({
   },
 });
 
-export interface ArrayDictionary extends Alternative<ArrayDictionary> {}
+export interface AsArray extends Alternative<AsArray> {}
 
 Monad.implement(ArrayT)({
   bind(value, fn) {
@@ -133,7 +129,7 @@ Monad.implement(ArrayT)({
   },
 });
 
-export interface ArrayDictionary extends Monad<ArrayDictionary> {}
+export interface AsArray extends Monad<AsArray> {}
 
 Foldable.implement(ArrayT)({
   fold(value, initial, fn) {
@@ -148,7 +144,7 @@ Foldable.implement(ArrayT)({
   },
 });
 
-export interface ArrayDictionary extends Foldable<ArrayDictionary> {}
+export interface AsArray extends Foldable<AsArray> {}
 
 Traversable.implement(ArrayT)({
   traverse(value, applicative, fn) {
@@ -169,7 +165,7 @@ Traversable.implement(ArrayT)({
   },
 });
 
-export interface ArrayDictionary extends Traversable<ArrayDictionary> {}
+export interface AsArray extends Traversable<AsArray> {}
 
 function array_single<item>(item: item): ArrayValue<item> {
   return ArrayT([item]);

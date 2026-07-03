@@ -1,8 +1,4 @@
-import {
-  define_dictionary,
-  type DefinedDictionary,
-  type Value,
-} from "./trait.ts";
+import { type As, define, type Value } from "./trait.ts";
 import { Applicative, Format, Functor, Monad } from "./traits.ts";
 
 export type Task<item> = () => Promise<item>;
@@ -10,16 +6,16 @@ export type Task<item> = () => Promise<item>;
 export const task_kind = Symbol("Task");
 
 declare module "./trait.ts" {
-  interface ContextValues<item> {
+  interface TraitTypes<item> {
     [task_kind]: Task<item>;
   }
 }
 
-export interface TaskDictionary extends DefinedDictionary<typeof task_kind> {}
+export interface AsTask extends As<typeof task_kind> {}
 
-type TaskValue<item> = Value<TaskDictionary, item>;
+type TaskValue<item> = Value<AsTask, item>;
 
-export const Task = define_dictionary<TaskDictionary>(
+export const Task = define<AsTask>(
   task_kind,
 );
 
@@ -49,7 +45,7 @@ Format.implement(Task)({
   },
 });
 
-export interface TaskDictionary extends Format<TaskDictionary> {}
+export interface AsTask extends Format<AsTask> {}
 
 Functor.implement(Task)({
   map(task, fn) {
@@ -57,7 +53,7 @@ Functor.implement(Task)({
   },
 });
 
-export interface TaskDictionary extends Functor<TaskDictionary> {}
+export interface AsTask extends Functor<AsTask> {}
 
 Applicative.implement(Task)({
   pure(_task, value) {
@@ -72,7 +68,7 @@ Applicative.implement(Task)({
   },
 });
 
-export interface TaskDictionary extends Applicative<TaskDictionary> {}
+export interface AsTask extends Applicative<AsTask> {}
 
 Monad.implement(Task)({
   bind(task, fn) {
@@ -83,4 +79,4 @@ Monad.implement(Task)({
   },
 });
 
-export interface TaskDictionary extends Monad<TaskDictionary> {}
+export interface AsTask extends Monad<AsTask> {}

@@ -381,26 +381,24 @@ async function run_fp(program: ReturnType<typeof make_fp_program>) {
 }
 
 async function run_concrete_manual() {
-  const app_config = run_reader(ask<EffectConfig>(), config);
+  const app_config = ask<EffectConfig>().value()(config);
   let state = 40;
 
-  const [before, before_state] = run_state(get<number>(), state);
+  const [before, before_state] = get<number>().value()(state);
   state = before_state;
 
-  const label_config = run_reader(ask<LabelConfig>(), {
+  const label_config = ask<LabelConfig>().value()({
     label: app_config.label,
   });
-  const suffix = await run(from_fn(() => Promise.resolve(":async")));
+  const suffix = await from_fn(() => Promise.resolve(":async")).value()();
   const label = label_config.label + suffix;
 
-  const [_modified, modified_state] = run_state(
-    modify((value: number) => value + app_config.increment),
-    state,
-  );
+  const increment = modify((value: number) => value + app_config.increment);
+  const [_modified, modified_state] = increment.value()(state);
   state = modified_state;
 
-  const [_told, logs] = run_writer(tell(label + ":" + before.toString()));
-  const [after, after_state] = run_state(get<number>(), state);
+  const [_told, logs] = tell(label + ":" + before.toString()).value();
+  const [after, after_state] = get<number>().value()(state);
 
   return [[{ before, after }, after_state], logs] as const;
 }

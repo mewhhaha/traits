@@ -1,5 +1,5 @@
 import { type As, define, type Value } from "./trait.ts";
-import { type Effect, is_effect, is_lift_of, type Lift } from "./effects.ts";
+import { type Effect, is_lift_of, type Lift } from "./effects.ts";
 import { Applicative, Format, Functor, Monad } from "./traits.ts";
 
 export type Task<item> = () => Promise<item>;
@@ -36,24 +36,7 @@ export function from_promise<item>(
   return Task(() => Promise.resolve(promise));
 }
 
-export function run<item>(task: TaskValue<item>): Promise<item>;
-export function run<requirements extends Lift<AsTask, unknown>, item>(
-  effect: Effect<requirements, item>,
-): Promise<item>;
-export function run<requirements extends Lift<AsTask, unknown>, item>(
-  task_or_effect: TaskValue<item> | Effect<requirements, item>,
-): Promise<item> {
-  if (is_effect(task_or_effect)) {
-    return run_task_effect(task_or_effect);
-  }
-
-  return task_or_effect.value()();
-}
-
-async function run_task_effect<
-  requirements extends Lift<AsTask, unknown>,
-  item,
->(
+export async function run<requirements extends Lift<AsTask, unknown>, item>(
   effect: Effect<requirements, item>,
 ): Promise<item> {
   if (effect.tag === "pure") {
@@ -62,7 +45,7 @@ async function run_task_effect<
 
   if (is_lift_of(effect.operation, task_kind)) {
     const operation = effect.operation as unknown as Lift<AsTask, unknown>;
-    return await run_task_effect(effect.resume(await run(operation.value)));
+    return await run(effect.resume(await operation.value.value()()));
   }
 
   throw new TypeError("Unhandled effect operation");
@@ -78,7 +61,7 @@ export interface AsTask extends Format<AsTask> {}
 
 Functor.implement(Task)({
   map(fn) {
-    return Task(async () => fn(await run(this)));
+    return Task(async () => fn(await this.value()()));
   },
 });
 
@@ -91,7 +74,10 @@ Applicative.implement(Task)({
 
   ap(value) {
     return Task(async () => {
-      const [fn, item] = await Promise.all([run(this), run(value)]);
+      const [fn, item] = await Promise.all([
+        this.value()(),
+        value.value()(),
+      ]);
       return fn(item);
     });
   },
@@ -102,8 +88,8 @@ export interface AsTask extends Applicative<AsTask> {}
 Monad.implement(Task)({
   bind(fn) {
     return Task(async () => {
-      const value = await run(this);
-      return await run(fn(value));
+      const value = await this.value()();
+      return await fn(value).value()();
     });
   },
 });

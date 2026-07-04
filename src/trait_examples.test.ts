@@ -450,7 +450,7 @@ Deno.test("Applicative lift combines Task applicatives without sequencing effect
     }),
   );
 
-  const promise = task_run(computed);
+  const promise = computed.value()();
   await Promise.resolve();
 
   assert_equals(events, ["left start", "right start"]);
@@ -474,7 +474,7 @@ Deno.test("Applicative lift supports promise-returning Task combiners", async ()
     task_succeed(22),
   );
 
-  const result: number = await task_run(computed);
+  const result: number = await computed.value()();
   assert_equals(result, 42);
 });
 
@@ -522,11 +522,11 @@ Deno.test("Task monad defers and chains async work", async () => {
   });
 
   assert_equals(events, []);
-  assert_equals(await task_run(task), 42);
+  assert_equals(await task.value()(), 42);
   assert_equals(events, ["read", "parse"]);
-  assert_equals(await task_run(applied), 42);
-  assert_equals(await task_run(computed), 42);
-  assert_equals(await task_run(computed), 42);
+  assert_equals(await applied.value()(), 42);
+  assert_equals(await computed.value()(), 42);
+  assert_equals(await computed.value()(), 42);
   assert_equals(computed.fmt(), "Task(?)");
 });
 
@@ -555,7 +555,7 @@ Deno.test("Reader monad threads a shared environment", () => {
     .map((value) => value + 1);
 
   assert_equals(
-    run_reader(endpoint, {
+    endpoint.value()({
       host: "localhost",
       port: 8080,
       path: "/users",
@@ -563,7 +563,7 @@ Deno.test("Reader monad threads a shared environment", () => {
     "localhost:8080/users?host=localhost",
   );
   assert_equals(
-    run_reader(port, { host: "localhost", port: 8080, path: "/users" }),
+    port.value()({ host: "localhost", port: 8080, path: "/users" }),
     8081,
   );
   assert_equals(endpoint.fmt(), "Reader(?)");
@@ -581,7 +581,7 @@ Deno.test("State monad threads state through Do", () => {
     return { before, after };
   });
 
-  assert_equals(run_state(counter, 20), [
+  assert_equals(counter.value()(20), [
     { before: 20, after: 43 },
     42,
   ]);
@@ -599,7 +599,7 @@ Deno.test("Writer monad accumulates logs through Do", () => {
     return value + 2;
   });
 
-  assert_equals(run_writer(program), [
+  assert_equals(program.value(), [
     42,
     ["start", "value", "end"],
   ]);

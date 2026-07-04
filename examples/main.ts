@@ -254,7 +254,7 @@ const state_counter = Do(function* () {
   return { before, after };
 });
 
-const [state_counter_result] = run_state(state_counter, 20);
+const [state_counter_result] = state_counter.value()(20);
 const checking_balance = new_tvar(40);
 const savings_balance = new_tvar(2);
 const transfer_result = atomically(Do(function* () {
@@ -285,7 +285,7 @@ console.log("fluent list", fluent_list.fmt());
 console.log("lift optional profile", optional_profile.fmt());
 console.log("lift parsed config", parsed_config.fmt());
 console.log("lift dice scores", dice_scores.fmt());
-console.log("lift parallel task", await run(parallel_task));
+console.log("lift parallel task", await parallel_task.value()());
 console.log("lift validation", signup_validation.fmt());
 console.log("array monad", array_monad.fmt());
 console.log("array alternative", Format.fmt(array_alternative));
@@ -293,10 +293,10 @@ console.log("map functor", Deno.inspect(map_to_record(mapped_map)));
 console.log("record functor", Deno.inspect(record_to_record(mapped_record)));
 console.log("record traverse result", traversed_record.fmt());
 console.log("decoded account", decoded_account.fmt());
-console.log("task Do result", await run(task_result));
+console.log("task Do result", await task_result.value()());
 console.log(
   "reader endpoint",
-  run_reader(reader_endpoint, {
+  reader_endpoint.value()({
     host: "localhost",
     port: 8080,
     path: "/users",

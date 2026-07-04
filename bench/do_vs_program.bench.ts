@@ -22,7 +22,7 @@ Deno.bench("Reader Do construct+run", () => {
   let checksum = 0;
 
   for (let index = 0; index < iterations; index += 1) {
-    checksum += consume_reader(run_reader(make_reader_do(), config));
+    checksum += consume_reader(make_reader_do().value()(config));
   }
 
   _sink = checksum;
@@ -45,7 +45,7 @@ Deno.bench("Reader Do reuse+run", () => {
   let checksum = 0;
 
   for (let index = 0; index < iterations; index += 1) {
-    checksum += consume_reader(run_reader(program, config));
+    checksum += consume_reader(program.value()(config));
   }
 
   _sink = checksum;
@@ -66,7 +66,7 @@ Deno.bench("State Do construct+run", () => {
   let checksum = 0;
 
   for (let index = 0; index < iterations; index += 1) {
-    checksum += consume_state(run_state(make_state_do(), 40));
+    checksum += consume_state(make_state_do().value()(40));
   }
 
   _sink = checksum;
@@ -87,7 +87,7 @@ Deno.bench("State Do reuse+run", () => {
   let checksum = 0;
 
   for (let index = 0; index < iterations; index += 1) {
-    checksum += consume_state(run_state(program, 40));
+    checksum += consume_state(program.value()(40));
   }
 
   _sink = checksum;
@@ -108,7 +108,7 @@ Deno.bench("Writer Do construct+run", () => {
   let checksum = 0;
 
   for (let index = 0; index < iterations; index += 1) {
-    checksum += consume_writer(run_writer(make_writer_do()));
+    checksum += consume_writer(make_writer_do().value());
   }
 
   _sink = checksum;
@@ -129,7 +129,7 @@ Deno.bench("Writer Do reuse+run", () => {
   let checksum = 0;
 
   for (let index = 0; index < iterations; index += 1) {
-    checksum += consume_writer(run_writer(program));
+    checksum += consume_writer(program.value());
   }
 
   _sink = checksum;
@@ -150,7 +150,7 @@ Deno.bench("Task Do construct+run", async () => {
   let checksum = 0;
 
   for (let index = 0; index < iterations; index += 1) {
-    checksum += consume_task(await run_task(make_task_do()));
+    checksum += consume_task(await make_task_do().value()());
   }
 
   _sink = checksum;
@@ -171,7 +171,7 @@ Deno.bench("Task Do reuse+run", async () => {
   let checksum = 0;
 
   for (let index = 0; index < iterations; index += 1) {
-    checksum += consume_task(await run_task(program));
+    checksum += consume_task(await program.value()());
   }
 
   _sink = checksum;

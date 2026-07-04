@@ -246,7 +246,7 @@ const greeting = Do(function* () {
   return "hello " + name;
 });
 
-await run(greeting); // "hello Ada #7"
+await greeting.value()(); // "hello Ada #7"
 ```
 
 For mixed capabilities, use effects. `Program.scope<Allowed>()` creates a typed

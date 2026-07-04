@@ -1,11 +1,5 @@
 import { define, type Dictionary, type Trait, type Value } from "./trait.ts";
-import {
-  Effect,
-  handle_lift,
-  is_effect,
-  type Lift,
-  type WithoutLift,
-} from "./effects.ts";
+import { Effect, handle_lift, type Lift, type WithoutLift } from "./effects.ts";
 import { Applicative, Format, Functor, Monad } from "./traits.ts";
 
 export type Writer<log, item> = readonly [item, readonly log[]];
@@ -50,45 +44,13 @@ export function tell<log>(log: log): WriterValue<log, void> {
   return writer(undefined, [log]);
 }
 
-export function run_writer<log, item>(
-  value: Value<AsWriter<log>, item>,
-): Writer<log, item>;
 export function run_writer<requirements, item>(
   effect: Effect<requirements, item>,
 ): Effect<
   WithoutLift<requirements, AsWriter<WriterLog<requirements>>>,
   readonly [item, readonly WriterLog<requirements>[]]
->;
-export function run_writer<requirements, log, item>(
-  value_or_effect:
-    | Value<AsWriter<log>, item>
-    | Effect<requirements, item>,
-):
-  | Writer<log, item>
-  | Effect<
-    WithoutLift<requirements, AsWriter<WriterLog<requirements>>>,
-    readonly [item, readonly WriterLog<requirements>[]]
-  > {
-  if (is_effect(value_or_effect)) {
-    return run_writer_effect(value_or_effect);
-  }
-
-  return value_or_effect.value();
-}
-
-type WriterLog<requirements> = requirements extends Lift<
-  AsWriter<infer log>,
-  infer _item
-> ? log
-  : never;
-
-function run_writer_effect<requirements, item>(
-  effect: Effect<requirements, item>,
-  logs: readonly WriterLog<requirements>[] = [],
-): Effect<
-  WithoutLift<requirements, AsWriter<WriterLog<requirements>>>,
-  readonly [item, readonly WriterLog<requirements>[]]
 > {
+  const logs: readonly WriterLog<requirements>[] = [];
   return handle_lift(effect, writer_kind, logs, {
     done(value: item, logs) {
       return [value, logs] as const;
@@ -98,11 +60,17 @@ function run_writer_effect<requirements, item>(
       writer: Value<AsWriter<WriterLog<requirements>>, unknown>,
       logs,
     ) {
-      const [value, next_logs] = run_writer(writer);
+      const [value, next_logs] = writer.value();
       return [value, append_logs(logs, next_logs)] as const;
     },
   });
 }
+
+type WriterLog<requirements> = requirements extends Lift<
+  AsWriter<infer log>,
+  infer _item
+> ? log
+  : never;
 
 Format.implement(Writer)({
   fmt() {
@@ -115,7 +83,7 @@ export interface AsWriter<log> extends Format<AsWriter<log>> {}
 
 Functor.implement(Writer)({
   map(fn) {
-    const [value, logs] = run_writer(this);
+    const [value, logs] = this.value();
     return writer(fn(value), logs);
   },
 });
@@ -128,8 +96,8 @@ Applicative.implement(Writer)({
   },
 
   ap(value) {
-    const [fn, left_logs] = run_writer(this);
-    const [item, right_logs] = run_writer(value);
+    const [fn, left_logs] = this.value();
+    const [item, right_logs] = value.value();
     return writer(fn(item), append_logs(left_logs, right_logs));
   },
 });
@@ -138,8 +106,8 @@ export interface AsWriter<log> extends Applicative<AsWriter<log>> {}
 
 Monad.implement(Writer)({
   bind(fn) {
-    const [value, left_logs] = run_writer(this);
-    const [item, right_logs] = run_writer(fn(value));
+    const [value, left_logs] = this.value();
+    const [item, right_logs] = fn(value).value();
     return writer(item, append_logs(left_logs, right_logs));
   },
 });

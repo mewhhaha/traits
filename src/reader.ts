@@ -1,5 +1,5 @@
 import { define, type Dictionary, type Trait, type Value } from "./trait.ts";
-import { Effect, handle_lift, is_effect, type WithoutLift } from "./effects.ts";
+import { Effect, handle_lift, type WithoutLift } from "./effects.ts";
 import { Applicative, Format, Functor, Monad } from "./traits.ts";
 
 export type Reader<environment, item> = (environment: environment) => item;
@@ -50,31 +50,10 @@ export function local<outer, inner, item>(
   reader: ReaderValue<inner, item>,
   fn: (environment: outer) => inner,
 ): ReaderValue<outer, item> {
-  return Reader((environment: outer) => run_reader(reader, fn(environment)));
+  return Reader((environment: outer) => reader.value()(fn(environment)));
 }
 
-export function run_reader<environment, item>(
-  reader: Value<AsReader<environment>, item>,
-  environment: environment,
-): item;
 export function run_reader<requirements, environment, item>(
-  effect: Effect<requirements, item>,
-  environment: environment,
-): Effect<WithoutLift<requirements, AsReader<environment>>, item>;
-export function run_reader<requirements, environment, item>(
-  reader_or_effect:
-    | Value<AsReader<environment>, item>
-    | Effect<requirements, item>,
-  environment: environment,
-): item | Effect<WithoutLift<requirements, AsReader<environment>>, item> {
-  if (is_effect(reader_or_effect)) {
-    return run_reader_effect(reader_or_effect, environment);
-  }
-
-  return reader_or_effect.value()(environment);
-}
-
-function run_reader_effect<requirements, environment, item>(
   effect: Effect<requirements, item>,
   environment: environment,
 ): Effect<WithoutLift<requirements, AsReader<environment>>, item> {
@@ -84,7 +63,7 @@ function run_reader_effect<requirements, environment, item>(
     },
 
     handle(reader: Value<AsReader<environment>, unknown>, environment) {
-      return [run_reader(reader, environment), environment];
+      return [reader.value()(environment), environment];
     },
   });
 }
@@ -100,7 +79,7 @@ export interface AsReader<environment> extends Format<AsReader<environment>> {}
 Functor.implement(Reader)({
   map(fn) {
     return Reader((environment: unknown) => {
-      return fn(run_reader(this, environment));
+      return fn(this.value()(environment));
     });
   },
 });
@@ -114,8 +93,8 @@ Applicative.implement(Reader)({
 
   ap(value) {
     return Reader((environment: unknown) => {
-      const fn = run_reader(this, environment);
-      return fn(run_reader(value, environment));
+      const fn = this.value()(environment);
+      return fn(value.value()(environment));
     });
   },
 });
@@ -126,8 +105,8 @@ export interface AsReader<environment>
 Monad.implement(Reader)({
   bind(fn) {
     return Reader((environment: unknown) => {
-      const value = run_reader(this, environment);
-      return run_reader(fn(value), environment);
+      const value = this.value()(environment);
+      return fn(value).value()(environment);
     });
   },
 });

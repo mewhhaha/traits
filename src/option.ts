@@ -11,10 +11,10 @@ import {
 } from "./traits.ts";
 
 export type Option<item> =
-  | { tag: "some"; value: item }
-  | { tag: "none" };
+  | readonly ["some", item]
+  | readonly ["none"];
 
-type Some<item> = { tag: "some"; value: item };
+type Some<item> = readonly ["some", item];
 
 export const option_kind = Symbol("Option");
 
@@ -59,11 +59,11 @@ Format.implement(Option)({
   fmt() {
     const option = this.value();
 
-    if (option.tag === "none") {
+    if (option[0] === "none") {
       return "None";
     }
 
-    return "Some(" + Deno.inspect(option.value) + ")";
+    return "Some(" + Deno.inspect(option[1]) + ")";
   },
 });
 
@@ -74,12 +74,12 @@ Equal.implement(Option)({
     const left = this.value();
     const right_value = right.value();
 
-    if (left.tag === "none" && right_value.tag === "none") {
+    if (left[0] === "none" && right_value[0] === "none") {
       return true;
     }
 
-    if (left.tag === "some" && right_value.tag === "some") {
-      return Object.is(left.value, right_value.value);
+    if (left[0] === "some" && right_value[0] === "some") {
+      return Object.is(left[1], right_value[1]);
     }
 
     return false;
@@ -92,11 +92,11 @@ Functor.implement(Option)({
   map(fn) {
     const option = this.value();
 
-    if (option.tag === "none") {
+    if (option[0] === "none") {
       return same_context(this);
     }
 
-    return some(fn(option.value));
+    return some(fn(option[1]));
   },
 });
 
@@ -111,15 +111,15 @@ Applicative.implement(Option)({
     const fn = this.value();
     const option = value.value();
 
-    if (fn.tag === "none") {
+    if (fn[0] === "none") {
       return same_context(this);
     }
 
-    if (option.tag === "none") {
+    if (option[0] === "none") {
       return same_context(value);
     }
 
-    return some(fn.value(option.value));
+    return some(fn[1](option[1]));
   },
 });
 
@@ -133,7 +133,7 @@ Alternative.implement(Option)({
   alt(right) {
     const option = this.value();
 
-    if (option.tag === "some") {
+    if (option[0] === "some") {
       return Option(option);
     }
 
@@ -147,11 +147,11 @@ Monad.implement(Option)({
   bind(fn) {
     const option = this.value();
 
-    if (option.tag === "none") {
+    if (option[0] === "none") {
       return same_context(this);
     }
 
-    return fn(option.value);
+    return fn(option[1]);
   },
 });
 
@@ -161,11 +161,11 @@ Foldable.implement(Option)({
   fold(initial, fn) {
     const option = this.value();
 
-    if (option.tag === "none") {
+    if (option[0] === "none") {
       return initial;
     }
 
-    return fn(initial, option.value);
+    return fn(initial, option[1]);
   },
 });
 
@@ -175,22 +175,22 @@ Traversable.implement(Option)({
   traverse(applicative, fn) {
     const option = this.value();
 
-    if (option.tag === "none") {
+    if (option[0] === "none") {
       return Applicative.pure(applicative, none());
     }
 
-    return Functor.map(fn(option.value), (value) => some(value));
+    return Functor.map(fn(option[1]), (value) => some(value));
   },
 });
 
 export interface AsOption extends Traversable<AsOption> {}
 
 function option_some<item>(value: item): Some<item> {
-  return { tag: "some", value };
+  return ["some", value];
 }
 
 function option_none<item = never>(): Option<item> {
-  return { tag: "none" };
+  return ["none"];
 }
 
 function same_context<out>(value: unknown): out {

@@ -268,7 +268,7 @@ Deno.bench("prototype symbol object value() read", () => {
 });
 
 function raw_some(value: number): BenchValue {
-  return { tag: "some", value };
+  return ["some", value];
 }
 
 function weakmap_cached_as_trait<dictionary extends object, value>(

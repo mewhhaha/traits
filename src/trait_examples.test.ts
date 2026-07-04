@@ -246,7 +246,7 @@ Deno.test("Option callable wrapper traits option values for fluent methods", () 
   assert_equals(value.fmt(), "Some(42)");
   assert_true(value.eq(option_some(42)), "option compares");
   assert_true(
-    Option({ tag: "some", value: 42 }).eq(option_some(42)),
+    Option(["some", 42]).eq(option_some(42)),
     "constructor boxes raw option",
   );
   assert_true(option_none().eq(option_none()), "None compares");
@@ -339,7 +339,7 @@ Deno.test("Result callable wrapper derives fluent methods from its dictionary", 
   assert_equals(value.fmt(), "Ok(42)");
   assert_true(value.eq(result_ok(42)), "result compares");
   assert_true(
-    value.eq(Result({ tag: "ok", value: 42 })),
+    value.eq(Result(["ok", 42])),
     "constructor boxes raw result",
   );
   assert_equals(parsed.value(), result_ok(42).value());
@@ -937,31 +937,31 @@ Deno.test("Traversable flips structures through an applicative", () => {
   const empty_map_result = empty_map.value();
   const empty_record_result = empty_record.value();
 
-  if (array_result.tag !== "ok") {
+  if (array_result[0] !== "ok") {
     throw new Error("expected traversed array to succeed");
   }
 
-  if (map_result.tag !== "ok") {
+  if (map_result[0] !== "ok") {
     throw new Error("expected traversed map to succeed");
   }
 
-  if (empty_array_result.tag !== "ok") {
+  if (empty_array_result[0] !== "ok") {
     throw new Error("expected empty traversed array to succeed");
   }
 
-  if (empty_list_result.tag !== "ok") {
+  if (empty_list_result[0] !== "ok") {
     throw new Error("expected empty traversed list to succeed");
   }
 
-  if (empty_map_result.tag !== "ok") {
+  if (empty_map_result[0] !== "ok") {
     throw new Error("expected empty traversed map to succeed");
   }
 
-  if (empty_record_result.tag !== "ok") {
+  if (empty_record_result[0] !== "ok") {
     throw new Error("expected empty traversed record to succeed");
   }
 
-  assert_equals(array_to_array(array_result.value), [
+  assert_equals(array_to_array(array_result[1]), [
     "value:1",
     "value:2",
     "value:3",
@@ -971,11 +971,11 @@ Deno.test("Traversable flips structures through an applicative", () => {
     array_to_array(option).map((value) => value.value()),
     [option_some(21).value(), option_some(42).value()],
   );
-  assert_equals(map_to_record(map_result.value), { x: 2, y: 3 });
-  assert_equals(array_to_array(empty_array_result.value), []);
-  assert_equals(list_to_array(empty_list_result.value), []);
-  assert_equals(map_to_record(empty_map_result.value), {});
-  assert_equals(record_to_record(empty_record_result.value), {});
+  assert_equals(map_to_record(map_result[1]), { x: 2, y: 3 });
+  assert_equals(array_to_array(empty_array_result[1]), []);
+  assert_equals(list_to_array(empty_list_result[1]), []);
+  assert_equals(map_to_record(empty_map_result[1]), {});
+  assert_equals(record_to_record(empty_record_result[1]), {});
 });
 
 Deno.test("Generic helpers work against trait interfaces", () => {

@@ -10,10 +10,10 @@ import {
 } from "./traits.ts";
 
 export type Result<item, error = string> =
-  | { tag: "ok"; value: item }
-  | { tag: "err"; error: error };
+  | readonly ["ok", item]
+  | readonly ["err", error];
 
-type Ok<item> = { tag: "ok"; value: item };
+type Ok<item> = readonly ["ok", item];
 
 export const result_kind = Symbol("Result");
 
@@ -49,11 +49,11 @@ Format.implement(Result)({
   fmt() {
     const result = this.value();
 
-    if (result.tag === "err") {
-      return "Err(" + Deno.inspect(result.error) + ")";
+    if (result[0] === "err") {
+      return "Err(" + Deno.inspect(result[1]) + ")";
     }
 
-    return "Ok(" + Deno.inspect(result.value) + ")";
+    return "Ok(" + Deno.inspect(result[1]) + ")";
   },
 });
 
@@ -64,12 +64,12 @@ Equal.implement(Result)({
     const left = this.value();
     const right_value = right.value();
 
-    if (left.tag === "err" && right_value.tag === "err") {
-      return Object.is(left.error, right_value.error);
+    if (left[0] === "err" && right_value[0] === "err") {
+      return Object.is(left[1], right_value[1]);
     }
 
-    if (left.tag === "ok" && right_value.tag === "ok") {
-      return Object.is(left.value, right_value.value);
+    if (left[0] === "ok" && right_value[0] === "ok") {
+      return Object.is(left[1], right_value[1]);
     }
 
     return false;
@@ -82,11 +82,11 @@ Functor.implement(Result)({
   map(fn) {
     const result = this.value();
 
-    if (result.tag === "err") {
+    if (result[0] === "err") {
       return same_context(this);
     }
 
-    return ok(fn(result.value));
+    return ok(fn(result[1]));
   },
 });
 
@@ -101,15 +101,15 @@ Applicative.implement(Result)({
     const fn = this.value();
     const result = value.value();
 
-    if (fn.tag === "err") {
+    if (fn[0] === "err") {
       return same_context(this);
     }
 
-    if (result.tag === "err") {
+    if (result[0] === "err") {
       return same_context(value);
     }
 
-    return ok(fn.value(result.value));
+    return ok(fn[1](result[1]));
   },
 });
 
@@ -119,11 +119,11 @@ Monad.implement(Result)({
   bind(fn) {
     const result = this.value();
 
-    if (result.tag === "err") {
+    if (result[0] === "err") {
       return same_context(this);
     }
 
-    return fn(result.value);
+    return fn(result[1]);
   },
 });
 
@@ -133,11 +133,11 @@ Foldable.implement(Result)({
   fold(initial, fn) {
     const result = this.value();
 
-    if (result.tag === "err") {
+    if (result[0] === "err") {
       return initial;
     }
 
-    return fn(initial, result.value);
+    return fn(initial, result[1]);
   },
 });
 
@@ -147,22 +147,22 @@ Traversable.implement(Result)({
   traverse(applicative, fn) {
     const result = this.value();
 
-    if (result.tag === "err") {
-      return Applicative.pure(applicative, err(result.error));
+    if (result[0] === "err") {
+      return Applicative.pure(applicative, err(result[1]));
     }
 
-    return Functor.map(fn(result.value), (value) => ok(value));
+    return Functor.map(fn(result[1]), (value) => ok(value));
   },
 });
 
 export interface AsResult extends Traversable<AsResult> {}
 
 function result_ok<item>(value: item): Ok<item> {
-  return { tag: "ok", value };
+  return ["ok", value];
 }
 
 function result_err<item = never>(error: string): Result<item> {
-  return { tag: "err", error };
+  return ["err", error];
 }
 
 function same_context<out>(value: unknown): out {

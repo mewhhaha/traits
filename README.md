@@ -54,8 +54,8 @@ import { type As, define } from "./trait.ts";
 import { Format, Monad } from "./traits.ts";
 
 export type Option<item> =
-  | { tag: "some"; value: item }
-  | { tag: "none" };
+  | readonly ["some", item]
+  | readonly ["none"];
 
 export const option_kind = Symbol("Option");
 
@@ -74,17 +74,17 @@ export const Option = define<AsOption>(
 export function some<item>(
   value: item,
 ) {
-  return Option({ tag: "some", value });
+  return Option(["some", value]);
 }
 
 export function none<item = never>() {
-  return Option({ tag: "none" });
+  return Option(["none"]);
 }
 
 Format.implement(Option)({
   fmt() {
     const option = this.value();
-    return option.tag === "none" ? "None" : "Some(" + option.value + ")";
+    return option[0] === "none" ? "None" : "Some(" + option[1] + ")";
   },
 });
 
@@ -94,11 +94,11 @@ Monad.implement(Option)({
   bind(fn) {
     const option = this.value();
 
-    if (option.tag === "none") {
+    if (option[0] === "none") {
       return none();
     }
 
-    return fn(option.value);
+    return fn(option[1]);
   },
 });
 
@@ -119,7 +119,7 @@ const sum = some((left: number) => {
   .ap(some(20))
   .ap(some(22));
 
-sum.value(); // { tag: "some", value: 42 }
+sum.value(); // ["some", 42]
 sum.eq(some(42)); // true
 ```
 
@@ -219,7 +219,7 @@ const parsed = ok("42").bind((text) => {
   return from_number(Number.parseInt(text, 10));
 });
 
-parsed.value(); // { tag: "ok", value: 42 }
+parsed.value(); // ["ok", 42]
 ```
 
 `Do` is a small do-notation experiment. It runs a generator over one monad
@@ -233,7 +233,7 @@ const decoded = Do(function* () {
   return number + 1;
 });
 
-decoded.value(); // { tag: "ok", value: 43 }
+decoded.value(); // ["ok", 43]
 ```
 
 `Task` shows the same trait shape for deferred async work:

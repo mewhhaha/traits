@@ -45,66 +45,66 @@ type ParsedRoute = {
 };
 
 type PlainResult<item> =
-  | { tag: "ok"; value: item }
-  | { tag: "err"; error: string };
+  | readonly ["ok", item]
+  | readonly ["err", string];
 
 function plain_parse_request(input: string): PlainResult<ParsedRoute> {
   const line = plain_split_request_line(input);
 
-  if (line.tag === "err") {
+  if (line[0] === "err") {
     return line;
   }
 
-  const method = plain_parse_method(line.value);
+  const method = plain_parse_method(line[1]);
 
-  if (method.tag === "err") {
+  if (method[0] === "err") {
     return method;
   }
 
-  const target = plain_split_target(line.value.target);
+  const target = plain_split_target(line[1].target);
 
-  if (target.tag === "err") {
+  if (target[0] === "err") {
     return target;
   }
 
-  const path = plain_parse_user_path(target.value.path);
+  const path = plain_parse_user_path(target[1].path);
 
-  if (path.tag === "err") {
+  if (path[0] === "err") {
     return path;
   }
 
-  const query = plain_parse_query(target.value.query);
+  const query = plain_parse_query(target[1].query);
 
-  if (query.tag === "err") {
+  if (query[0] === "err") {
     return query;
   }
 
-  const limit = plain_query_int(query.value, "limit", 1, 100);
+  const limit = plain_query_int(query[1], "limit", 1, 100);
 
-  if (limit.tag === "err") {
+  if (limit[0] === "err") {
     return limit;
   }
 
-  const offset = plain_query_int(query.value, "offset", 0, 10_000);
+  const offset = plain_query_int(query[1], "offset", 0, 10_000);
 
-  if (offset.tag === "err") {
+  if (offset[0] === "err") {
     return offset;
   }
 
-  const pagination = plain_validate_pagination(limit.value, offset.value);
+  const pagination = plain_validate_pagination(limit[1], offset[1]);
 
-  if (pagination.tag === "err") {
+  if (pagination[0] === "err") {
     return pagination;
   }
 
-  const active = plain_query_bool(query.value, "active");
+  const active = plain_query_bool(query[1], "active");
 
-  if (active.tag === "err") {
+  if (active[0] === "err") {
     return active;
   }
 
   return plain_ok(
-    build_route(method.value, path.value, pagination.value, active.value),
+    build_route(method[1], path[1], pagination[1], active[1]),
   );
 }
 
@@ -525,11 +525,11 @@ function parse_int(text: string): number | undefined {
 }
 
 function traits_from_plain<item>(result: PlainResult<item>) {
-  if (result.tag === "err") {
-    return traits_err<item>(result.error);
+  if (result[0] === "err") {
+    return traits_err<item>(result[1]);
   }
 
-  return traits_ok(result.value);
+  return traits_ok(result[1]);
 }
 
 function traits_split_request_line(input: string) {
@@ -572,11 +572,11 @@ function traits_query_bool(query: Record<string, string>, key: string) {
 function fp_from_plain<item>(
   result: PlainResult<item>,
 ): FpEither.Either<string, item> {
-  if (result.tag === "err") {
-    return FpEither.left(result.error);
+  if (result[0] === "err") {
+    return FpEither.left(result[1]);
   }
 
-  return FpEither.right(result.value);
+  return FpEither.right(result[1]);
 }
 
 function fp_split_request_line(input: string) {
@@ -617,11 +617,11 @@ function fp_query_bool(query: Record<string, string>, key: string) {
 }
 
 function effect_from_plain<item>(result: PlainResult<item>) {
-  if (result.tag === "err") {
-    return EffectEither.left(result.error);
+  if (result[0] === "err") {
+    return EffectEither.left(result[1]);
   }
 
-  return EffectEither.right(result.value);
+  return EffectEither.right(result[1]);
 }
 
 function effect_split_request_line(input: string) {
@@ -662,11 +662,11 @@ function effect_query_bool(query: Record<string, string>, key: string) {
 }
 
 function purify_from_plain<item>(result: PlainResult<item>) {
-  if (result.tag === "err") {
-    return Left<string, item>(result.error);
+  if (result[0] === "err") {
+    return Left<string, item>(result[1]);
   }
 
-  return Right<item, string>(result.value);
+  return Right<item, string>(result[1]);
 }
 
 function purify_split_request_line(input: string) {
@@ -707,11 +707,11 @@ function purify_query_bool(query: Record<string, string>, key: string) {
 }
 
 function true_from_plain<item>(result: PlainResult<item>) {
-  if (result.tag === "err") {
-    return TrueResult.err<item, string>(result.error);
+  if (result[0] === "err") {
+    return TrueResult.err<item, string>(result[1]);
   }
 
-  return TrueResult.ok<item, string>(result.value);
+  return TrueResult.ok<item, string>(result[1]);
 }
 
 function true_split_request_line(input: string) {
@@ -752,11 +752,11 @@ function true_query_bool(query: Record<string, string>, key: string) {
 }
 
 function consume_plain(result: PlainResult<ParsedRoute>): number {
-  if (result.tag === "err") {
-    return -result.error.length;
+  if (result[0] === "err") {
+    return -result[1].length;
   }
 
-  return result.value.score;
+  return result[1].score;
 }
 
 function consume_traits(
@@ -764,11 +764,11 @@ function consume_traits(
 ): number {
   const value = result.value();
 
-  if (value.tag === "err") {
-    return -value.error.length;
+  if (value[0] === "err") {
+    return -value[1].length;
   }
 
-  return value.value.score;
+  return value[1].score;
 }
 
 function consume_fp(result: FpEither.Either<string, ParsedRoute>): number {
@@ -806,11 +806,11 @@ function consume_true(result: ReturnType<typeof true_parse_request>): number {
 }
 
 function plain_ok<item>(value: item): PlainResult<item> {
-  return { tag: "ok", value };
+  return ["ok", value];
 }
 
 function plain_err<item = never>(error: string): PlainResult<item> {
-  return { tag: "err", error };
+  return ["err", error];
 }
 
 function route_inputs(): string[] {

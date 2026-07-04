@@ -9,10 +9,10 @@ import {
 } from "./traits.ts";
 
 export type Validation<item> =
-  | { tag: "valid"; value: item }
-  | { tag: "invalid"; errors: string[] };
+  | readonly ["valid", item]
+  | readonly ["invalid", readonly string[]];
 
-type Valid<item> = { tag: "valid"; value: item };
+type Valid<item> = readonly ["valid", item];
 
 export const validation_kind = Symbol("Validation");
 
@@ -45,11 +45,11 @@ Format.implement(Validation)({
   fmt() {
     const validation = this.value();
 
-    if (validation.tag === "invalid") {
-      return "Invalid(" + Deno.inspect(validation.errors) + ")";
+    if (validation[0] === "invalid") {
+      return "Invalid(" + Deno.inspect(validation[1]) + ")";
     }
 
-    return "Valid(" + Deno.inspect(validation.value) + ")";
+    return "Valid(" + Deno.inspect(validation[1]) + ")";
   },
 });
 
@@ -60,17 +60,17 @@ Equal.implement(Validation)({
     const left = this.value();
     const right_value = right.value();
 
-    if (left.tag === "valid" && right_value.tag === "valid") {
-      return Object.is(left.value, right_value.value);
+    if (left[0] === "valid" && right_value[0] === "valid") {
+      return Object.is(left[1], right_value[1]);
     }
 
-    if (left.tag === "invalid" && right_value.tag === "invalid") {
-      if (left.errors.length !== right_value.errors.length) {
+    if (left[0] === "invalid" && right_value[0] === "invalid") {
+      if (left[1].length !== right_value[1].length) {
         return false;
       }
 
-      return left.errors.every((error, index) => {
-        return Object.is(error, right_value.errors[index]);
+      return left[1].every((error, index) => {
+        return Object.is(error, right_value[1][index]);
       });
     }
 
@@ -84,11 +84,11 @@ Functor.implement(Validation)({
   map(fn) {
     const validation = this.value();
 
-    if (validation.tag === "invalid") {
+    if (validation[0] === "invalid") {
       return same_context(this);
     }
 
-    return valid(fn(validation.value));
+    return valid(fn(validation[1]));
   },
 });
 
@@ -103,19 +103,19 @@ Applicative.implement(Validation)({
     const fn = this.value();
     const validation = value.value();
 
-    if (fn.tag === "invalid" && validation.tag === "invalid") {
-      return invalid_from_errors([...fn.errors, ...validation.errors]);
+    if (fn[0] === "invalid" && validation[0] === "invalid") {
+      return invalid_from_errors([...fn[1], ...validation[1]]);
     }
 
-    if (fn.tag === "invalid") {
-      return invalid_from_errors(fn.errors);
+    if (fn[0] === "invalid") {
+      return invalid_from_errors(fn[1]);
     }
 
-    if (validation.tag === "invalid") {
-      return invalid_from_errors(validation.errors);
+    if (validation[0] === "invalid") {
+      return invalid_from_errors(validation[1]);
     }
 
-    return valid(fn.value(validation.value));
+    return valid(fn[1](validation[1]));
   },
 });
 
@@ -125,11 +125,11 @@ Foldable.implement(Validation)({
   fold(initial, fn) {
     const validation = this.value();
 
-    if (validation.tag === "invalid") {
+    if (validation[0] === "invalid") {
       return initial;
     }
 
-    return fn(initial, validation.value);
+    return fn(initial, validation[1]);
   },
 });
 
@@ -139,27 +139,29 @@ Traversable.implement(Validation)({
   traverse(applicative, fn) {
     const validation = this.value();
 
-    if (validation.tag === "invalid") {
+    if (validation[0] === "invalid") {
       return Applicative.pure(
         applicative,
         invalid_from_errors(
-          validation.errors,
+          validation[1],
         ),
       );
     }
 
-    return Functor.map(fn(validation.value), (value) => valid(value));
+    return Functor.map(fn(validation[1]), (value) => valid(value));
   },
 });
 
 export interface AsValidation extends Traversable<AsValidation> {}
 
 function validation_valid<item>(value: item): Valid<item> {
-  return { tag: "valid", value };
+  return ["valid", value];
 }
 
-function validation_invalid<item = never>(errors: string[]): Validation<item> {
-  return { tag: "invalid", errors };
+function validation_invalid<item = never>(
+  errors: readonly string[],
+): Validation<item> {
+  return ["invalid", errors];
 }
 
 function invalid_from_errors<item = never>(

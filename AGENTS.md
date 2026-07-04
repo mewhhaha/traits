@@ -32,6 +32,8 @@ machinery, add it only when it improves the examples.
 - Keep each data type and its trait implementations in one file.
 - Keep `satisfies` checks in the implementation file, not in tests.
 - Prefer explicit `if` blocks when a branch matters.
+- Prefer `if` statements, `switch` statements, or the tagged `match` helper over
+  ternaries for branching.
 - Do not add external dependencies unless an experiment needs them.
 
 ## Verification

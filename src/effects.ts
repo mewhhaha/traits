@@ -534,10 +534,16 @@ function append_program_path(
   previous: ProgramPath | undefined,
   value: unknown,
 ): ProgramPath {
+  let length = 1;
+
+  if (previous !== undefined) {
+    length = previous.length + 1;
+  }
+
   return {
     previous,
     value,
-    length: previous === undefined ? 1 : previous.length + 1,
+    length,
   };
 }
 

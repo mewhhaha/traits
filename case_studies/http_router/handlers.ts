@@ -115,12 +115,19 @@ export const create_message_page = Program(function* () {
 
   yield* page_start("Create message");
   yield* emit_body("<h1>Message for user #" + id.toString() + "</h1>");
-  yield* emit_body(
-    "<p>" + (dry_run ? "Preview only" : "Message accepted") + "</p>",
-  );
+
+  let message = "Message accepted";
+  let status = 201;
+
+  if (dry_run) {
+    message = "Preview only";
+    status = 200;
+  }
+
+  yield* emit_body("<p>" + message + "</p>");
   yield* page_end();
 
-  return html(dry_run ? 200 : 201);
+  return html(status);
 });
 
 export const not_found_page = Program(function* () {

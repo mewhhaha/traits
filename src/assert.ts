@@ -7,7 +7,12 @@ export function assert_equals<value>(
     return;
   }
 
-  const prefix = message === undefined ? "Values are not equal" : message;
+  let prefix = "Values are not equal";
+
+  if (message !== undefined) {
+    prefix = message;
+  }
+
   throw new Error(
     prefix + "\nactual: " + format(actual) + "\nexpected: " + format(expected),
   );

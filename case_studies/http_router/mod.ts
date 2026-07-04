@@ -1,3 +1,4 @@
+import { match } from "../../src/tagged.ts";
 import { Format } from "../../src/traits.ts";
 import {
   create_message_page,
@@ -60,10 +61,10 @@ const router = route_all(
 
 export function route_http(request: Request): Response {
   const context = route_context(request);
-  const result = router.value().match(context);
-  const program: HttpProgram = result[0] === "matched"
-    ? result[1]
-    : render_handler(not_found_page, context);
+  const program: HttpProgram = match(router.value().match(context), {
+    matched: (program) => program,
+    missed: () => render_handler(not_found_page, context),
+  });
 
   return to_response(program);
 }

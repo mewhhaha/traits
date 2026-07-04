@@ -485,8 +485,18 @@ function build_route(
   pagination: Pagination,
   active: boolean,
 ): ParsedRoute {
-  const active_score = active ? 17 : 3;
-  const method_score = method === "GET" ? 5 : 11;
+  let active_score = 3;
+
+  if (active) {
+    active_score = 17;
+  }
+
+  let method_score = 11;
+
+  if (method === "GET") {
+    method_score = 5;
+  }
+
   const score = path.id + pagination.limit - pagination.offset + active_score +
     method_score;
 
@@ -818,10 +828,19 @@ function route_inputs(): string[] {
 
   for (let index = 0; index < 128; index += 1) {
     const id = index + 1;
-    const method = index % 4 === 0 ? "POST" : "GET";
+    let method: Method = "GET";
+
+    if (index % 4 === 0) {
+      method = "POST";
+    }
+
     const limit = [5, 10, 20, 25][index % 4];
     const offset = limit * (index % 6);
-    const active = index % 3 === 0 ? "true" : "false";
+    let active = "false";
+
+    if (index % 3 === 0) {
+      active = "true";
+    }
 
     if (index % 17 === 0) {
       out.push(

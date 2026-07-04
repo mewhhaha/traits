@@ -3,7 +3,7 @@ import { Effect } from "../../src/effects.ts";
 import { run_reader } from "../../src/reader.ts";
 import { run_task } from "../../src/task.ts";
 import { run_writer } from "../../src/writer.ts";
-import { run_file_system } from "./filesystem.ts";
+import { type FileSystemRuntime, run_file_system } from "./filesystem.ts";
 import { cli_program } from "./program.ts";
 import {
   dry_run_file_system,
@@ -39,9 +39,17 @@ export async function run_cli(
   const files = seed_files();
   const writes = new Map<string, string>();
   const input: CliInput = { argv };
-  const file_system = dry_run
-    ? dry_run_file_system(files, writes)
-    : io_file_system(files, writes);
+  let file_system: FileSystemRuntime;
+  let mode: CommandReport["mode"];
+
+  if (dry_run) {
+    file_system = dry_run_file_system(files, writes);
+    mode = "dry-run";
+  } else {
+    file_system = io_file_system(files, writes);
+    mode = "io";
+  }
+
   const [exit_code, stdout] = await Effect.handle_with(cli_program, [
     (effect) => run_reader(effect, input),
     (effect) => run_writer(effect, from_array<string>([])),
@@ -50,7 +58,7 @@ export async function run_cli(
   ]);
 
   return {
-    mode: dry_run ? "dry-run" : "io",
+    mode,
     command: argv.join(" "),
     exit_code,
     stdout: to_array(stdout),

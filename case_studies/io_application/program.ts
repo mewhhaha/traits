@@ -13,27 +13,31 @@ const App = Program.scope<App>();
 
 export const cli_program = App(function* () {
   const input = yield* ask<CliInput>();
-  const command = parse_command(input.argv);
+  const [tag, payload] = parse_command(input.argv);
 
-  if (command[0] === "echo") {
-    yield* stdout(command[1].text);
-    return 0;
+  switch (tag) {
+    case "echo": {
+      yield* stdout(payload.text);
+      return 0;
+    }
+
+    case "cat": {
+      const text = yield* read_file(payload.path);
+      yield* stdout(text);
+      return 0;
+    }
+
+    case "write": {
+      yield* write_file(payload.path, payload.text);
+      yield* stdout("wrote " + payload.path);
+      return 0;
+    }
+
+    case "help": {
+      yield* stdout(usage());
+      return 2;
+    }
   }
-
-  if (command[0] === "cat") {
-    const text = yield* read_file(command[1].path);
-    yield* stdout(text);
-    return 0;
-  }
-
-  if (command[0] === "write") {
-    yield* write_file(command[1].path, command[1].text);
-    yield* stdout("wrote " + command[1].path);
-    return 0;
-  }
-
-  yield* stdout(usage());
-  return 2;
 });
 
 function stdout(line: string) {

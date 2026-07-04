@@ -27,46 +27,50 @@ export const agent_harness = AgentApp(function* () {
   yield* stdout("user: " + input.objective);
 
   for (let turn = 1; turn <= input.max_turns; turn += 1) {
-    const action = yield* complete(messages);
+    const [tag, payload] = yield* complete(messages);
 
-    if (action[0] === "read_file") {
-      const path = action[1].path;
-      yield* stdout("assistant tool: read_file " + path);
+    switch (tag) {
+      case "read_file": {
+        const path = payload.path;
+        yield* stdout("assistant tool: read_file " + path);
 
-      const text = yield* read_file(path);
-      messages = [
-        ...messages,
-        ["assistant", "read_file " + path],
-        ["tool", "read_file " + path + "\n" + text],
-      ];
-      continue;
+        const text = yield* read_file(path);
+        messages = [
+          ...messages,
+          ["assistant", "read_file " + path],
+          ["tool", "read_file " + path + "\n" + text],
+        ];
+        continue;
+      }
+
+      case "write_file": {
+        const path = payload.path;
+        yield* stdout("assistant tool: write_file " + path);
+
+        yield* write_file(path, payload.text);
+        messages = [
+          ...messages,
+          ["assistant", "write_file " + path],
+          ["tool", "wrote " + path],
+        ];
+        continue;
+      }
+
+      case "final": {
+        yield* stdout("assistant: " + payload.answer);
+        const transcript: AgentMessage[] = [
+          ...messages,
+          ["assistant", payload.answer],
+        ];
+
+        return {
+          status: "completed",
+          answer: payload.answer,
+          turns: turn,
+          transcript,
+        } satisfies AgentResult;
+      }
     }
-
-    if (action[0] === "write_file") {
-      const path = action[1].path;
-      yield* stdout("assistant tool: write_file " + path);
-
-      yield* write_file(path, action[1].text);
-      messages = [
-        ...messages,
-        ["assistant", "write_file " + path],
-        ["tool", "wrote " + path],
-      ];
-      continue;
-    }
-
-    yield* stdout("assistant: " + action[1].answer);
-    const transcript: AgentMessage[] = [
-      ...messages,
-      ["assistant", action[1].answer],
-    ];
-
-    return {
-      status: "completed",
-      answer: action[1].answer,
-      turns: turn,
-      transcript,
-    } satisfies AgentResult;
   }
 
   const answer = "stopped after " + input.max_turns.toString() + " turns";

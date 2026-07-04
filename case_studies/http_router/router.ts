@@ -78,24 +78,24 @@ Functor.implement(UrlPatternList)({
         return {
           ...entry,
           select(context, match) {
-            const result = entry.select(context, match);
+            const [tag, payload] = entry.select(context, match);
 
-            if (result[0] === "missed") {
+            if (tag === "missed") {
               return missed;
             }
 
-            return matched(fn(result[1]));
+            return matched(fn(payload));
           },
         };
       }),
       match(context) {
-        const result = routes.match(context);
+        const [tag, payload] = routes.match(context);
 
-        if (result[0] === "missed") {
+        if (tag === "missed") {
           return missed;
         }
 
-        return matched(fn(result[1]));
+        return matched(fn(payload));
       },
     });
   },
@@ -122,19 +122,19 @@ Applicative.implement(UrlPatternList)({
       label: "(" + fn_routes.label + " <*> " + value_routes.label + ")",
       entries: [],
       match(context) {
-        const fn_result = fn_routes.match(context);
+        const [fn_tag, fn] = fn_routes.match(context);
 
-        if (fn_result[0] === "missed") {
+        if (fn_tag === "missed") {
           return missed;
         }
 
-        const value_result = value_routes.match(context);
+        const [value_tag, value_item] = value_routes.match(context);
 
-        if (value_result[0] === "missed") {
+        if (value_tag === "missed") {
           return missed;
         }
 
-        return matched(fn_result[1](value_result[1]));
+        return matched(fn(value_item));
       },
     });
   },
@@ -156,8 +156,9 @@ Alternative.implement(UrlPatternList)({
       entries: [...left_routes.entries, ...right_routes.entries],
       match(context) {
         const left = left_routes.match(context);
+        const [tag] = left;
 
-        if (left[0] === "matched") {
+        if (tag === "matched") {
           return left;
         }
 
@@ -390,8 +391,9 @@ function match_entries<item>(
     }
 
     const result = entry.select(context, match);
+    const [tag] = result;
 
-    if (result[0] === "matched") {
+    if (tag === "matched") {
       return result;
     }
   }
@@ -416,7 +418,13 @@ function match_path_params<
 
     const decoded = decodeURIComponent(raw);
     const parser = params[name as keyof params] as Parser<unknown> | undefined;
-    const value = parser === undefined ? decoded : parser.parse(decoded);
+    let value: unknown;
+
+    if (parser === undefined) {
+      value = decoded;
+    } else {
+      value = parser.parse(decoded);
+    }
 
     if (value === undefined) {
       return undefined;

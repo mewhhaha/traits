@@ -1,5 +1,5 @@
 import { define, type Dictionary, type Trait, type Value } from "./trait.ts";
-import { Effect, handle_lift, type WithoutLift } from "./effects.ts";
+import { type Effect, handle_lift, type WithoutLift } from "./effects.ts";
 import { Applicative, Format, Functor, Monad } from "./traits.ts";
 
 export type Reader<environment, item> = (environment: environment) => item;

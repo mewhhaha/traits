@@ -4,7 +4,8 @@
     "npm:effect@3.21.4": "3.21.4",
     "npm:fp-ts@2.16.11": "2.16.11",
     "npm:purify-ts@2.1.4": "2.1.4",
-    "npm:true-myth@9.1.0": "9.1.0"
+    "npm:true-myth@9.1.0": "9.1.0",
+    "npm:typescript@5.9.3": "5.9.3"
   },
   "npm": {
     "@standard-schema/spec@1.1.0": {
@@ -40,6 +41,10 @@
     },
     "true-myth@9.1.0": {
       "integrity": "sha512-YjUvyDXXlSLkdAauL1MeTh/skH6SCddCjhmX2vJHWev1VubXFhFn5DrG4Iy9xqWTchxpyuZYQsTCozRoMZcbAw=="
+    },
+    "typescript@5.9.3": {
+      "integrity": "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw==",
+      "bin": true
     }
   },
   "workspace": {
@@ -47,7 +52,8 @@
       "npm:effect@3.21.4",
       "npm:fp-ts@2.16.11",
       "npm:purify-ts@2.1.4",
-      "npm:true-myth@9.1.0"
+      "npm:true-myth@9.1.0",
+      "npm:typescript@5.9.3"
     ]
   }
 }

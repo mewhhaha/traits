@@ -1,7 +1,7 @@
-import {
-  type Effect as EffectValue,
-  type Uses,
-  type WithoutLift,
+import type {
+  Effect as EffectValue,
+  Uses,
+  WithoutLift,
 } from "../../src/effects.ts";
 import { type AsReader, run_reader } from "../../src/reader.ts";
 import { type As, define, type Value } from "../../src/trait.ts";

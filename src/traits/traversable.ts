@@ -5,9 +5,9 @@ import {
   type TraitDictionary,
   type Value,
 } from "../trait.ts";
-import { type Applicative as ApplicativeDictionary } from "./applicative.ts";
-import { type Foldable as FoldableDictionary } from "./foldable.ts";
-import { type Functor as FunctorDictionary } from "./functor.ts";
+import type { Applicative as ApplicativeDictionary } from "./applicative.ts";
+import type { Foldable as FoldableDictionary } from "./foldable.ts";
+import type { Functor as FunctorDictionary } from "./functor.ts";
 
 export const traversable_trait = Symbol("Traversable");
 

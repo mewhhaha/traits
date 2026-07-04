@@ -124,6 +124,7 @@ export const Program = Object.assign(program, {
 
 export const Effect = {
   pure,
+  from,
   lift,
   send,
   suspend,
@@ -140,20 +141,32 @@ export function pure<item>(value: item): Effect<never, item> {
   }) as Effect<never, item>;
 }
 
+export function from<requirements, item>(
+  value: Effect<requirements, item>,
+): Effect<requirements, item>;
+export function from<dictionary extends Dictionary, item>(
+  value: Value<dictionary, item>,
+): Effect<Lift<dictionary, item>, item>;
+export function from(value: unknown): Effect<unknown, unknown> {
+  return as_effect(value);
+}
+
 export function lift<dictionary extends Dictionary, item>(
   value: Value<dictionary, item>,
 ): Effect<Lift<dictionary, item>, item> {
-  return suspend({ tag: "lift", value } as Lift<dictionary, item>, (value) => {
-    return pure(value as item);
-  });
+  return suspend(
+    { tag: "lift", value } as Lift<dictionary, item>,
+    resume_pure,
+  ) as Effect<Lift<dictionary, item>, item>;
 }
 
 export function send<operation extends TaggedOperation & Operation<unknown>>(
   operation: operation,
 ): Effect<operation, OperationOutput<operation>> {
-  return suspend(operation, (value) => {
-    return pure(value as OperationOutput<operation>);
-  });
+  return suspend(operation, resume_pure) as Effect<
+    operation,
+    OperationOutput<operation>
+  >;
 }
 
 export function suspend<requirements, item>(
@@ -511,7 +524,7 @@ function as_effect<requirements, item>(
   if (is_trait(value)) {
     return suspend(
       { tag: "lift", value } as Lift<Dictionary, item>,
-      (value) => pure(value as item),
+      resume_pure,
     ) as Effect<requirements, item>;
   }
 
@@ -527,7 +540,11 @@ export function is_effect(value: unknown): value is Effect<unknown, unknown> {
     return false;
   }
 
-  return Object.prototype.isPrototypeOf.call(EffectPrototype, value);
+  return Object.getPrototypeOf(value) === EffectPrototype;
+}
+
+function resume_pure(value: unknown): Effect<never, unknown> {
+  return pure(value);
 }
 
 function append_program_path(

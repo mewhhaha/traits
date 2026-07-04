@@ -10,6 +10,7 @@ export * from "./state.ts";
 export * from "./writer.ts";
 export * from "./stm.ts";
 export * from "./validation.ts";
+export * from "./parallel.ts";
 export { Effect, Program } from "./effects.ts";
 export type {
   EffectHandler,

@@ -1,6 +1,7 @@
 const trait_constructor_key = Symbol("Trait.constructor");
 const trait_prototype_key = Symbol("Trait.prototype");
 const trait_value = Symbol("Trait.value");
+const has_own = Object.prototype.hasOwnProperty;
 
 type TraitBase<dictionary, value, item> = {
   readonly [trait_value]: value;
@@ -95,7 +96,7 @@ export function is_trait(
     return false;
   }
 
-  return trait_value in value;
+  return has_own.call(value, trait_value);
 }
 
 function trait_prototype(dictionary: object): object {

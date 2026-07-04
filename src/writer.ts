@@ -1,5 +1,10 @@
 import { define, type Dictionary, type Trait, type Value } from "./trait.ts";
-import { Effect, handle_lift, type Lift, type WithoutLift } from "./effects.ts";
+import {
+  type Effect,
+  handle_lift,
+  type Lift,
+  type WithoutLift,
+} from "./effects.ts";
 import {
   Applicative,
   Format,

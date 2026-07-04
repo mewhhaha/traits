@@ -1,4 +1,30 @@
 {
+  "name": "@mewhhaha/traits",
+  "version": "0.1.0",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/mod.ts",
+    "./transform": "./tools/transform_do_program.ts"
+  },
+  "publish": {
+    "include": [
+      "README.md",
+      "deno.json",
+      "deno.lock",
+      "src/**/*.ts",
+      "tools/transform_do_program.ts"
+    ],
+    "exclude": [
+      "src/*.test.ts"
+    ]
+  },
+  "lint": {
+    "rules": {
+      "exclude": [
+        "no-slow-types"
+      ]
+    }
+  },
   "imports": {
     "effect": "npm:effect@3.21.4",
     "fp-ts/Either": "npm:fp-ts@2.16.11/lib/Either.js",
@@ -8,14 +34,20 @@
     "fp-ts/function": "npm:fp-ts@2.16.11/lib/function.js",
     "purify-ts/Either": "npm:purify-ts@2.1.4/Either",
     "purify-ts/Maybe": "npm:purify-ts@2.1.4/Maybe",
+    "typescript": "npm:typescript@5.9.3",
     "true-myth/maybe": "npm:true-myth@9.1.0/maybe",
     "true-myth/result": "npm:true-myth@9.1.0/result"
   },
   "tasks": {
-    "bench": "deno bench bench/*.bench.ts",
-    "case-study": "deno run case_studies/main.ts",
-    "check": "deno check src/mod.ts src/*.test.ts examples/*.ts case_studies/**/*.ts bench/*.bench.ts",
+    "bench": "deno bench --allow-env --allow-read --allow-write=/tmp bench/*.bench.ts",
+    "bench:case-studies": "deno bench --allow-env --allow-read --allow-write=/tmp bench/case_studies_transformer.bench.ts",
+    "case-study": "deno run --allow-read case_studies/main.ts",
+    "transform": "deno run --allow-env --allow-read --allow-write tools/transform_do_program.ts",
+    "publish": "deno publish --allow-slow-types",
+    "publish:dry-run": "deno publish --dry-run --allow-slow-types",
+    "check": "deno check src/mod.ts src/*.test.ts examples/*.ts case_studies/**/*.ts bench/*.bench.ts tools/*.ts",
     "example": "deno run examples/main.ts",
-    "test": "deno test"
+    "test": "deno test",
+    "test:transformer": "deno test --allow-env tools/transform_do_program_checks.ts"
   }
 }

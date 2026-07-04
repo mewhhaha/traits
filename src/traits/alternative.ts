@@ -5,7 +5,7 @@ import {
   type TraitDictionary,
   type Value,
 } from "../trait.ts";
-import { type Applicative as ApplicativeDictionary } from "./applicative.ts";
+import type { Applicative as ApplicativeDictionary } from "./applicative.ts";
 
 export const alternative_trait = Symbol("Alternative");
 

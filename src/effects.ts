@@ -103,8 +103,6 @@ export const Effect = {
   suspend,
   map,
   bind,
-  Program,
-  scope,
   run,
 };
 
@@ -235,7 +233,7 @@ function program<yielded, item>(
   }
 }
 
-export function scope<requirements>(): ProgramScope<requirements> {
+function scope<requirements>(): ProgramScope<requirements> {
   return function scoped_program<yielded, item>(
     run: () => Generator<ScopedYield<requirements, yielded>, item, unknown>,
   ): Effect<EffectRequirements<yielded>, item> {

@@ -30,18 +30,18 @@ so the first run may download `fp-ts`, `effect`, `purify-ts`, and `true-myth`.
 ## Shape
 
 The core wrapper and trait-definition machinery lives in `src/trait.ts` and
-`src/trait_value.ts`. Application-level trait definitions live in
-`src/traits.ts`.
+`src/trait_value.ts`. Application-level trait definitions live in `src/traits/`,
+with `src/traits.ts` re-exporting them for examples.
 
 Each data type exports a type and a same-named function. The function wraps an
 existing contextual value as a fluent `Trait<dictionary, value, item>` and also
 acts as the trait dictionary. Constructors and other helpers are normal exported
 functions that return wrapped values.
 
-Each data type registers its raw value shape in `TraitTypes<item>`. That maps a
-dictionary kind to the value it wraps, so `Value<typeof Option, item>` can
-recover that `Option` stores `Option<item>` without putting a phantom value
-member on every dictionary.
+Each data type registers its raw value shape in `TraitTypes<dictionary, item>`.
+That maps a dictionary kind to the value it wraps, so
+`Value<typeof Option, item>` can recover that `Option` stores `Option<item>`
+without putting a phantom value member on every dictionary.
 
 Trait implementation functions receive the wrapped value as `this`. The
 installer stores that this-based implementation in the canonical symbol slot and
@@ -60,7 +60,7 @@ export type Option<item> =
 export const option_kind = Symbol("Option");
 
 declare module "./trait.ts" {
-  interface TraitTypes<item> {
+  interface TraitTypes<dictionary, item> {
     [option_kind]: Option<item>;
   }
 }
@@ -82,8 +82,8 @@ export function none<item = never>() {
 }
 
 Format.implement(Option)({
-  fmt(value) {
-    const option = value.value();
+  fmt() {
+    const option = this.value();
     return option.tag === "none" ? "None" : "Some(" + option.value + ")";
   },
 });
@@ -91,8 +91,8 @@ Format.implement(Option)({
 export interface AsOption extends Format<AsOption> {}
 
 Monad.implement(Option)({
-  bind(value, fn) {
-    const option = value.value();
+  bind(fn) {
+    const option = this.value();
 
     if (option.tag === "none") {
       return none();
@@ -141,9 +141,9 @@ calls through a cached constructor. The lower-level
 `as_trait(dictionary, value)` and `as_trait_cached(dictionary)` helpers remain
 available for experiments that need to manage construction directly.
 
-Each data type registers its raw value once in `TraitTypes<item>`. `Value` uses
-that registry to type helper functions, trait implementations, and fluent
-methods.
+Each data type registers its raw value once in `TraitTypes<dictionary, item>`.
+`Value` uses that registry to type helper functions, trait implementations, and
+fluent methods.
 
 The wrapped value's prototype points at a shared trait prototype, which
 delegates to the dictionary. Symbol-scoped implementations and direct fluent

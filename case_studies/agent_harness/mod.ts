@@ -1,13 +1,18 @@
 import { from_array, to_array } from "../../src/array.ts";
 import { Effect } from "../../src/effects.ts";
 import { run_reader } from "../../src/reader.ts";
+import { run_state } from "../../src/state.ts";
 import { run_task } from "../../src/task.ts";
 import { run_writer } from "../../src/writer.ts";
 import { io_file_system, map_to_record } from "../io_application/runtime.ts";
 import { run_file_system } from "../io_application/filesystem.ts";
 import { run_language_model } from "./model.ts";
 import { agent_harness } from "./program.ts";
-import { type AgentHarnessReport, default_agent_input } from "./types.ts";
+import {
+  type AgentHarnessReport,
+  type AgentTranscript,
+  default_agent_input,
+} from "./types.ts";
 import { default_language_model, seed_agent_files } from "./runtime.ts";
 
 export async function run_agent_harness_case_study() {
@@ -33,13 +38,15 @@ export async function run_agent_harness(): Promise<AgentHarnessReport> {
   const writes = new Map<string, string>();
   const file_system = io_file_system(files, writes);
   const model = default_language_model();
-  const [result, stdout] = await Effect.handle_with(agent_harness, [
+  const [state_result, stdout] = await Effect.handle_with(agent_harness, [
     (effect) => run_reader(effect, default_agent_input()),
+    (effect) => run_state(effect, [] as AgentTranscript),
     (effect) => run_writer(effect, from_array<string>([])),
     (effect) => run_language_model(effect, model),
     (effect) => run_file_system(effect, file_system),
     run_task,
   ]);
+  const [result] = state_result;
 
   return {
     result,

@@ -2,7 +2,12 @@ import { type AsArray, from_array } from "../../src/array.ts";
 import { Program, type Uses } from "../../src/effects.ts";
 import { ask, type AsReader } from "../../src/reader.ts";
 import { type AsWriter, tell } from "../../src/writer.ts";
-import { type FileSystem, read_file, write_file } from "./filesystem.ts";
+import {
+  type FileSystem,
+  format_file_system_error,
+  read_file,
+  write_file,
+} from "./filesystem.ts";
 import { type CliInput, parse_command, usage } from "./types.ts";
 
 export type StdOut = Uses<AsWriter<AsArray, string>>;
@@ -22,15 +27,41 @@ export const cli_program = App(function* () {
     }
 
     case "cat": {
-      const text = yield* read_file(payload.path);
-      yield* stdout(text);
-      return 0;
+      const result = yield* read_file(payload.path);
+      const [result_tag, result_payload] = result.value();
+      let exit_code: number;
+
+      switch (result_tag) {
+        case "ok":
+          yield* stdout(result_payload);
+          exit_code = 0;
+          break;
+        case "err":
+          yield* stdout(format_file_system_error(result_payload));
+          exit_code = 1;
+          break;
+      }
+
+      return exit_code;
     }
 
     case "write": {
-      yield* write_file(payload.path, payload.text);
-      yield* stdout("wrote " + payload.path);
-      return 0;
+      const result = yield* write_file(payload.path, payload.text);
+      const [result_tag, result_payload] = result.value();
+      let exit_code: number;
+
+      switch (result_tag) {
+        case "ok":
+          yield* stdout("wrote " + payload.path);
+          exit_code = 0;
+          break;
+        case "err":
+          yield* stdout(format_file_system_error(result_payload));
+          exit_code = 1;
+          break;
+      }
+
+      return exit_code;
     }
 
     case "help": {

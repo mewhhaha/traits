@@ -55,13 +55,17 @@ export function err<item = never, error = string>(
 export function is_ok<item, error>(
   value: Result<item, error>,
 ): value is Ok<item> {
-  return value[0] === "ok";
+  const [tag] = value;
+
+  return tag === "ok";
 }
 
 export function is_err<item, error>(
   value: Result<item, error>,
 ): value is Err<error> {
-  return value[0] === "err";
+  const [tag] = value;
+
+  return tag === "err";
 }
 
 export function from_number(value: number) {
@@ -74,13 +78,14 @@ export function from_number(value: number) {
 
 Format.implement(Result)({
   fmt() {
-    const result = this.value();
+    const [tag, payload] = this.value();
 
-    if (result[0] === "err") {
-      return "Err(" + Deno.inspect(result[1]) + ")";
+    switch (tag) {
+      case "ok":
+        return "Ok(" + Deno.inspect(payload) + ")";
+      case "err":
+        return "Err(" + Deno.inspect(payload) + ")";
     }
-
-    return "Ok(" + Deno.inspect(result[1]) + ")";
   },
 });
 
@@ -88,15 +93,26 @@ export interface AsResult extends Format<AsResult> {}
 
 Equal.implement(Result)({
   eq(right) {
-    const left = this.value();
-    const right_value = right.value();
+    const [left_tag, left_payload] = this.value();
+    const [right_tag, right_payload] = right.value();
 
-    if (left[0] === "err" && right_value[0] === "err") {
-      return Object.is(left[1], right_value[1]);
-    }
-
-    if (left[0] === "ok" && right_value[0] === "ok") {
-      return Object.is(left[1], right_value[1]);
+    switch (left_tag) {
+      case "err":
+        switch (right_tag) {
+          case "err":
+            return Object.is(left_payload, right_payload);
+          case "ok":
+            return false;
+        }
+        break;
+      case "ok":
+        switch (right_tag) {
+          case "err":
+            return false;
+          case "ok":
+            return Object.is(left_payload, right_payload);
+        }
+        break;
     }
 
     return false;
@@ -107,13 +123,14 @@ export interface AsResult extends Equal<AsResult> {}
 
 Functor.implement(Result)({
   map(fn) {
-    const result = this.value();
+    const [tag, payload] = this.value();
 
-    if (result[0] === "err") {
-      return same_context(this);
+    switch (tag) {
+      case "err":
+        return same_context(this);
+      case "ok":
+        return ok(fn(payload));
     }
-
-    return ok(fn(result[1]));
   },
 });
 
@@ -125,18 +142,22 @@ Applicative.implement(Result)({
   },
 
   ap(value) {
-    const fn = this.value();
-    const result = value.value();
+    const [fn_tag, fn] = this.value();
 
-    if (fn[0] === "err") {
-      return same_context(this);
+    switch (fn_tag) {
+      case "err":
+        return same_context(this);
+      case "ok": {
+        const [result_tag, result] = value.value();
+
+        switch (result_tag) {
+          case "err":
+            return same_context(value);
+          case "ok":
+            return ok(fn(result));
+        }
+      }
     }
-
-    if (result[0] === "err") {
-      return same_context(value);
-    }
-
-    return ok(fn[1](result[1]));
   },
 });
 
@@ -144,13 +165,14 @@ export interface AsResult extends Applicative<AsResult> {}
 
 Monad.implement(Result)({
   bind(fn) {
-    const result = this.value();
+    const [tag, payload] = this.value();
 
-    if (result[0] === "err") {
-      return same_context(this);
+    switch (tag) {
+      case "err":
+        return same_context(this);
+      case "ok":
+        return fn(payload);
     }
-
-    return fn(result[1]);
   },
 });
 
@@ -158,13 +180,14 @@ export interface AsResult extends Monad<AsResult> {}
 
 Foldable.implement(Result)({
   fold(initial, fn) {
-    const result = this.value();
+    const [tag, payload] = this.value();
 
-    if (result[0] === "err") {
-      return initial;
+    switch (tag) {
+      case "err":
+        return initial;
+      case "ok":
+        return fn(initial, payload);
     }
-
-    return fn(initial, result[1]);
   },
 });
 
@@ -172,13 +195,14 @@ export interface AsResult extends Foldable<AsResult> {}
 
 Traversable.implement(Result)({
   traverse(applicative, fn) {
-    const result = this.value();
+    const [tag, payload] = this.value();
 
-    if (result[0] === "err") {
-      return Applicative.pure(applicative, err(result[1]));
+    switch (tag) {
+      case "err":
+        return Applicative.pure(applicative, err(payload));
+      case "ok":
+        return Functor.map(fn(payload), (value) => ok(value));
     }
-
-    return Functor.map(fn(result[1]), (value) => ok(value));
   },
 });
 

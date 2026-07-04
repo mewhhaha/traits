@@ -1,6 +1,6 @@
-import { match } from "../../src/tagged.ts";
 import { Format } from "../../src/traits.ts";
 import {
+  bad_request_page,
   create_message_page,
   home_page,
   not_found_page,
@@ -9,7 +9,7 @@ import {
   user_json,
   user_page,
 } from "./handlers.ts";
-import { type HttpProgram, to_response } from "./response.ts";
+import { to_response } from "./response.ts";
 import {
   boolean_query,
   integer_param,
@@ -61,12 +61,18 @@ const router = route_all(
 
 export function route_http(request: Request): Response {
   const context = route_context(request);
-  const program: HttpProgram = match(router.value().match(context), {
-    matched: (program) => program,
-    missed: () => render_handler(not_found_page, context),
-  });
+  const [tag, payload] = router.value().match(context);
 
-  return to_response(program);
+  switch (tag) {
+    case "matched":
+      return to_response(payload);
+    case "missed":
+      return to_response(render_handler(not_found_page, context));
+    case "rejected":
+      return to_response(render_handler(bad_request_page, {
+        rejection: payload,
+      }));
+  }
 }
 
 export async function run_http_router_case_study() {
@@ -77,6 +83,7 @@ export async function run_http_router_case_study() {
       new Request("https://example.test/users/42?tab=activity"),
       new Request("https://example.test/api/users/42"),
       new Request("https://example.test/users/42/settings?section=privacy"),
+      new Request("https://example.test/users/not-a-number"),
       new Request("https://example.test/users/42/messages?dry_run=true", {
         method: "POST",
       }),

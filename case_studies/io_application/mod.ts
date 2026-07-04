@@ -18,6 +18,7 @@ export async function run_io_application_case_study() {
     const scenario of [
       { argv: ["echo", "hello", "traits"], dry_run: false },
       { argv: ["cat", "notes.txt"], dry_run: false },
+      { argv: ["cat", "missing.txt"], dry_run: false },
       { argv: ["write", "out.txt", "generated summary"], dry_run: false },
       { argv: ["write", "out.txt", "preview only"], dry_run: true },
       { argv: ["unknown"], dry_run: false },

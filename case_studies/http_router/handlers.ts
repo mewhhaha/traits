@@ -15,6 +15,7 @@ import {
   page_end,
   page_start,
 } from "./response.ts";
+import { format_route_rejection, type RouteRejection } from "./router.ts";
 
 export type Handler<input> = EffectValue<
   HttpBody | Uses<AsReader<input>>,
@@ -57,6 +58,10 @@ type CreateMessagePage = {
 type NotFoundPage = {
   readonly method: string;
   readonly url: URL;
+};
+
+type BadRequestPage = {
+  readonly rejection: RouteRejection;
 };
 
 export const home_page = Program(function* () {
@@ -143,6 +148,19 @@ export const not_found_page = Program(function* () {
   yield* page_end();
 
   return html(404);
+});
+
+export const bad_request_page = Program(function* () {
+  const input = yield* ask<BadRequestPage>();
+
+  yield* page_start("Bad request");
+  yield* emit_body("<h1>Bad request</h1>");
+  yield* emit_body(
+    "<p>" + escape_html(format_route_rejection(input.rejection)) + ".</p>",
+  );
+  yield* page_end();
+
+  return html(400);
 });
 
 export function render_handler<input>(

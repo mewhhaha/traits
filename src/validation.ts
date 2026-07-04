@@ -74,13 +74,14 @@ export function invalid_with<error, item = never>(
 
 Format.implement(Validation)({
   fmt() {
-    const validation = this.value();
+    const [tag, payload] = this.value();
 
-    if (validation[0] === "invalid") {
-      return "Invalid(" + Deno.inspect(validation[1]) + ")";
+    switch (tag) {
+      case "valid":
+        return "Valid(" + Deno.inspect(payload) + ")";
+      case "invalid":
+        return "Invalid(" + Deno.inspect(payload) + ")";
     }
-
-    return "Valid(" + Deno.inspect(validation[1]) + ")";
   },
 });
 
@@ -88,15 +89,26 @@ export interface AsValidation extends Format<AsValidation> {}
 
 Equal.implement(Validation)({
   eq(right) {
-    const left = this.value();
-    const right_value = right.value();
+    const [left_tag, left_payload] = this.value();
+    const [right_tag, right_payload] = right.value();
 
-    if (left[0] === "valid" && right_value[0] === "valid") {
-      return Object.is(left[1], right_value[1]);
-    }
-
-    if (left[0] === "invalid" && right_value[0] === "invalid") {
-      return errors_equal(left[1], right_value[1]);
+    switch (left_tag) {
+      case "valid":
+        switch (right_tag) {
+          case "valid":
+            return Object.is(left_payload, right_payload);
+          case "invalid":
+            return false;
+        }
+        break;
+      case "invalid":
+        switch (right_tag) {
+          case "valid":
+            return false;
+          case "invalid":
+            return errors_equal(left_payload, right_payload);
+        }
+        break;
     }
 
     return false;
@@ -107,13 +119,14 @@ export interface AsValidation extends Equal<AsValidation> {}
 
 Functor.implement(Validation)({
   map(fn) {
-    const validation = this.value();
+    const [tag, payload] = this.value();
 
-    if (validation[0] === "invalid") {
-      return same_context(this);
+    switch (tag) {
+      case "invalid":
+        return same_context(this);
+      case "valid":
+        return valid(fn(payload));
     }
-
-    return valid(fn(validation[1]));
   },
 });
 
@@ -127,23 +140,36 @@ Applicative.implement(Validation)({
   ap(value) {
     const fn = this.value();
     const validation = value.value();
+    const [fn_tag, fn_payload, fn_semigroup] = fn;
+    const [validation_tag, validation_payload, validation_semigroup] =
+      validation;
 
-    if (fn[0] === "invalid" && validation[0] === "invalid") {
-      return invalid_from_error(
-        concat_errors(fn, validation),
-        fn[2],
-      );
+    switch (fn_tag) {
+      case "invalid":
+        switch (validation_tag) {
+          case "invalid":
+            return invalid_from_error(
+              concat_errors(fn, validation),
+              fn_semigroup,
+            );
+          case "valid":
+            return invalid_from_error(fn_payload, fn_semigroup);
+        }
+        break;
+      case "valid":
+        switch (validation_tag) {
+          case "invalid":
+            return invalid_from_error(
+              validation_payload,
+              validation_semigroup,
+            );
+          case "valid":
+            return valid(fn_payload(validation_payload));
+        }
+        break;
     }
 
-    if (fn[0] === "invalid") {
-      return invalid_from_error(fn[1], fn[2]);
-    }
-
-    if (validation[0] === "invalid") {
-      return invalid_from_error(validation[1], validation[2]);
-    }
-
-    return valid(fn[1](validation[1]));
+    throw new Error("unreachable validation variant");
   },
 });
 
@@ -151,13 +177,14 @@ export interface AsValidation extends Applicative<AsValidation> {}
 
 Foldable.implement(Validation)({
   fold(initial, fn) {
-    const validation = this.value();
+    const [tag, payload] = this.value();
 
-    if (validation[0] === "invalid") {
-      return initial;
+    switch (tag) {
+      case "invalid":
+        return initial;
+      case "valid":
+        return fn(initial, payload);
     }
-
-    return fn(initial, validation[1]);
   },
 });
 
@@ -165,19 +192,20 @@ export interface AsValidation extends Foldable<AsValidation> {}
 
 Traversable.implement(Validation)({
   traverse(applicative, fn) {
-    const validation = this.value();
+    const [tag, payload, semigroup] = this.value();
 
-    if (validation[0] === "invalid") {
-      return Applicative.pure(
-        applicative,
-        invalid_from_error(
-          validation[1],
-          validation[2],
-        ),
-      );
+    switch (tag) {
+      case "invalid":
+        return Applicative.pure(
+          applicative,
+          invalid_from_error(
+            payload,
+            semigroup,
+          ),
+        );
+      case "valid":
+        return Functor.map(fn(payload), (value) => valid(value));
     }
-
-    return Functor.map(fn(validation[1]), (value) => valid(value));
   },
 });
 

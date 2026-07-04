@@ -117,6 +117,7 @@ import {
 import {
   invalid as validation_invalid,
   valid as validation_valid,
+  type Validation,
 } from "./validation.ts";
 import { from_entries as weak_map_from_entries } from "./weak_map.ts";
 import { from_iterable as weak_set_from_iterable } from "./weak_set.ts";
@@ -192,21 +193,30 @@ Deno.test("Tuple tagged guards narrow Option and Result payloads", () => {
   const option = option_some(42).value();
   const result = result_err<number>("missing").value();
 
-  switch (true) {
-    case option_is_some(option):
-      assert_equals(option[1] + 1, 43);
+  assert_true(option_is_some(option), "option is some");
+  assert_true(!option_is_none(option), "option is not none");
+  assert_true(result_is_err(result), "result is err");
+  assert_true(!result_is_ok(result), "result is not ok");
+
+  const [option_tag, option_payload] = option;
+
+  switch (option_tag) {
+    case "some":
+      assert_equals(option_payload + 1, 43);
       break;
-    case option_is_none(option):
-      assert_equals(option[0], "none");
+    case "none":
+      assert_equals(option_tag, "none");
       break;
   }
 
-  switch (true) {
-    case result_is_ok(result):
-      assert_equals(result[1] + 1, 10);
+  const [result_tag, result_payload] = result;
+
+  switch (result_tag) {
+    case "ok":
+      assert_equals(result_payload + 1, 10);
       break;
-    case result_is_err(result):
-      assert_equals(result[1], "missing");
+    case "err":
+      assert_equals(result_payload, "missing");
       break;
   }
 });
@@ -316,13 +326,12 @@ Deno.test("Applicative lift can build named structures", () => {
     option_some({ name: "Ada", age: 37 }).value(),
   );
   assert_equals(missing.value(), option_none().value());
-  const invalid_profile_value = invalid_profile.value();
+  const invalid_profile_error = expect_validation_invalid(
+    invalid_profile.value(),
+    "expected invalid profile",
+  );
 
-  if (invalid_profile_value[0] !== "invalid") {
-    throw new Error("expected invalid profile");
-  }
-
-  assert_equals(invalid_profile_value[1], [
+  assert_equals(invalid_profile_error, [
     "name is required",
     "email is invalid",
   ]);
@@ -588,13 +597,12 @@ Deno.test("Applicative lift lets Validation accumulate independent errors", () =
     valid_profile.value(),
     validation_valid({ name: "Ada", age: 37 }).value(),
   );
-  const invalid_profile_value = invalid_profile.value();
+  const invalid_profile_error = expect_validation_invalid(
+    invalid_profile.value(),
+    "expected invalid profile",
+  );
 
-  if (invalid_profile_value[0] !== "invalid") {
-    throw new Error("expected invalid profile");
-  }
-
-  assert_equals(invalid_profile_value[1], [
+  assert_equals(invalid_profile_error, [
     "name is required",
     "email is invalid",
   ]);
@@ -1106,38 +1114,32 @@ Deno.test("Traversable flips structures through an applicative", () => {
     (value) => result_ok(value.toString()),
   );
 
-  const array_result = array.value();
-  const map_result = map.value();
-  const empty_array_result = empty_array.value();
-  const empty_list_result = empty_list.value();
-  const empty_map_result = empty_map.value();
-  const empty_record_result = empty_record.value();
+  const array_result = expect_result_ok(
+    array.value(),
+    "expected traversed array to succeed",
+  );
+  const map_result = expect_result_ok(
+    map.value(),
+    "expected traversed map to succeed",
+  );
+  const empty_array_result = expect_result_ok(
+    empty_array.value(),
+    "expected empty traversed array to succeed",
+  );
+  const empty_list_result = expect_result_ok(
+    empty_list.value(),
+    "expected empty traversed list to succeed",
+  );
+  const empty_map_result = expect_result_ok(
+    empty_map.value(),
+    "expected empty traversed map to succeed",
+  );
+  const empty_record_result = expect_result_ok(
+    empty_record.value(),
+    "expected empty traversed record to succeed",
+  );
 
-  if (array_result[0] !== "ok") {
-    throw new Error("expected traversed array to succeed");
-  }
-
-  if (map_result[0] !== "ok") {
-    throw new Error("expected traversed map to succeed");
-  }
-
-  if (empty_array_result[0] !== "ok") {
-    throw new Error("expected empty traversed array to succeed");
-  }
-
-  if (empty_list_result[0] !== "ok") {
-    throw new Error("expected empty traversed list to succeed");
-  }
-
-  if (empty_map_result[0] !== "ok") {
-    throw new Error("expected empty traversed map to succeed");
-  }
-
-  if (empty_record_result[0] !== "ok") {
-    throw new Error("expected empty traversed record to succeed");
-  }
-
-  assert_equals(array_to_array(array_result[1]), [
+  assert_equals(array_to_array(array_result), [
     "value:1",
     "value:2",
     "value:3",
@@ -1147,11 +1149,11 @@ Deno.test("Traversable flips structures through an applicative", () => {
     array_to_array(option).map((value) => value.value()),
     [option_some(21).value(), option_some(42).value()],
   );
-  assert_equals(map_to_record(map_result[1]), { x: 2, y: 3 });
-  assert_equals(array_to_array(empty_array_result[1]), []);
-  assert_equals(list_to_array(empty_list_result[1]), []);
-  assert_equals(map_to_record(empty_map_result[1]), {});
-  assert_equals(record_to_record(empty_record_result[1]), {});
+  assert_equals(map_to_record(map_result), { x: 2, y: 3 });
+  assert_equals(array_to_array(empty_array_result), []);
+  assert_equals(list_to_array(empty_list_result), []);
+  assert_equals(map_to_record(empty_map_result), {});
+  assert_equals(record_to_record(empty_record_result), {});
 });
 
 Deno.test("Generic helpers work against trait interfaces", () => {
@@ -1256,6 +1258,34 @@ function require_true(value: boolean, message: string) {
   }
 
   return result_err<void>(message);
+}
+
+function expect_result_ok<item, error>(
+  result: Result<item, error>,
+  message: string,
+): item {
+  const [tag, payload] = result;
+
+  switch (tag) {
+    case "ok":
+      return payload;
+    case "err":
+      throw new Error(message);
+  }
+}
+
+function expect_validation_invalid<error, item>(
+  validation: Validation<error, item>,
+  message: string,
+): error {
+  const [tag, payload] = validation;
+
+  switch (tag) {
+    case "invalid":
+      return payload;
+    case "valid":
+      throw new Error(message);
+  }
 }
 
 function assert_trait_receiver_error(

@@ -50,61 +50,102 @@ type PlainResult<item> =
 
 function plain_parse_request(input: string): PlainResult<ParsedRoute> {
   const line = plain_split_request_line(input);
+  const [line_tag, line_payload] = line;
 
-  if (line[0] === "err") {
-    return line;
+  switch (line_tag) {
+    case "err":
+      return line;
+    case "ok":
+      break;
   }
 
-  const method = plain_parse_method(line[1]);
+  const method = plain_parse_method(line_payload);
+  const [method_tag, method_payload] = method;
 
-  if (method[0] === "err") {
-    return method;
+  switch (method_tag) {
+    case "err":
+      return method;
+    case "ok":
+      break;
   }
 
-  const target = plain_split_target(line[1].target);
+  const target = plain_split_target(line_payload.target);
+  const [target_tag, target_payload] = target;
 
-  if (target[0] === "err") {
-    return target;
+  switch (target_tag) {
+    case "err":
+      return target;
+    case "ok":
+      break;
   }
 
-  const path = plain_parse_user_path(target[1].path);
+  const path = plain_parse_user_path(target_payload.path);
+  const [path_tag, path_payload] = path;
 
-  if (path[0] === "err") {
-    return path;
+  switch (path_tag) {
+    case "err":
+      return path;
+    case "ok":
+      break;
   }
 
-  const query = plain_parse_query(target[1].query);
+  const query = plain_parse_query(target_payload.query);
+  const [query_tag, query_payload] = query;
 
-  if (query[0] === "err") {
-    return query;
+  switch (query_tag) {
+    case "err":
+      return query;
+    case "ok":
+      break;
   }
 
-  const limit = plain_query_int(query[1], "limit", 1, 100);
+  const limit = plain_query_int(query_payload, "limit", 1, 100);
+  const [limit_tag, limit_payload] = limit;
 
-  if (limit[0] === "err") {
-    return limit;
+  switch (limit_tag) {
+    case "err":
+      return limit;
+    case "ok":
+      break;
   }
 
-  const offset = plain_query_int(query[1], "offset", 0, 10_000);
+  const offset = plain_query_int(query_payload, "offset", 0, 10_000);
+  const [offset_tag, offset_payload] = offset;
 
-  if (offset[0] === "err") {
-    return offset;
+  switch (offset_tag) {
+    case "err":
+      return offset;
+    case "ok":
+      break;
   }
 
-  const pagination = plain_validate_pagination(limit[1], offset[1]);
+  const pagination = plain_validate_pagination(limit_payload, offset_payload);
+  const [pagination_tag, pagination_payload] = pagination;
 
-  if (pagination[0] === "err") {
-    return pagination;
+  switch (pagination_tag) {
+    case "err":
+      return pagination;
+    case "ok":
+      break;
   }
 
-  const active = plain_query_bool(query[1], "active");
+  const active = plain_query_bool(query_payload, "active");
+  const [active_tag, active_payload] = active;
 
-  if (active[0] === "err") {
-    return active;
+  switch (active_tag) {
+    case "err":
+      return active;
+    case "ok":
+      break;
   }
 
   return plain_ok(
-    build_route(method[1], path[1], pagination[1], active[1]),
+    build_route(
+      method_payload,
+      path_payload,
+      pagination_payload,
+      active_payload,
+    ),
   );
 }
 
@@ -535,11 +576,14 @@ function parse_int(text: string): number | undefined {
 }
 
 function traits_from_plain<item>(result: PlainResult<item>) {
-  if (result[0] === "err") {
-    return traits_err<item>(result[1]);
-  }
+  const [tag, payload] = result;
 
-  return traits_ok(result[1]);
+  switch (tag) {
+    case "err":
+      return traits_err<item>(payload);
+    case "ok":
+      return traits_ok(payload);
+  }
 }
 
 function traits_split_request_line(input: string) {
@@ -582,11 +626,14 @@ function traits_query_bool(query: Record<string, string>, key: string) {
 function fp_from_plain<item>(
   result: PlainResult<item>,
 ): FpEither.Either<string, item> {
-  if (result[0] === "err") {
-    return FpEither.left(result[1]);
-  }
+  const [tag, payload] = result;
 
-  return FpEither.right(result[1]);
+  switch (tag) {
+    case "err":
+      return FpEither.left(payload);
+    case "ok":
+      return FpEither.right(payload);
+  }
 }
 
 function fp_split_request_line(input: string) {
@@ -627,11 +674,14 @@ function fp_query_bool(query: Record<string, string>, key: string) {
 }
 
 function effect_from_plain<item>(result: PlainResult<item>) {
-  if (result[0] === "err") {
-    return EffectEither.left(result[1]);
-  }
+  const [tag, payload] = result;
 
-  return EffectEither.right(result[1]);
+  switch (tag) {
+    case "err":
+      return EffectEither.left(payload);
+    case "ok":
+      return EffectEither.right(payload);
+  }
 }
 
 function effect_split_request_line(input: string) {
@@ -672,11 +722,14 @@ function effect_query_bool(query: Record<string, string>, key: string) {
 }
 
 function purify_from_plain<item>(result: PlainResult<item>) {
-  if (result[0] === "err") {
-    return Left<string, item>(result[1]);
-  }
+  const [tag, payload] = result;
 
-  return Right<item, string>(result[1]);
+  switch (tag) {
+    case "err":
+      return Left<string, item>(payload);
+    case "ok":
+      return Right<item, string>(payload);
+  }
 }
 
 function purify_split_request_line(input: string) {
@@ -717,11 +770,14 @@ function purify_query_bool(query: Record<string, string>, key: string) {
 }
 
 function true_from_plain<item>(result: PlainResult<item>) {
-  if (result[0] === "err") {
-    return TrueResult.err<item, string>(result[1]);
-  }
+  const [tag, payload] = result;
 
-  return TrueResult.ok<item, string>(result[1]);
+  switch (tag) {
+    case "err":
+      return TrueResult.err<item, string>(payload);
+    case "ok":
+      return TrueResult.ok<item, string>(payload);
+  }
 }
 
 function true_split_request_line(input: string) {
@@ -762,23 +818,28 @@ function true_query_bool(query: Record<string, string>, key: string) {
 }
 
 function consume_plain(result: PlainResult<ParsedRoute>): number {
-  if (result[0] === "err") {
-    return -result[1].length;
-  }
+  const [tag, payload] = result;
 
-  return result[1].score;
+  switch (tag) {
+    case "err":
+      return -payload.length;
+    case "ok":
+      return payload.score;
+  }
 }
 
 function consume_traits(
   result: ReturnType<typeof traits_parse_request>,
 ): number {
   const value = result.value();
+  const [tag, payload] = value;
 
-  if (value[0] === "err") {
-    return -String(value[1]).length;
+  switch (tag) {
+    case "err":
+      return -String(payload).length;
+    case "ok":
+      return payload.score;
   }
-
-  return value[1].score;
 }
 
 function consume_fp(result: FpEither.Either<string, ParsedRoute>): number {

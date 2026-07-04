@@ -1,13 +1,6 @@
 import { from_array } from "../src/list.ts";
-import { is_none, is_some, none, type Option, some } from "../src/option.ts";
-import {
-  err,
-  from_number,
-  is_err,
-  is_ok,
-  ok,
-  type Result,
-} from "../src/result.ts";
+import { none, type Option, some } from "../src/option.ts";
+import { err, from_number, ok, type Result } from "../src/result.ts";
 import {
   invalid as validation_invalid,
   valid as validation_valid,
@@ -19,7 +12,6 @@ import {
   label_values,
   sum_values,
 } from "../src/examples.ts";
-import { match } from "../src/tagged.ts";
 import { Applicative, Format } from "../src/traits.ts";
 
 export async function run_basic_examples() {
@@ -27,42 +19,20 @@ export async function run_basic_examples() {
   const doubled_option = option.map((value) => {
     return value * 2;
   });
-  const guarded_option = describe_option(option.value());
-  const matched_option = match(option.value(), {
-    some(value) {
-      return "some:" + value.toString();
-    },
-    none() {
-      return "none";
-    },
-  });
-  const matched_none = match(none<number>().value(), {
-    some(value) {
-      return "some:" + value.toString();
-    },
-    none() {
-      return "none";
-    },
-  });
+  const switched_option = describe_option(option.value());
+  const switched_none = describe_option(none<number>().value());
 
   const list = from_array([1, 2, 3]);
   const labeled_list = label_values(list);
   const result = ok("42")
     .bind((text) => from_number(Number.parseInt(text, 10)));
-  const guarded_result = describe_result(
+  const switched_result = describe_result(
     keep_positive(
       ok(-1),
       (value) => err("negative: " + value.toString()),
     ).value(),
   );
-  const matched_result = match(result.value(), {
-    ok(value) {
-      return "ok:" + value.toString();
-    },
-    err(message) {
-      return "err:" + message;
-    },
-  });
+  const switched_ok = describe_result(result.value());
 
   const applicative_list = from_array([
     (value: number) => value + 1,
@@ -116,9 +86,8 @@ export async function run_basic_examples() {
   );
 
   console.log("option", doubled_option.fmt());
-  console.log("option switch guards", guarded_option);
-  console.log("option match", matched_option);
-  console.log("none match", matched_none);
+  console.log("option switch", switched_option);
+  console.log("none switch", switched_none);
   console.log("list labels", Format.fmt(labeled_list));
   console.log("list sum", sum_values(list));
   console.log("result", result.fmt());
@@ -126,8 +95,8 @@ export async function run_basic_examples() {
   console.log("generic option sum", Format.fmt(generic_option_sum));
   console.log("generic list sum", Format.fmt(generic_list_sum));
   console.log("generic positive result", Format.fmt(positive_result));
-  console.log("result switch guards", guarded_result);
-  console.log("result match", matched_result);
+  console.log("result switch err", switched_result);
+  console.log("result switch ok", switched_ok);
   console.log("fluent option", fluent_option.fmt());
   console.log("fluent result", fluent_result.fmt());
   console.log("fluent list", fluent_list.fmt());
@@ -139,25 +108,25 @@ export async function run_basic_examples() {
 }
 
 function describe_option(value: Option<number>) {
-  switch (true) {
-    case is_some(value):
-      return "some:" + value[1].toString();
-    case is_none(value):
+  const [tag, payload] = value;
+
+  switch (tag) {
+    case "some":
+      return "some:" + payload.toString();
+    case "none":
       return "none";
   }
-
-  throw new Error("unreachable option variant");
 }
 
 function describe_result(value: Result<number, unknown>) {
-  switch (true) {
-    case is_ok(value):
-      return "ok:" + value[1].toString();
-    case is_err(value):
-      return "err:" + String(value[1]);
-  }
+  const [tag, payload] = value;
 
-  throw new Error("unreachable result variant");
+  switch (tag) {
+    case "ok":
+      return "ok:" + payload.toString();
+    case "err":
+      return "err:" + String(payload);
+  }
 }
 
 function non_empty_string(value: string, name: string) {

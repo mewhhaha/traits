@@ -24,7 +24,26 @@ export type RouteContext = {
 
 export type RouteResult<item> =
   | readonly ["matched", item]
-  | readonly ["missed"];
+  | readonly ["missed"]
+  | readonly ["rejected", RouteRejection];
+
+export type RouteRejection =
+  | readonly [
+    "invalid_path_param",
+    {
+      readonly route: string;
+      readonly name: string;
+      readonly value: string;
+    },
+  ]
+  | readonly [
+    "invalid_query_param",
+    {
+      readonly route: string;
+      readonly name: string;
+      readonly value: string | undefined;
+    },
+  ];
 
 type UrlPatternMatch = NonNullable<ReturnType<URLPattern["exec"]>>;
 
@@ -80,22 +99,28 @@ Functor.implement(UrlPatternList)({
           select(context, match) {
             const [tag, payload] = entry.select(context, match);
 
-            if (tag === "missed") {
-              return missed;
+            switch (tag) {
+              case "missed":
+                return missed;
+              case "rejected":
+                return rejected(payload);
+              case "matched":
+                return matched(fn(payload));
             }
-
-            return matched(fn(payload));
           },
         };
       }),
       match(context) {
         const [tag, payload] = routes.match(context);
 
-        if (tag === "missed") {
-          return missed;
+        switch (tag) {
+          case "missed":
+            return missed;
+          case "rejected":
+            return rejected(payload);
+          case "matched":
+            return matched(fn(payload));
         }
-
-        return matched(fn(payload));
       },
     });
   },
@@ -124,17 +149,25 @@ Applicative.implement(UrlPatternList)({
       match(context) {
         const [fn_tag, fn] = fn_routes.match(context);
 
-        if (fn_tag === "missed") {
-          return missed;
+        switch (fn_tag) {
+          case "missed":
+            return missed;
+          case "rejected":
+            return rejected(fn);
+          case "matched":
+            break;
         }
 
         const [value_tag, value_item] = value_routes.match(context);
 
-        if (value_tag === "missed") {
-          return missed;
+        switch (value_tag) {
+          case "missed":
+            return missed;
+          case "rejected":
+            return rejected(value_item);
+          case "matched":
+            return matched(fn(value_item));
         }
-
-        return matched(fn(value_item));
       },
     });
   },
@@ -158,7 +191,7 @@ Alternative.implement(UrlPatternList)({
         const left = left_routes.match(context);
         const [tag] = left;
 
-        if (tag === "matched") {
+        if (tag !== "missed") {
           return left;
         }
 
@@ -300,16 +333,30 @@ export function route<
       method,
       pattern,
       select(context, match) {
-        const path_values = match_path_params(match, params);
+        const [path_tag, path_values] = match_path_params(match, params, label);
 
-        if (path_values === undefined) {
-          return missed;
+        switch (path_tag) {
+          case "missed":
+            return missed;
+          case "rejected":
+            return rejected(path_values);
+          case "matched":
+            break;
         }
 
-        const query_values = match_query(context.url.searchParams, query);
+        const [query_tag, query_values] = match_query(
+          context.url.searchParams,
+          query,
+          label,
+        );
 
-        if (query_values === undefined) {
-          return missed;
+        switch (query_tag) {
+          case "missed":
+            return missed;
+          case "rejected":
+            return rejected(query_values);
+          case "matched":
+            break;
         }
 
         const input = {
@@ -375,6 +422,26 @@ export function optional_query<item>(
   };
 }
 
+export function format_route_rejection(rejection: RouteRejection): string {
+  const [tag, payload] = rejection;
+
+  switch (tag) {
+    case "invalid_path_param":
+      return "Invalid path parameter `" + payload.name + "` for " +
+        payload.route + ": " + payload.value;
+    case "invalid_query_param": {
+      let value = "missing";
+
+      if (payload.value !== undefined) {
+        value = payload.value;
+      }
+
+      return "Invalid query parameter `" + payload.name + "` for " +
+        payload.route + ": " + value;
+    }
+  }
+}
+
 function match_entries<item>(
   entries: readonly UrlPatternEntry<item>[],
   context: RouteContext,
@@ -393,7 +460,7 @@ function match_entries<item>(
     const result = entry.select(context, match);
     const [tag] = result;
 
-    if (tag === "matched") {
+    if (tag !== "missed") {
       return result;
     }
   }
@@ -407,13 +474,17 @@ function match_path_params<
 >(
   match: UrlPatternMatch,
   params: params,
-): Record<string, unknown> | undefined {
+  route: string,
+): RouteResult<Record<string, unknown>> {
   const groups = match.pathname.groups as Record<string, string | undefined>;
   const values: Record<string, unknown> = {};
 
   for (const [name, raw] of Object.entries(groups)) {
     if (raw === undefined) {
-      return undefined;
+      return rejected([
+        "invalid_path_param",
+        { route, name, value: "" },
+      ]);
     }
 
     const decoded = decodeURIComponent(raw);
@@ -427,36 +498,47 @@ function match_path_params<
     }
 
     if (value === undefined) {
-      return undefined;
+      return rejected([
+        "invalid_path_param",
+        { route, name, value: decoded },
+      ]);
     }
 
     values[name] = value;
   }
 
-  return values;
+  return matched(values);
 }
 
 function match_query<query extends QuerySpec>(
   params: URLSearchParams,
   query: query,
-): Record<string, unknown> | undefined {
+  route: string,
+): RouteResult<Record<string, unknown>> {
   const values: Record<string, unknown> = {};
 
   for (const [key, parser] of Object.entries(query)) {
     const value = parser.parse(params, key);
 
     if (value === undefined) {
-      return undefined;
+      return rejected([
+        "invalid_query_param",
+        { route, name: key, value: params.get(key) ?? undefined },
+      ]);
     }
 
     values[key] = value;
   }
 
-  return values;
+  return matched(values);
 }
 
 function matched<item>(item: item): RouteResult<item> {
   return ["matched", item];
+}
+
+function rejected(rejection: RouteRejection): RouteResult<never> {
+  return ["rejected", rejection];
 }
 
 function never_url_pattern_list<item = never>(): UrlPatternList<item> {

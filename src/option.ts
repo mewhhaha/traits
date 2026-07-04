@@ -43,11 +43,15 @@ export function none<item = never>(): OptionValue<item> {
 }
 
 export function is_some<item>(value: Option<item>): value is Some<item> {
-  return value[0] === "some";
+  const [tag] = value;
+
+  return tag === "some";
 }
 
 export function is_none<item>(value: Option<item>): value is None {
-  return value[0] === "none";
+  const [tag] = value;
+
+  return tag === "none";
 }
 
 export function from_nullable<item>(
@@ -66,13 +70,14 @@ export function from_nullable<item>(
 
 Format.implement(Option)({
   fmt() {
-    const option = this.value();
+    const [tag, payload] = this.value();
 
-    if (option[0] === "none") {
-      return "None";
+    switch (tag) {
+      case "some":
+        return "Some(" + Deno.inspect(payload) + ")";
+      case "none":
+        return "None";
     }
-
-    return "Some(" + Deno.inspect(option[1]) + ")";
   },
 });
 
@@ -80,18 +85,20 @@ export interface AsOption extends Format<AsOption> {}
 
 Equal.implement(Option)({
   eq(right) {
-    const left = this.value();
-    const right_value = right.value();
+    const [left_tag, left_payload] = this.value();
+    const [right_tag, right_payload] = right.value();
 
-    if (left[0] === "none" && right_value[0] === "none") {
-      return true;
+    switch (left_tag) {
+      case "none":
+        return right_tag === "none";
+      case "some":
+        switch (right_tag) {
+          case "none":
+            return false;
+          case "some":
+            return Object.is(left_payload, right_payload);
+        }
     }
-
-    if (left[0] === "some" && right_value[0] === "some") {
-      return Object.is(left[1], right_value[1]);
-    }
-
-    return false;
   },
 });
 
@@ -99,13 +106,14 @@ export interface AsOption extends Equal<AsOption> {}
 
 Functor.implement(Option)({
   map(fn) {
-    const option = this.value();
+    const [tag, payload] = this.value();
 
-    if (option[0] === "none") {
-      return same_context(this);
+    switch (tag) {
+      case "none":
+        return same_context(this);
+      case "some":
+        return some(fn(payload));
     }
-
-    return some(fn(option[1]));
   },
 });
 
@@ -117,18 +125,22 @@ Applicative.implement(Option)({
   },
 
   ap(value) {
-    const fn = this.value();
-    const option = value.value();
+    const [fn_tag, fn] = this.value();
 
-    if (fn[0] === "none") {
-      return same_context(this);
+    switch (fn_tag) {
+      case "none":
+        return same_context(this);
+      case "some": {
+        const [option_tag, option] = value.value();
+
+        switch (option_tag) {
+          case "none":
+            return same_context(value);
+          case "some":
+            return some(fn(option));
+        }
+      }
     }
-
-    if (option[0] === "none") {
-      return same_context(value);
-    }
-
-    return some(fn[1](option[1]));
   },
 });
 
@@ -141,12 +153,14 @@ Alternative.implement(Option)({
 
   alt(right) {
     const option = this.value();
+    const [tag] = option;
 
-    if (option[0] === "some") {
-      return Option(option);
+    switch (tag) {
+      case "some":
+        return Option(option);
+      case "none":
+        return right;
     }
-
-    return right;
   },
 });
 
@@ -154,13 +168,14 @@ export interface AsOption extends Alternative<AsOption> {}
 
 Monad.implement(Option)({
   bind(fn) {
-    const option = this.value();
+    const [tag, payload] = this.value();
 
-    if (option[0] === "none") {
-      return same_context(this);
+    switch (tag) {
+      case "none":
+        return same_context(this);
+      case "some":
+        return fn(payload);
     }
-
-    return fn(option[1]);
   },
 });
 
@@ -168,13 +183,14 @@ export interface AsOption extends Monad<AsOption> {}
 
 Foldable.implement(Option)({
   fold(initial, fn) {
-    const option = this.value();
+    const [tag, payload] = this.value();
 
-    if (option[0] === "none") {
-      return initial;
+    switch (tag) {
+      case "none":
+        return initial;
+      case "some":
+        return fn(initial, payload);
     }
-
-    return fn(initial, option[1]);
   },
 });
 
@@ -182,13 +198,14 @@ export interface AsOption extends Foldable<AsOption> {}
 
 Traversable.implement(Option)({
   traverse(applicative, fn) {
-    const option = this.value();
+    const [tag, payload] = this.value();
 
-    if (option[0] === "none") {
-      return Applicative.pure(applicative, none());
+    switch (tag) {
+      case "none":
+        return Applicative.pure(applicative, none());
+      case "some":
+        return Functor.map(fn(payload), (value) => some(value));
     }
-
-    return Functor.map(fn(option[1]), (value) => some(value));
   },
 });
 

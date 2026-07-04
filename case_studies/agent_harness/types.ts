@@ -8,6 +8,8 @@ export type AgentMessage = readonly [
   string,
 ];
 
+export type AgentTranscript = readonly AgentMessage[];
+
 export type ModelAction =
   | readonly ["read_file", { readonly path: string }]
   | readonly ["write_file", { readonly path: string; readonly text: string }]

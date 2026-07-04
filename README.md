@@ -249,17 +249,40 @@ const greeting = Do(function* () {
 await run(greeting); // "hello Ada #7"
 ```
 
-For mixed capabilities, use effects. `Eff.Do` can yield normal trait values, and
-each data type runner handles its own operations:
+For mixed capabilities, use effects. `Eff.scope<Allowed>()` creates a typed
+boundary for the operations a `Do` block may yield. The block can still run a
+too-wide nested effect locally to make it fit the scope:
 
 ```ts
-const program = Eff.Do(function* () {
+type ReaderFx<env> = Lift<AsReader<env>, unknown>;
+type StateFx<state> = Lift<AsState<state>, unknown>;
+type WriterFx<log> = Lift<AsWriter<log>, unknown>;
+type TaskFx = Lift<AsTask, unknown>;
+
+type LabelEffects = ReaderFx<LabelConfig> | TaskFx;
+type AppEffects =
+  | ReaderFx<Config>
+  | StateFx<number>
+  | WriterFx<string>
+  | TaskFx;
+
+const Label = Eff.scope<LabelEffects>();
+const App = Eff.scope<AppEffects>();
+
+const label = Label.Do(function* () {
+  const config = yield* ask<LabelConfig>();
+  const suffix = yield* from_fn(async () => ":async");
+
+  return config.label + suffix;
+});
+
+const program = App.Do(function* () {
   const config = yield* ask<Config>();
   const before = yield* get<number>();
-  const label = yield* from_fn(async () => config.label);
+  const scoped_label = yield* run_reader(label, { label: config.label });
 
   yield* modify((value) => value + config.increment);
-  yield* tell(label + ":" + before.toString());
+  yield* tell(scoped_label + ":" + before.toString());
 
   return yield* get<number>();
 });

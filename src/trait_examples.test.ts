@@ -8,6 +8,7 @@ import {
 import {
   Eff,
   type Effect as AlgebraicEffect,
+  type Lift,
   type Operation as EffectOperation,
   type TaggedOperation,
 } from "./effects.ts";
@@ -25,7 +26,7 @@ import {
   to_record as map_to_record,
 } from "./map.ts";
 import { none as option_none, Option, some as option_some } from "./option.ts";
-import { ask, asks, local, run_reader } from "./reader.ts";
+import { ask, asks, type AsReader, local, run_reader } from "./reader.ts";
 import {
   from_entries as record_from_entries,
   to_record as record_to_record,
@@ -37,11 +38,13 @@ import {
   Result,
 } from "./result.ts";
 import {
+  type AsTask,
   from_fn as task_from_fn,
   run as task_run,
   succeed as task_succeed,
 } from "./task.ts";
 import {
+  type AsState,
   eval_state,
   exec_state,
   get,
@@ -51,6 +54,7 @@ import {
   run_state,
 } from "./state.ts";
 import {
+  type AsWriter,
   run_writer,
   tell as writer_tell,
   writer as writer_value,
@@ -609,11 +613,37 @@ Deno.test("Effects compose reader state writer and task with handlers", async ()
     readonly label: string;
     readonly increment: number;
   };
+  type LabelConfig = {
+    readonly label: string;
+  };
+  type LabelEffects =
+    | Lift<AsReader<LabelConfig>, unknown>
+    | Lift<AsTask, unknown>;
+  type AppEffects =
+    | Lift<AsReader<Config>, unknown>
+    | Lift<AsState<number>, unknown>
+    | Lift<AsWriter<string>, unknown>
+    | Lift<AsTask, unknown>;
+  const Label = Eff.scope<LabelEffects>();
+  const App = Eff.scope<AppEffects>();
 
-  const program = Eff.Do(function* () {
+  const read_label = Label.Do(function* () {
+    const config = yield* ask<LabelConfig>();
+
+    return config.label;
+  });
+  const load_label = Label.Do(function* () {
+    const label = yield* read_label;
+    const suffix = yield* task_succeed(":async");
+
+    return label + suffix;
+  });
+  const program = App.Do(function* () {
     const config = yield* ask<Config>();
     const before = yield* get<number>();
-    const label = yield* task_succeed(config.label);
+    const label = yield* run_reader(load_label, {
+      label: config.label,
+    });
 
     yield* modify((value: number) => value + config.increment);
     yield* writer_tell(label + ":" + before.toString());
@@ -622,14 +652,15 @@ Deno.test("Effects compose reader state writer and task with handlers", async ()
 
     return { before, after };
   });
+  const without_reader = run_reader(program, {
+    label: "step",
+    increment: 2,
+  });
 
   const result = await task_run(
     run_writer(
       run_state(
-        run_reader(program, {
-          label: "step",
-          increment: 2,
-        }),
+        without_reader,
         40,
       ),
     ),
@@ -637,7 +668,7 @@ Deno.test("Effects compose reader state writer and task with handlers", async ()
 
   assert_equals(result, [
     [{ before: 40, after: 42 }, 42],
-    ["step:40"],
+    ["step:async:40"],
   ]);
 
   assert_equals(Eff.run(Eff.pure("done")), "done");

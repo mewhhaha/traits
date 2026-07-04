@@ -49,6 +49,16 @@ type EffectRequirements<value> = value extends Effect<
   : value extends Value<infer dictionary, infer item> ? Lift<dictionary, item>
   : never;
 
+type ScopedYield<requirements, yielded> =
+  Exclude<EffectRequirements<yielded>, requirements> extends never ? yielded
+    : never;
+
+export type EffectScope<requirements> = {
+  Do<yielded, item>(
+    run: () => Generator<ScopedYield<requirements, yielded>, item, unknown>,
+  ): Effect<EffectRequirements<yielded>, item>;
+};
+
 export type DictionaryType<dictionary> = dictionary extends
   Dictionary<infer type_id> ? type_id
   : never;
@@ -79,6 +89,7 @@ export const Eff = {
   map,
   bind,
   Do,
+  scope,
   run,
 };
 
@@ -207,6 +218,16 @@ export function Do<yielded, item>(
       return step(next_path, state.next.value, state.iterator);
     });
   }
+}
+
+export function scope<requirements>(): EffectScope<requirements> {
+  return {
+    Do<yielded, item>(
+      run: () => Generator<ScopedYield<requirements, yielded>, item, unknown>,
+    ): Effect<EffectRequirements<yielded>, item> {
+      return Do(run as () => Generator<yielded, item, unknown>);
+    },
+  };
 }
 
 export function is_lift_of<type_id extends PropertyKey>(

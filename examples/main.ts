@@ -5,13 +5,20 @@ import {
   to_record as map_to_record,
 } from "../src/map.ts";
 import { some } from "../src/option.ts";
-import { ask, asks, local, run_reader } from "../src/reader.ts";
+import { ask, asks, type AsReader, local, run_reader } from "../src/reader.ts";
 import {
   from_entries as record_from_entries,
   to_record as record_to_record,
 } from "../src/record.ts";
 import { err, from_number, ok } from "../src/result.ts";
-import { exec_state, get, gets, modify, run_state } from "../src/state.ts";
+import {
+  type AsState,
+  exec_state,
+  get,
+  gets,
+  modify,
+  run_state,
+} from "../src/state.ts";
 import {
   atomically,
   modify_tvar,
@@ -19,7 +26,7 @@ import {
   read_tvar,
   write_tvar,
 } from "../src/stm.ts";
-import { from_fn, run } from "../src/task.ts";
+import { type AsTask, from_fn, run } from "../src/task.ts";
 import {
   invalid as validation_invalid,
   valid as validation_valid,
@@ -37,8 +44,8 @@ import {
   label_values,
   sum_values,
 } from "../src/examples.ts";
-import { Eff } from "../src/effects.ts";
-import { run_writer, tell } from "../src/writer.ts";
+import { Eff, type Lift } from "../src/effects.ts";
+import { type AsWriter, run_writer, tell } from "../src/writer.ts";
 import {
   Alternative,
   Applicative,
@@ -194,10 +201,36 @@ type EffectConfig = {
   readonly label: string;
   readonly increment: number;
 };
-const effect_program = Eff.Do(function* () {
+type LabelConfig = {
+  readonly label: string;
+};
+type LabelEffects =
+  | Lift<AsReader<LabelConfig>, unknown>
+  | Lift<AsTask, unknown>;
+type AppEffects =
+  | Lift<AsReader<EffectConfig>, unknown>
+  | Lift<AsState<number>, unknown>
+  | Lift<AsWriter<string>, unknown>
+  | Lift<AsTask, unknown>;
+const Label = Eff.scope<LabelEffects>();
+const App = Eff.scope<AppEffects>();
+const effect_label = Label.Do(function* () {
+  const config = yield* ask<LabelConfig>();
+
+  return config.label;
+});
+const effect_async_label = Label.Do(function* () {
+  const label = yield* effect_label;
+  const suffix = yield* from_fn(() => Promise.resolve(":async"));
+
+  return label + suffix;
+});
+const effect_program = App.Do(function* () {
   const config = yield* ask<EffectConfig>();
   const before = yield* get<number>();
-  const label = yield* from_fn(() => Promise.resolve(config.label));
+  const label = yield* run_reader(effect_async_label, {
+    label: config.label,
+  });
 
   yield* modify((value: number) => value + config.increment);
   yield* tell(label + ":" + before.toString());
@@ -205,6 +238,10 @@ const effect_program = Eff.Do(function* () {
   const after = yield* get<number>();
 
   return { before, after };
+});
+const effect_without_reader = run_reader(effect_program, {
+  label: "step",
+  increment: 2,
 });
 const state_counter = Do(function* () {
   const before = yield* get<number>();
@@ -271,10 +308,7 @@ console.log(
     await run(
       run_writer(
         run_state(
-          run_reader(effect_program, {
-            label: "step",
-            increment: 2,
-          }),
+          effect_without_reader,
           40,
         ),
       ),

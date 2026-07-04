@@ -1,5 +1,5 @@
-import { type As, define, type Value } from "./trait.ts";
-import { type Effect, is_lift_of, type Lift } from "./effects.ts";
+import { type As, define, type Dictionary, kind, type Value } from "./trait.ts";
+import type { Effect, Lift } from "./effects.ts";
 import { Applicative, Format, Functor, Monad } from "./traits.ts";
 
 export type Task<item> = () => Promise<item>;
@@ -46,12 +46,29 @@ export async function run_task<
     return effect.value;
   }
 
-  if (is_lift_of(effect.operation, task_kind)) {
-    const operation = effect.operation as unknown as Lift<AsTask, unknown>;
-    return await run_task(effect.resume(await operation.value.value()()));
+  const operation = effect.operation as {
+    readonly tag?: string;
+    readonly value?: unknown;
+  };
+
+  if (operation.tag === "lift" && is_task_value(operation.value)) {
+    const lifted = effect.operation as unknown as Lift<AsTask, unknown>;
+    return await run_task(effect.resume(await lifted.value.value()()));
   }
 
   throw new TypeError("Unhandled effect operation");
+}
+
+function is_task_value(value: unknown): value is Dictionary {
+  if (typeof value !== "object") {
+    return false;
+  }
+
+  if (value === null) {
+    return false;
+  }
+
+  return (value as Dictionary)[kind] === task_kind;
 }
 
 Format.implement(Task)({

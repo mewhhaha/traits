@@ -23,10 +23,18 @@ const program = Do(function* () {
       !result.code.includes("Applicative") && !result.code.includes("Monad"),
       "expected Do lowering to avoid helper imports\n\n" + result.code,
     );
-    assert_includes(result.code, "const context_1 = ask<Config>();");
-    assert_includes(result.code, "context_1.bind");
-    assert_includes(result.code, "const context_2 = asks<Config, string>");
-    assert_includes(result.code, "context_2.pure");
+    assert_includes(result.code, "const program = ask<Config>().bind");
+    assert_includes(result.code, "return asks<Config, string>");
+    assert_includes(result.code, ").map");
+    assert_true(
+      !result.code.includes("context_"),
+      "expected straight-line Do lowering to avoid generated context locals\n\n" +
+        result.code,
+    );
+    assert_true(
+      !result.code.includes("(() =>"),
+      "expected Do lowering to avoid generated IIFEs\n\n" + result.code,
+    );
   },
 });
 
@@ -51,8 +59,8 @@ const program = Program(function* () {
     assert_equals(result.diagnostics, []);
     assert_includes(result.code, "import { Program, Effect }");
     assert_includes(result.code, "Effect.bind(Effect.from(ask<Config>())");
-    assert_includes(result.code, "Effect.bind(Effect.from(from_fn(");
-    assert_includes(result.code, "Effect.pure(config.label + suffix)");
+    assert_includes(result.code, "Effect.map(Effect.from(from_fn(");
+    assert_includes(result.code, "return config.label + suffix;");
   },
 });
 
@@ -78,8 +86,9 @@ const program = App(function* () {
     assert_equals(result.transformed, 1);
     assert_equals(result.diagnostics, []);
     assert_includes(result.code, "const App = Program.scope<App>()");
+    assert_includes(result.code, "Effect.map(Effect.from(ask<Config>())");
     assert_includes(result.code, "const label = config.label;");
-    assert_includes(result.code, "return Effect.pure(label);");
+    assert_includes(result.code, "return label;");
   },
 });
 
@@ -155,12 +164,12 @@ const program = App(function* () {
     assert_includes(result.code, "switch (tag)");
     assert_includes(
       result.code,
-      "Effect.bind(Effect.from(stdout(payload.text))",
+      "Effect.map(Effect.from(stdout(payload.text))",
     );
     assert_includes(result.code, "switch (result_tag)");
     assert_includes(
       result.code,
-      "Effect.bind(Effect.from(stdout(result_payload))",
+      "Effect.map(Effect.from(stdout(result_payload))",
     );
     assert_includes(result.code, "return Effect.pure(exit_code);");
   },
@@ -187,9 +196,90 @@ const identifier = Do(function* () {
     assert_equals(result.transformed, 1);
     assert_equals(result.diagnostics, []);
     assert_includes(result.code, "if (reserved_words.has(name))");
-    assert_includes(result.code, "const context_2 = fail");
-    assert_includes(result.code, "return context_2.bind");
-    assert_includes(result.code, "return context_1.pure");
+    assert_includes(result.code, "const identifier = context_1.bind");
+    assert_includes(result.code, "return fail");
+    assert_includes(result.code, ").map");
+    assert_includes(result.code, "return context_1.pure(name);");
+  },
+});
+
+Deno.test({
+  name: "transformer lifts generated Do temporaries from static call arguments",
+  permissions: { env: true },
+  async fn() {
+    const result = await transform(`
+import { Do } from "../src/traits.ts";
+
+const parser = label(Do(function* () {
+  const name = yield* identifier;
+
+  return { name };
+}), "identifier");
+`);
+
+    assert_equals(result.transformed, 1);
+    assert_equals(result.diagnostics, []);
+    assert_includes(result.code, "const parser = label(identifier.map");
+    assert_true(
+      !result.code.includes("(() =>"),
+      "expected generated Do argument IIFE to be lifted\n\n" + result.code,
+    );
+  },
+});
+
+Deno.test({
+  name:
+    "transformer lifts generated Do temporaries from returned call arguments",
+  permissions: { env: true },
+  async fn() {
+    const result = await transform(`
+import { Do } from "../src/traits.ts";
+
+function parser() {
+  return label(Do(function* () {
+    const name = yield* identifier;
+
+    return { name };
+  }), "identifier");
+}
+`);
+
+    assert_equals(result.transformed, 1);
+    assert_equals(result.diagnostics, []);
+    assert_includes(result.code, "return label(identifier.map");
+    assert_true(
+      !result.code.includes("(() =>"),
+      "expected generated Do return IIFE to be lifted\n\n" + result.code,
+    );
+  },
+});
+
+Deno.test({
+  name:
+    "transformer sequences generated Do temporaries in later call arguments",
+  permissions: { env: true },
+  async fn() {
+    const result = await transform(`
+import { Do } from "../src/traits.ts";
+
+const parser = label(right(skip_hidden(), Do(function* () {
+  const name = yield* identifier;
+
+  return { name };
+})), "identifier");
+`);
+
+    assert_equals(result.transformed, 1);
+    assert_equals(result.diagnostics, []);
+    assert_includes(
+      result.code,
+      "right(skip_hidden(), identifier.map",
+    );
+    assert_true(
+      !result.code.includes("(() =>"),
+      "expected generated Do argument IIFE to become a sequence\n\n" +
+        result.code,
+    );
   },
 });
 
@@ -232,7 +322,7 @@ const program = App(function* () {
     assert_includes(result.code, "if (turn <= max_turns)");
     assert_includes(result.code, "return loop");
     assert_includes(result.code, "Effect.bind(Effect.from(next_action(turn))");
-    assert_includes(result.code, 'Effect.bind(Effect.from(log("stopped"))');
+    assert_includes(result.code, 'Effect.map(Effect.from(log("stopped"))');
   },
 });
 
@@ -262,7 +352,7 @@ const output = Effect.handle_with(program, [
     );
     assert_includes(result.code, "run_task");
     assert_includes(result.code, "run_task(run_reader(program, input))");
-    assert_includes(result.code, "Effect.bind(Effect.from(task)");
+    assert_includes(result.code, "Effect.map(Effect.from(task)");
   },
 });
 

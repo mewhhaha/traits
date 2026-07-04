@@ -6,7 +6,7 @@ import { Effect, Program } from "../src/effects.ts";
 import { ask, asks, run_reader } from "../src/reader.ts";
 import { get, modify, run_state } from "../src/state.ts";
 import { from_fn, run_task } from "../src/task.ts";
-import { Applicative, Do, Monad } from "../src/traits.ts";
+import { Do } from "../src/traits.ts";
 import { run_writer, tell, writer } from "../src/writer.ts";
 
 const iterations = 10_000;
@@ -389,13 +389,9 @@ function make_reader_do() {
 }
 
 function make_reader_do_transformed() {
-  const context_1 = ask<Config>();
-
-  return Monad.bind(context_1, (config) => {
-    const context_2 = asks<Config, string>((config) => config.label);
-
-    return Monad.bind(context_2, (label) => {
-      return Applicative.pure(context_2, label.length + config.increment);
+  return ask<Config>().bind((config) => {
+    return asks<Config, string>((config) => config.label).map((label) => {
+      return label.length + config.increment;
     });
   });
 }
@@ -411,10 +407,10 @@ function make_reader_program() {
 
 function make_reader_program_transformed() {
   return Effect.bind(Effect.from(ask<Config>()), (config) => {
-    return Effect.bind(
+    return Effect.map(
       Effect.from(asks<Config, string>((config) => config.label)),
       (label) => {
-        return Effect.pure(label.length + config.increment);
+        return label.length + config.increment;
       },
     );
   });
@@ -433,16 +429,10 @@ function make_state_do() {
 }
 
 function make_state_do_transformed() {
-  const context_1 = get<number>();
-
-  return Monad.bind(context_1, (before) => {
-    const context_2 = modify((value: number) => value + 2);
-
-    return Monad.bind(context_2, () => {
-      const context_3 = get<number>();
-
-      return Monad.bind(context_3, (after) => {
-        return Applicative.pure(context_3, { before, after });
+  return get<number>().bind((before) => {
+    return modify((value: number) => value + 2).bind(() => {
+      return get<number>().map((after) => {
+        return { before, after };
       });
     });
   });
@@ -465,8 +455,8 @@ function make_state_program_transformed() {
     return Effect.bind(
       Effect.from(modify((value: number) => value + 2)),
       () => {
-        return Effect.bind(Effect.from(get<number>()), (after) => {
-          return Effect.pure({ before, after });
+        return Effect.map(Effect.from(get<number>()), (after) => {
+          return { before, after };
         });
       },
     );
@@ -484,16 +474,10 @@ function make_writer_do() {
 }
 
 function make_writer_do_transformed() {
-  const context_1 = tell(array_from_array(["start"]));
-
-  return Monad.bind(context_1, () => {
-    const context_2 = writer(40, array_from_array(["value"]));
-
-    return Monad.bind(context_2, (value) => {
-      const context_3 = tell(array_from_array(["end"]));
-
-      return Monad.bind(context_3, () => {
-        return Applicative.pure(context_3, value + 2);
+  return tell(array_from_array(["start"])).bind(() => {
+    return writer(40, array_from_array(["value"])).bind((value) => {
+      return tell(array_from_array(["end"])).map(() => {
+        return value + 2;
       });
     });
   });
@@ -514,10 +498,10 @@ function make_writer_program_transformed() {
     return Effect.bind(
       Effect.from(writer(40, array_from_array(["value"]))),
       (value) => {
-        return Effect.bind(
+        return Effect.map(
           Effect.from(tell(array_from_array(["end"]))),
           () => {
-            return Effect.pure(value + 2);
+            return value + 2;
           },
         );
       },
@@ -535,13 +519,9 @@ function make_task_do() {
 }
 
 function make_task_do_transformed() {
-  const context_1 = from_fn(() => Promise.resolve(40));
-
-  return Monad.bind(context_1, (left) => {
-    const context_2 = from_fn(() => Promise.resolve(2));
-
-    return Monad.bind(context_2, (right) => {
-      return Applicative.pure(context_2, left + right);
+  return from_fn(() => Promise.resolve(40)).bind((left) => {
+    return from_fn(() => Promise.resolve(2)).map((right) => {
+      return left + right;
     });
   });
 }
@@ -559,10 +539,10 @@ function make_task_program_transformed() {
   return Effect.bind(
     Effect.from(from_fn(() => Promise.resolve(40))),
     (left) => {
-      return Effect.bind(
+      return Effect.map(
         Effect.from(from_fn(() => Promise.resolve(2))),
         (right) => {
-          return Effect.pure(left + right);
+          return left + right;
         },
       );
     },

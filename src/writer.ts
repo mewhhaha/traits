@@ -1,8 +1,15 @@
-import { define, type Dictionary, type Trait, type Value } from "./trait.ts";
+import {
+  define,
+  type Dictionary,
+  kind,
+  type Trait,
+  type Value,
+} from "./trait.ts";
 import {
   type Effect,
-  handle_lift,
   type Lift,
+  pure,
+  suspend,
   type WithoutLift,
 } from "./effects.ts";
 import {
@@ -88,19 +95,46 @@ export function run_writer<
   WithoutLift<requirements, AsWriter<output, log>>,
   readonly [item, Value<output, log>]
 > {
-  return handle_lift(effect, writer_kind, empty, {
-    done(value: item, output) {
-      return [value, output] as const;
-    },
+  if (effect.tag === "pure") {
+    return pure([effect.value, empty] as const);
+  }
 
-    handle(
-      writer: Value<AsWriter<output, log>, unknown>,
-      output,
-    ) {
-      const [value, next_output] = writer.value();
-      return [value, concat_output(output, next_output)] as const;
-    },
-  });
+  const operation = effect.operation as {
+    readonly tag?: string;
+    readonly value?: unknown;
+  };
+
+  if (operation.tag === "lift" && is_writer_value(operation.value)) {
+    const lifted = effect.operation as unknown as Lift<
+      AsWriter<output, log>,
+      unknown
+    >;
+    const [value, next_output] = lifted.value.value();
+    return run_writer(
+      effect.resume(value),
+      concat_output(empty, next_output),
+    );
+  }
+
+  return suspend(
+    effect.operation as WithoutLift<requirements, AsWriter<output, log>>,
+    (value) => run_writer(effect.resume(value), empty),
+  ) as Effect<
+    WithoutLift<requirements, AsWriter<output, log>>,
+    readonly [item, Value<output, log>]
+  >;
+}
+
+function is_writer_value(value: unknown): value is Dictionary {
+  if (typeof value !== "object") {
+    return false;
+  }
+
+  if (value === null) {
+    return false;
+  }
+
+  return (value as Dictionary)[kind] === writer_kind;
 }
 
 type WriterOutput<requirements> = requirements extends Lift<

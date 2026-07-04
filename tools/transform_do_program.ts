@@ -1,5 +1,9 @@
 import ts from "typescript";
 
+const is_generated_identifier = (ts as unknown as {
+  isGeneratedIdentifier?: (node: ts.Node) => boolean;
+}).isGeneratedIdentifier ?? (() => false);
+
 export type TransformDiagnostic = {
   readonly file_name: string;
   readonly line: number;
@@ -66,6 +70,34 @@ export function transform_do_program_source(
 
     return (source_file) => {
       const visit: ts.Visitor = (node) => {
+        if (ts.isVariableStatement(node)) {
+          const visited = ts.visitEachChild(node, visit, context);
+
+          if (ts.isVariableStatement(visited)) {
+            const inlined = inline_iife_variable_statement(visited, factory);
+
+            if (inlined !== undefined) {
+              return inlined;
+            }
+          }
+
+          return visited;
+        }
+
+        if (ts.isReturnStatement(node)) {
+          const visited = ts.visitEachChild(node, visit, context);
+
+          if (ts.isReturnStatement(visited)) {
+            const inlined = inline_iife_return_statement(visited, factory);
+
+            if (inlined !== undefined) {
+              return inlined;
+            }
+          }
+
+          return visited;
+        }
+
         if (ts.isCallExpression(node)) {
           const kind = transform_kind(node, program_scopes);
 
@@ -237,14 +269,14 @@ function transform_statements(
 
     if (yielded !== undefined) {
       const rest = statements.slice(index + 1);
-      const expression = transform_yield(yielded, rest, state, options);
+      const transformed = transform_yield(yielded, rest, state, options);
 
       return {
         block: state.factory.createBlock([
           ...prefix,
-          state.factory.createReturnStatement(expression),
+          ...transformed.block.statements,
         ], true),
-        yielded: true,
+        yielded: transformed.yielded,
       };
     }
 
@@ -362,15 +394,31 @@ function transform_yield(
   rest: readonly ts.Statement[],
   state: TransformState,
   options: TransformOptions,
-): ts.Expression {
+): TransformBlock {
   switch (yielded.kind) {
     case "bind": {
       if (state.kind === "do") {
         const context = state.factory.createUniqueName("context");
         const rest_block = transform_statements(rest, context, state, options);
+        const direct = create_direct_do_bind(
+          yielded.expression,
+          context,
+          bind_parameters(yielded, state),
+          rest_block.block,
+          state,
+        );
 
-        return block_to_expression(
-          state.factory.createBlock([
+        if (direct !== undefined) {
+          return {
+            block: state.factory.createBlock([
+              state.factory.createReturnStatement(direct),
+            ], true),
+            yielded: true,
+          };
+        }
+
+        return {
+          block: state.factory.createBlock([
             state.factory.createVariableStatement(
               undefined,
               state.factory.createVariableDeclarationList([
@@ -391,8 +439,8 @@ function transform_yield(
               ),
             ),
           ], true),
-          state.factory,
-        );
+          yielded: true,
+        };
       }
 
       const rest_block = transform_statements(
@@ -402,20 +450,39 @@ function transform_yield(
         options,
       );
 
-      return create_bind(
-        yielded.expression,
-        bind_parameters(yielded, state),
-        rest_block.block,
-        state,
-      );
+      return {
+        block: state.factory.createBlock([
+          state.factory.createReturnStatement(
+            create_bind(
+              yielded.expression,
+              bind_parameters(yielded, state),
+              rest_block.block,
+              state,
+            ),
+          ),
+        ], true),
+        yielded: true,
+      };
     }
 
     case "return": {
       if (state.kind === "program") {
-        return create_effect_from(yielded.expression, state.factory);
+        return {
+          block: state.factory.createBlock([
+            state.factory.createReturnStatement(
+              create_effect_from(yielded.expression, state.factory),
+            ),
+          ], true),
+          yielded: true,
+        };
       }
 
-      return yielded.expression;
+      return {
+        block: state.factory.createBlock([
+          state.factory.createReturnStatement(yielded.expression),
+        ], true),
+        yielded: true,
+      };
     }
   }
 }
@@ -866,6 +933,32 @@ function create_bind(
   state: TransformState,
 ): ts.Expression {
   const factory = state.factory;
+
+  if (state.kind === "do") {
+    const mapped = create_final_map(
+      expression,
+      expression,
+      parameters,
+      body,
+      factory,
+    );
+
+    if (mapped !== undefined) {
+      return mapped;
+    }
+  } else {
+    const mapped = create_final_effect_map(
+      expression,
+      parameters,
+      body,
+      factory,
+    );
+
+    if (mapped !== undefined) {
+      return mapped;
+    }
+  }
+
   const value = state.kind === "program"
     ? create_effect_from(expression, factory)
     : expression;
@@ -878,6 +971,215 @@ function create_bind(
     undefined,
     state.kind === "program" ? [value, continuation] : [continuation],
   );
+}
+
+function create_direct_do_bind(
+  expression: ts.Expression,
+  context: ts.Identifier,
+  parameters: readonly ts.ParameterDeclaration[],
+  body: ts.Block,
+  state: TransformState,
+): ts.Expression | undefined {
+  const mapped = create_final_map(
+    expression,
+    context,
+    parameters,
+    body,
+    state.factory,
+  );
+
+  if (mapped !== undefined) {
+    return mapped;
+  }
+
+  if (contains_identifier(body, context)) {
+    return undefined;
+  }
+
+  return create_bind(expression, parameters, body, state);
+}
+
+function create_final_map(
+  expression: ts.Expression,
+  pure_context: ts.Expression,
+  parameters: readonly ts.ParameterDeclaration[],
+  body: ts.Block,
+  factory: ts.NodeFactory,
+): ts.Expression | undefined {
+  const statements = [...body.statements];
+  const last = statements[statements.length - 1];
+
+  if (last === undefined) {
+    return undefined;
+  }
+
+  if (!ts.isReturnStatement(last)) {
+    return undefined;
+  }
+
+  if (statements.slice(0, -1).some(contains_yield_or_return)) {
+    return undefined;
+  }
+
+  const mapped = read_direct_pure(last.expression, pure_context);
+
+  if (mapped === undefined) {
+    return undefined;
+  }
+
+  const map_body = factory.createBlock([
+    ...statements.slice(0, -1),
+    factory.createReturnStatement(mapped),
+  ], true);
+
+  return factory.createCallExpression(
+    factory.createPropertyAccessExpression(expression, "map"),
+    undefined,
+    [create_arrow(parameters, map_body, factory)],
+  );
+}
+
+function create_final_effect_map(
+  expression: ts.Expression,
+  parameters: readonly ts.ParameterDeclaration[],
+  body: ts.Block,
+  factory: ts.NodeFactory,
+): ts.Expression | undefined {
+  const statements = [...body.statements];
+  const last = statements[statements.length - 1];
+
+  if (last === undefined) {
+    return undefined;
+  }
+
+  if (!ts.isReturnStatement(last)) {
+    return undefined;
+  }
+
+  if (statements.slice(0, -1).some(contains_yield_or_return)) {
+    return undefined;
+  }
+
+  const mapped = read_effect_pure(last.expression);
+
+  if (mapped === undefined) {
+    return undefined;
+  }
+
+  const map_body = factory.createBlock([
+    ...statements.slice(0, -1),
+    factory.createReturnStatement(mapped),
+  ], true);
+
+  return factory.createCallExpression(
+    property(factory, "Effect", "map"),
+    undefined,
+    [
+      create_effect_from(expression, factory),
+      create_arrow(parameters, map_body, factory),
+    ],
+  );
+}
+
+function read_direct_pure(
+  expression: ts.Expression | undefined,
+  context: ts.Expression,
+): ts.Expression | undefined {
+  if (expression === undefined) {
+    return undefined;
+  }
+
+  if (!ts.isCallExpression(expression)) {
+    return undefined;
+  }
+
+  if (!ts.isPropertyAccessExpression(expression.expression)) {
+    return undefined;
+  }
+
+  if (expression.expression.name.text !== "pure") {
+    return undefined;
+  }
+
+  if (!same_expression(expression.expression.expression, context)) {
+    return undefined;
+  }
+
+  const [value] = expression.arguments;
+
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return value;
+}
+
+function read_effect_pure(
+  expression: ts.Expression | undefined,
+): ts.Expression | undefined {
+  if (expression === undefined) {
+    return undefined;
+  }
+
+  if (!ts.isCallExpression(expression)) {
+    return undefined;
+  }
+
+  if (!ts.isPropertyAccessExpression(expression.expression)) {
+    return undefined;
+  }
+
+  if (!ts.isIdentifier(expression.expression.expression)) {
+    return undefined;
+  }
+
+  if (expression.expression.expression.text !== "Effect") {
+    return undefined;
+  }
+
+  if (expression.expression.name.text !== "pure") {
+    return undefined;
+  }
+
+  const [value] = expression.arguments;
+
+  if (value === undefined) {
+    return undefined;
+  }
+
+  return value;
+}
+
+function same_expression(left: ts.Expression, right: ts.Expression): boolean {
+  if (ts.isIdentifier(left) && ts.isIdentifier(right)) {
+    return left.text === right.text;
+  }
+
+  return left === right;
+}
+
+function contains_identifier(
+  node: ts.Node,
+  identifier: ts.Identifier,
+): boolean {
+  let found = false;
+
+  function visit(child: ts.Node) {
+    if (found) {
+      return;
+    }
+
+    if (ts.isIdentifier(child) && child.text === identifier.text) {
+      found = true;
+      return;
+    }
+
+    ts.forEachChild(child, visit);
+  }
+
+  ts.forEachChild(node, visit);
+
+  return found;
 }
 
 function create_arrow(
@@ -1022,6 +1324,451 @@ function block_to_expression(
     undefined,
     [],
   );
+}
+
+function inline_iife_variable_statement(
+  statement: ts.VariableStatement,
+  factory: ts.NodeFactory,
+): readonly ts.Statement[] | undefined {
+  const declarations = statement.declarationList.declarations;
+
+  if (declarations.length !== 1) {
+    return undefined;
+  }
+
+  const [declaration] = declarations;
+  const inlined = inline_generated_iife_expression(
+    declaration.initializer,
+    factory,
+  );
+
+  if (inlined === undefined) {
+    return inline_iife_variable_statement_with_sequence(statement, factory);
+  }
+
+  const { prefix, expression } = inlined;
+
+  if (!prefix.every(is_generated_variable_statement)) {
+    return undefined;
+  }
+
+  const next_declaration = factory.updateVariableDeclaration(
+    declaration,
+    declaration.name,
+    declaration.exclamationToken,
+    declaration.type,
+    expression,
+  );
+
+  return [
+    ...prefix,
+    factory.updateVariableStatement(
+      statement,
+      statement.modifiers,
+      factory.updateVariableDeclarationList(
+        statement.declarationList,
+        [next_declaration],
+      ),
+    ),
+  ];
+}
+
+function inline_iife_variable_statement_with_sequence(
+  statement: ts.VariableStatement,
+  factory: ts.NodeFactory,
+): readonly ts.Statement[] | undefined {
+  const declarations = statement.declarationList.declarations;
+
+  if (declarations.length !== 1) {
+    return undefined;
+  }
+
+  const [declaration] = declarations;
+  const inlined = sequence_inline_generated_iife_expression(
+    declaration.initializer,
+    factory,
+  );
+
+  if (inlined === undefined) {
+    return undefined;
+  }
+
+  const next_declaration = factory.updateVariableDeclaration(
+    declaration,
+    declaration.name,
+    declaration.exclamationToken,
+    declaration.type,
+    inlined.expression,
+  );
+
+  return [
+    create_generated_let_statement(inlined.declarations, factory),
+    factory.updateVariableStatement(
+      statement,
+      statement.modifiers,
+      factory.updateVariableDeclarationList(
+        statement.declarationList,
+        [next_declaration],
+      ),
+    ),
+  ];
+}
+
+function inline_iife_return_statement(
+  statement: ts.ReturnStatement,
+  factory: ts.NodeFactory,
+): readonly ts.Statement[] | undefined {
+  const inlined = inline_generated_iife_expression(
+    statement.expression,
+    factory,
+  );
+
+  if (inlined === undefined) {
+    return inline_iife_return_statement_with_sequence(statement, factory);
+  }
+
+  const { prefix, expression } = inlined;
+
+  if (!prefix.every(is_generated_variable_statement)) {
+    return undefined;
+  }
+
+  return [
+    ...prefix,
+    factory.updateReturnStatement(statement, expression),
+  ];
+}
+
+function inline_iife_return_statement_with_sequence(
+  statement: ts.ReturnStatement,
+  factory: ts.NodeFactory,
+): readonly ts.Statement[] | undefined {
+  const inlined = sequence_inline_generated_iife_expression(
+    statement.expression,
+    factory,
+  );
+
+  if (inlined === undefined) {
+    return undefined;
+  }
+
+  return [
+    create_generated_let_statement(inlined.declarations, factory),
+    factory.updateReturnStatement(statement, inlined.expression),
+  ];
+}
+
+type InlinedExpression = {
+  readonly prefix: readonly ts.Statement[];
+  readonly expression: ts.Expression;
+};
+
+type SequencedExpression = {
+  readonly declarations: readonly ts.VariableDeclaration[];
+  readonly expression: ts.Expression;
+};
+
+function inline_generated_iife_expression(
+  expression: ts.Expression | undefined,
+  factory: ts.NodeFactory,
+): InlinedExpression | undefined {
+  if (expression === undefined) {
+    return undefined;
+  }
+
+  const block = read_iife_block(expression);
+
+  if (block !== undefined) {
+    return inline_iife_block(block);
+  }
+
+  if (ts.isParenthesizedExpression(expression)) {
+    const inlined = inline_generated_iife_expression(
+      expression.expression,
+      factory,
+    );
+
+    if (inlined === undefined) {
+      return undefined;
+    }
+
+    return {
+      prefix: inlined.prefix,
+      expression: factory.updateParenthesizedExpression(
+        expression,
+        inlined.expression,
+      ),
+    };
+  }
+
+  if (!ts.isCallExpression(expression)) {
+    return undefined;
+  }
+
+  if (!is_static_call_target(expression.expression)) {
+    return undefined;
+  }
+
+  const [first, ...rest] = expression.arguments;
+
+  if (first === undefined || ts.isSpreadElement(first)) {
+    return undefined;
+  }
+
+  const inlined = inline_generated_iife_expression(first, factory);
+
+  if (inlined === undefined) {
+    return undefined;
+  }
+
+  return {
+    prefix: inlined.prefix,
+    expression: factory.updateCallExpression(
+      expression,
+      expression.expression,
+      expression.typeArguments,
+      [inlined.expression, ...rest],
+    ),
+  };
+}
+
+function sequence_inline_generated_iife_expression(
+  expression: ts.Expression | undefined,
+  factory: ts.NodeFactory,
+): SequencedExpression | undefined {
+  if (expression === undefined) {
+    return undefined;
+  }
+
+  const block = read_iife_block(expression);
+
+  if (block !== undefined) {
+    return sequence_inline_iife_block(block, factory);
+  }
+
+  if (ts.isParenthesizedExpression(expression)) {
+    const inlined = sequence_inline_generated_iife_expression(
+      expression.expression,
+      factory,
+    );
+
+    if (inlined === undefined) {
+      return undefined;
+    }
+
+    return {
+      declarations: inlined.declarations,
+      expression: factory.updateParenthesizedExpression(
+        expression,
+        inlined.expression,
+      ),
+    };
+  }
+
+  if (ts.isCallExpression(expression)) {
+    return sequence_inline_call_arguments(expression, factory);
+  }
+
+  return undefined;
+}
+
+function sequence_inline_call_arguments(
+  expression: ts.CallExpression,
+  factory: ts.NodeFactory,
+): SequencedExpression | undefined {
+  const declarations: ts.VariableDeclaration[] = [];
+  const args: ts.Expression[] = [];
+  let changed = false;
+
+  for (const argument of expression.arguments) {
+    if (ts.isSpreadElement(argument)) {
+      return undefined;
+    }
+
+    const inlined = sequence_inline_generated_iife_expression(
+      argument,
+      factory,
+    );
+
+    if (inlined === undefined) {
+      args.push(argument);
+      continue;
+    }
+
+    changed = true;
+    declarations.push(...inlined.declarations);
+    args.push(inlined.expression);
+  }
+
+  if (!changed) {
+    return undefined;
+  }
+
+  return {
+    declarations,
+    expression: factory.updateCallExpression(
+      expression,
+      expression.expression,
+      expression.typeArguments,
+      args,
+    ),
+  };
+}
+
+function sequence_inline_iife_block(
+  block: ts.Block,
+  factory: ts.NodeFactory,
+): SequencedExpression | undefined {
+  const inlined = inline_iife_block(block);
+
+  if (inlined === undefined) {
+    return undefined;
+  }
+
+  if (!inlined.prefix.every(is_generated_variable_statement)) {
+    return undefined;
+  }
+
+  const declarations: ts.VariableDeclaration[] = [];
+  const expressions: ts.Expression[] = [];
+
+  for (const statement of inlined.prefix) {
+    if (!ts.isVariableStatement(statement)) {
+      return undefined;
+    }
+
+    for (const declaration of statement.declarationList.declarations) {
+      if (!ts.isIdentifier(declaration.name)) {
+        return undefined;
+      }
+
+      if (declaration.initializer === undefined) {
+        return undefined;
+      }
+
+      declarations.push(
+        factory.createVariableDeclaration(
+          declaration.name,
+          undefined,
+          declaration.type,
+          undefined,
+        ),
+      );
+      expressions.push(
+        factory.createAssignment(
+          declaration.name,
+          declaration.initializer,
+        ),
+      );
+    }
+  }
+
+  if (declarations.length === 0) {
+    return undefined;
+  }
+
+  expressions.push(inlined.expression);
+
+  return {
+    declarations,
+    expression: factory.createParenthesizedExpression(
+      factory.createCommaListExpression(expressions),
+    ),
+  };
+}
+
+function create_generated_let_statement(
+  declarations: readonly ts.VariableDeclaration[],
+  factory: ts.NodeFactory,
+): ts.VariableStatement {
+  return factory.createVariableStatement(
+    undefined,
+    factory.createVariableDeclarationList(
+      [...declarations],
+      ts.NodeFlags.Let,
+    ),
+  );
+}
+
+function inline_iife_block(block: ts.Block): InlinedExpression | undefined {
+  const statements = [...block.statements];
+  const last = statements[statements.length - 1];
+
+  if (last === undefined || !ts.isReturnStatement(last)) {
+    return undefined;
+  }
+
+  if (last.expression === undefined) {
+    return undefined;
+  }
+
+  return {
+    prefix: statements.slice(0, -1),
+    expression: last.expression,
+  };
+}
+
+function is_static_call_target(expression: ts.Expression): boolean {
+  if (ts.isIdentifier(expression)) {
+    return true;
+  }
+
+  if (ts.isPropertyAccessExpression(expression)) {
+    return is_static_call_target(expression.expression);
+  }
+
+  if (ts.isParenthesizedExpression(expression)) {
+    return is_static_call_target(expression.expression);
+  }
+
+  return false;
+}
+
+function read_iife_block(
+  expression: ts.Expression | undefined,
+): ts.Block | undefined {
+  if (expression === undefined) {
+    return undefined;
+  }
+
+  if (!ts.isCallExpression(expression)) {
+    return undefined;
+  }
+
+  if (expression.arguments.length !== 0) {
+    return undefined;
+  }
+
+  const callee = unwrap_parentheses(expression.expression);
+
+  if (!ts.isArrowFunction(callee)) {
+    return undefined;
+  }
+
+  if (callee.parameters.length !== 0) {
+    return undefined;
+  }
+
+  if (!ts.isBlock(callee.body)) {
+    return undefined;
+  }
+
+  return callee.body;
+}
+
+function is_generated_variable_statement(statement: ts.Statement): boolean {
+  if (!ts.isVariableStatement(statement)) {
+    return false;
+  }
+
+  if (statement.modifiers !== undefined && statement.modifiers.length > 0) {
+    return false;
+  }
+
+  return statement.declarationList.declarations.every((declaration) => {
+    return ts.isIdentifier(declaration.name) &&
+      is_generated_identifier(declaration.name);
+  });
 }
 
 function collect_program_scopes(

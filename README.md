@@ -296,6 +296,70 @@ await Effect.handle_with(program, [
 ]);
 ```
 
+## Build-Time Transform
+
+The package also exports the source transformer as `./transform`:
+
+```ts
+import { transform_do_program_source } from "@mewhhaha/traits/transform";
+
+const result = transform_do_program_source(source_text, "input.ts");
+
+result.code; // transformed TypeScript source
+result.diagnostics; // skipped unsupported patterns
+result.transformed; // number of rewritten sites
+```
+
+The transformer is meant for bundlers, build scripts, or local experiments that
+want the ergonomic `Do(function* () { ... })` and
+`Program(function* () { ... })` syntax in source code, but cheaper raw bindings
+in emitted code. It currently lowers supported `Do` blocks to direct trait
+method chains, supported `Program` blocks to `Effect.bind`/`Effect.map`/
+`Effect.pure`, `return yield* value` to the monadic right identity, and static
+`Effect.handle_with(program, [handlers...])` calls to nested runner calls. The
+transform also removes generated wrapper IIFEs where it can preserve evaluation
+order.
+
+Unsupported control-flow shapes are left unchanged and reported through
+`diagnostics`, so a bundler plugin can decide whether to fail the build or keep
+the original source. The repository task exposes the same tool on the command
+line:
+
+```sh
+deno task transform --write src/file.ts
+```
+
+## Benchmarks
+
+The benchmark folder is part of the playground. The broad task runs every
+benchmark file:
+
+```sh
+deno task bench
+```
+
+Focused benchmarks can be run directly:
+
+```sh
+deno bench --allow-env --allow-read --allow-write=/tmp bench/algorithm_contexts.bench.ts
+deno bench --allow-env --allow-read --allow-write=/tmp bench/do_vs_program.bench.ts
+deno task bench:case-studies
+```
+
+`bench/algorithm_contexts.bench.ts` runs the same small algorithms through
+different contexts:
+
+- a `Functor` scoring pass
+- an `Applicative` product builder
+- a `Monad` dependent product builder
+
+It compares native arrays and generators with `ArrayT`, `List`, `IterableT`,
+`Option`, `Result`, `Validation`, and the functor-only `MapT`, `RecordT`, and
+`SetT`. `IterableT` is intentionally replayable (`() => Iterable<item>`) so its
+list-like applicative and monad instances remain lawful. A raw JavaScript
+`Iterator` is one-shot, so the benchmark uses native generator baselines for
+that shape and forces them to arrays before recording the result.
+
 ## Haskell Comparisons
 
 The Haskell version usually starts from a typeclass constraint. In this repo the

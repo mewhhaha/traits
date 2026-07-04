@@ -184,7 +184,13 @@ export function map<requirements, from, to>(
   effect: Effect<requirements, from>,
   fn: (value: from) => to,
 ): Effect<requirements, to> {
-  return bind(effect, (value) => pure(fn(value)));
+  if (effect.tag === "pure") {
+    return pure(fn(effect.value));
+  }
+
+  return suspend(effect.operation, (value) => {
+    return map(effect.resume(value), fn);
+  });
 }
 
 export function bind<left, from, right, to>(

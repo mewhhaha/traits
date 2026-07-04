@@ -1,5 +1,17 @@
-import { define, type Dictionary, type Trait, type Value } from "./trait.ts";
-import { type Effect, handle_lift, type WithoutLift } from "./effects.ts";
+import {
+  define,
+  type Dictionary,
+  kind,
+  type Trait,
+  type Value,
+} from "./trait.ts";
+import {
+  type Effect,
+  type Lift,
+  pure,
+  suspend,
+  type WithoutLift,
+} from "./effects.ts";
 import { Applicative, Format, Functor, Monad } from "./traits.ts";
 
 export type State<state, item> = (state: state) => readonly [item, state];
@@ -57,15 +69,43 @@ export function run_state<requirements, state, item>(
   effect: Effect<requirements, item>,
   state: state,
 ): Effect<WithoutLift<requirements, AsState<state>>, readonly [item, state]> {
-  return handle_lift(effect, state_kind, state, {
-    done(value: item, state) {
-      return [value, state] as const;
-    },
+  if (effect.tag === "pure") {
+    return pure([effect.value, state] as const);
+  }
 
-    handle(stateful: Value<AsState<state>, unknown>, state) {
-      return stateful.value()(state);
-    },
-  });
+  const operation = effect.operation as {
+    readonly tag?: string;
+    readonly value?: unknown;
+  };
+
+  if (operation.tag === "lift" && is_state_value(operation.value)) {
+    const lifted = effect.operation as unknown as Lift<
+      AsState<state>,
+      unknown
+    >;
+    const [value, next] = lifted.value.value()(state);
+    return run_state(effect.resume(value), next);
+  }
+
+  return suspend(
+    effect.operation as WithoutLift<requirements, AsState<state>>,
+    (value) => run_state(effect.resume(value), state),
+  ) as Effect<
+    WithoutLift<requirements, AsState<state>>,
+    readonly [item, state]
+  >;
+}
+
+function is_state_value(value: unknown): value is Dictionary {
+  if (typeof value !== "object") {
+    return false;
+  }
+
+  if (value === null) {
+    return false;
+  }
+
+  return (value as Dictionary)[kind] === state_kind;
 }
 
 export function eval_state<state, item>(

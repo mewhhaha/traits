@@ -394,6 +394,11 @@ some((left: number) => {
   .ap(some(22));
 ```
 
+The applicative API is explicit TypeScript: use `Applicative.lift` when the
+inputs are independent, or fluent `ap` when you already have a contextual
+function. Parser-style applicatives can use the same shape by lifting a field
+constructor over independent parser values.
+
 ### Monad
 
 ```hs

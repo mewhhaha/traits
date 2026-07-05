@@ -7,9 +7,10 @@ in TypeScript/Deno.
 
 The core pattern is:
 
-- Define a data type and an empty function with the same exported name.
-- Attach trait methods directly to the function.
-- Place `satisfies` checks next to the implementation.
+- Define a data type and an `As...` dictionary interface with the same raw value
+  shape expressed through `type_item` and `type_value`.
+- Export a same-named callable dictionary with `define<As...>()`.
+- Attach trait methods directly to the callable dictionary.
 - Use tests and examples to make the trait behavior obvious.
 
 ## Scope
@@ -30,7 +31,8 @@ machinery, add it only when it improves the public API or examples.
 - Keep core trait machinery in `src/trait.ts`.
 - Keep application/sublibrary trait definitions in `src/traits.ts`.
 - Keep each data type and its trait implementations in one file.
-- Keep `satisfies` checks in the implementation file, not in tests.
+- Keep the `As...` dictionary interface next to the data type and its
+  `define<As...>()` export.
 - Prefer `switch` statements, then the tagged `match` helper, then explicit `if`
   statements for branching. For tuple-tagged values, typically deconstruct the
   value with `const [tag, payload] = value` and switch on `tag`.
@@ -42,6 +44,7 @@ machinery, add it only when it improves the public API or examples.
 Run:
 
 ```sh
+deno task check
+deno lint
 deno test
-deno check src/mod.ts src/*.test.ts examples/main.ts
 ```

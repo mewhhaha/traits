@@ -1,23 +1,22 @@
-import { type As, define, type Value } from "./trait.ts";
+import {
+  type As,
+  define,
+  type type_item,
+  type type_value,
+  type Value,
+} from "./trait.ts";
 import { Equal, Format } from "./traits.ts";
 
 export type ErrorT = Error;
 
-export const error_kind = Symbol("ErrorT");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [error_kind]: ErrorT;
-  }
+export interface AsError extends As<AsError>, Format<AsError>, Equal<AsError> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: ErrorT;
 }
-
-export interface AsError extends As<typeof error_kind> {}
 
 type ErrorValue = Value<AsError, Error>;
 
-export const ErrorT = define<AsError>(
-  error_kind,
-);
+export const ErrorT = define<AsError>();
 
 export function from_error(error: Error): ErrorValue {
   return ErrorT(error) as ErrorValue;
@@ -29,8 +28,6 @@ Format.implement(ErrorT)({
   },
 });
 
-export interface AsError extends Format<AsError> {}
-
 Equal.implement(ErrorT)({
   eq(right) {
     const left = this.value();
@@ -41,5 +38,3 @@ Equal.implement(ErrorT)({
       Object.is(left.cause, right_value.cause);
   },
 });
-
-export interface AsError extends Equal<AsError> {}

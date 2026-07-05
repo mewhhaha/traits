@@ -1,22 +1,29 @@
-import { type As, define, type Value } from "./trait.ts";
+import {
+  type As,
+  define,
+  type type_item,
+  type type_value,
+  type Value,
+} from "./trait.ts";
 import { Equal, Foldable, Format, Monoid, Semigroup } from "./traits.ts";
 
 export type DataViewT = DataView;
 
-export const data_view_kind = Symbol("DataViewT");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [data_view_kind]: DataViewT;
-  }
+export interface AsDataView
+  extends
+    As<AsDataView>,
+    Format<AsDataView>,
+    Equal<AsDataView>,
+    Semigroup<AsDataView>,
+    Monoid<AsDataView>,
+    Foldable<AsDataView> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: DataViewT;
 }
-
-export interface AsDataView extends As<typeof data_view_kind> {}
 
 type DataViewValue = Value<AsDataView, number>;
 
 export const DataViewT = define<AsDataView>(
-  data_view_kind,
   function (view) {
     return this.as_trait(clone_data_view(view));
   },
@@ -36,8 +43,6 @@ Format.implement(DataViewT)({
   },
 });
 
-export interface AsDataView extends Format<AsDataView> {}
-
 Equal.implement(DataViewT)({
   eq(right) {
     return bytes_equal(
@@ -46,8 +51,6 @@ Equal.implement(DataViewT)({
     );
   },
 });
-
-export interface AsDataView extends Equal<AsDataView> {}
 
 Semigroup.implement(DataViewT)({
   concat(right) {
@@ -62,15 +65,11 @@ Semigroup.implement(DataViewT)({
   },
 });
 
-export interface AsDataView extends Semigroup<AsDataView> {}
-
 Monoid.implement(DataViewT)({
   empty() {
     return DataViewT(new DataView(new ArrayBuffer(0)));
   },
 });
-
-export interface AsDataView extends Monoid<AsDataView> {}
 
 Foldable.implement(DataViewT)({
   fold<item, out>(
@@ -87,8 +86,6 @@ Foldable.implement(DataViewT)({
     return state;
   },
 });
-
-export interface AsDataView extends Foldable<AsDataView> {}
 
 function clone_data_view(view: DataView): DataView {
   const bytes = to_view_bytes(view);

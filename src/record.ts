@@ -1,4 +1,10 @@
-import { type As, define, type Value } from "./trait.ts";
+import {
+  type As,
+  define,
+  type type_item,
+  type type_value,
+  type Value,
+} from "./trait.ts";
 import {
   Applicative,
   Equal,
@@ -12,20 +18,23 @@ import {
 
 export type RecordT<item> = Readonly<Record<string, item>>;
 
-export const record_kind = Symbol("RecordT");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [record_kind]: RecordT<item>;
-  }
+export interface AsRecord
+  extends
+    As<AsRecord>,
+    Format<AsRecord>,
+    Equal<AsRecord>,
+    Functor<AsRecord>,
+    Semigroup<AsRecord>,
+    Monoid<AsRecord>,
+    Foldable<AsRecord>,
+    Traversable<AsRecord> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: RecordT<this[typeof type_item]>;
 }
-
-export interface AsRecord extends As<typeof record_kind> {}
 
 type RecordValue<item> = Value<AsRecord, item>;
 
 export const RecordT = define<AsRecord>(
-  record_kind,
   function (record) {
     return this.as_trait({ ...record });
   },
@@ -49,8 +58,6 @@ Format.implement(RecordT)({
     return Deno.inspect(record);
   },
 });
-
-export interface AsRecord extends Format<AsRecord> {}
 
 Equal.implement(RecordT)({
   eq(right) {
@@ -77,8 +84,6 @@ Equal.implement(RecordT)({
   },
 });
 
-export interface AsRecord extends Equal<AsRecord> {}
-
 Functor.implement(RecordT)({
   map(fn) {
     const record = this.value();
@@ -92,8 +97,6 @@ Functor.implement(RecordT)({
   },
 });
 
-export interface AsRecord extends Functor<AsRecord> {}
-
 Semigroup.implement(RecordT)({
   concat(right) {
     const left = this.value();
@@ -101,15 +104,11 @@ Semigroup.implement(RecordT)({
   },
 });
 
-export interface AsRecord extends Semigroup<AsRecord> {}
-
 Monoid.implement(RecordT)({
   empty() {
     return RecordT({});
   },
 });
-
-export interface AsRecord extends Monoid<AsRecord> {}
 
 Foldable.implement(RecordT)({
   fold(initial, fn) {
@@ -123,8 +122,6 @@ Foldable.implement(RecordT)({
     return state;
   },
 });
-
-export interface AsRecord extends Foldable<AsRecord> {}
 
 Traversable.implement(RecordT)({
   traverse(applicative, fn) {
@@ -147,8 +144,6 @@ Traversable.implement(RecordT)({
     return out;
   },
 });
-
-export interface AsRecord extends Traversable<AsRecord> {}
 
 function record_single<item>(key: string) {
   return (value: item): RecordValue<item> => RecordT({ [key]: value });

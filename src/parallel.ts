@@ -32,6 +32,7 @@ export type WorkerPool<input, output> = {
   readonly worker: string;
   map(inputs: readonly input[]): Promise<readonly output[]>;
   close(): void;
+  [Symbol.dispose](): void;
 };
 
 type WorkerJob<input> = readonly [
@@ -143,6 +144,15 @@ export function create_worker_pool<input, output>(
   let closed = false;
   let previous = Promise.resolve();
 
+  function close() {
+    if (closed) {
+      return;
+    }
+
+    closed = true;
+    close_workers(workers);
+  }
+
   return {
     worker: worker_href_value,
 
@@ -164,14 +174,9 @@ export function create_worker_pool<input, output>(
       return run;
     },
 
-    close() {
-      if (closed) {
-        return;
-      }
+    close,
 
-      closed = true;
-      close_workers(workers);
-    },
+    [Symbol.dispose]: close,
   };
 }
 
@@ -180,13 +185,9 @@ export async function with_worker_pool<input, output, item>(
   use: (pool: WorkerPool<input, output>) => item | Promise<item>,
   options: ParallelOptions = {},
 ): Promise<item> {
-  const pool = create_worker_pool<input, output>(worker, options);
+  using pool = create_worker_pool<input, output>(worker, options);
 
-  try {
-    return await use(pool);
-  } finally {
-    pool.close();
-  }
+  return await use(pool);
 }
 
 export function worker_pool_map<input, output>(
@@ -206,15 +207,15 @@ export async function run_worker_map<input, output>(
   }
 
   const worker_count = normalize_worker_count(options.workers, inputs.length);
+  using cleanup = new DisposableStack();
   const workers = Array.from({ length: worker_count }, () => {
-    return new Worker(worker_href(worker), { type: "module" });
+    const current_worker = new Worker(worker_href(worker), { type: "module" });
+    cleanup.defer(() => current_worker.terminate());
+
+    return current_worker;
   });
 
-  try {
-    return await run_worker_map_with_workers(workers, inputs);
-  } finally {
-    close_workers(workers);
-  }
+  return await run_worker_map_with_workers(workers, inputs);
 }
 
 async function run_worker_map_with_workers<input, output>(

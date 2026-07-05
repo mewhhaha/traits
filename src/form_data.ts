@@ -1,23 +1,30 @@
-import { type As, define, type Value } from "./trait.ts";
+import {
+  type As,
+  define,
+  type type_item,
+  type type_value,
+  type Value,
+} from "./trait.ts";
 import { Equal, Foldable, Format, Monoid, Semigroup } from "./traits.ts";
 
 export type FormDataEntry = readonly [string, FormDataEntryValue];
 export type FormDataT = FormData;
 
-export const form_data_kind = Symbol("FormDataT");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [form_data_kind]: FormDataT;
-  }
+export interface AsFormData
+  extends
+    As<AsFormData>,
+    Format<AsFormData>,
+    Equal<AsFormData>,
+    Semigroup<AsFormData>,
+    Monoid<AsFormData>,
+    Foldable<AsFormData> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: FormDataT;
 }
-
-export interface AsFormData extends As<typeof form_data_kind> {}
 
 type FormDataValue = Value<AsFormData, FormDataEntry>;
 
 export const FormDataT = define<AsFormData>(
-  form_data_kind,
   function (form_data) {
     return this.as_trait(clone_form_data(form_data));
   },
@@ -38,8 +45,6 @@ Format.implement(FormDataT)({
     return Deno.inspect([...this.value().entries()]);
   },
 });
-
-export interface AsFormData extends Format<AsFormData> {}
 
 Equal.implement(FormDataT)({
   eq(right) {
@@ -63,8 +68,6 @@ Equal.implement(FormDataT)({
   },
 });
 
-export interface AsFormData extends Equal<AsFormData> {}
-
 Semigroup.implement(FormDataT)({
   concat(right) {
     const out = clone_form_data(this.value());
@@ -77,15 +80,11 @@ Semigroup.implement(FormDataT)({
   },
 });
 
-export interface AsFormData extends Semigroup<AsFormData> {}
-
 Monoid.implement(FormDataT)({
   empty() {
     return FormDataT(new FormData());
   },
 });
-
-export interface AsFormData extends Monoid<AsFormData> {}
 
 Foldable.implement(FormDataT)({
   fold<item, out>(
@@ -102,8 +101,6 @@ Foldable.implement(FormDataT)({
     return state;
   },
 });
-
-export interface AsFormData extends Foldable<AsFormData> {}
 
 function clone_form_data(form_data: FormData): FormData {
   return form_data_from_entries(form_data.entries());

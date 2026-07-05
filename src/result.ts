@@ -1,4 +1,10 @@
-import { type As, define, type Trait } from "./trait.ts";
+import {
+  type As,
+  define,
+  type Trait,
+  type type_item,
+  type type_value,
+} from "./trait.ts";
 import {
   Applicative,
   Equal,
@@ -16,15 +22,19 @@ export type Result<item, error = string> =
 export type Ok<item> = readonly ["ok", item];
 export type Err<error = string> = readonly ["err", error];
 
-export const result_kind = Symbol("Result");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [result_kind]: Result<item, unknown>;
-  }
+export interface AsResult
+  extends
+    As<AsResult>,
+    Format<AsResult>,
+    Equal<AsResult>,
+    Functor<AsResult>,
+    Applicative<AsResult>,
+    Monad<AsResult>,
+    Foldable<AsResult>,
+    Traversable<AsResult> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: Result<this[typeof type_item], unknown>;
 }
-
-export interface AsResult extends As<typeof result_kind> {}
 
 export type ResultValue<error, item> = Trait<
   AsResult,
@@ -38,9 +48,7 @@ type ResultConstructor =
     <item, error>(value: Result<item, error>): ResultValue<error, item>;
   };
 
-export const Result = define<AsResult>(
-  result_kind,
-) as ResultConstructor;
+export const Result = define<AsResult>() as ResultConstructor;
 
 export function ok<item>(value: item): ResultValue<never, item> {
   return Result(result_ok(value)) as ResultValue<never, item>;
@@ -89,8 +97,6 @@ Format.implement(Result)({
   },
 });
 
-export interface AsResult extends Format<AsResult> {}
-
 Equal.implement(Result)({
   eq(right) {
     const [left_tag, left_payload] = this.value();
@@ -119,8 +125,6 @@ Equal.implement(Result)({
   },
 });
 
-export interface AsResult extends Equal<AsResult> {}
-
 Functor.implement(Result)({
   map(fn) {
     const [tag, payload] = this.value();
@@ -133,8 +137,6 @@ Functor.implement(Result)({
     }
   },
 });
-
-export interface AsResult extends Functor<AsResult> {}
 
 Applicative.implement(Result)({
   pure(value) {
@@ -161,8 +163,6 @@ Applicative.implement(Result)({
   },
 });
 
-export interface AsResult extends Applicative<AsResult> {}
-
 Monad.implement(Result)({
   bind(fn) {
     const [tag, payload] = this.value();
@@ -175,8 +175,6 @@ Monad.implement(Result)({
     }
   },
 });
-
-export interface AsResult extends Monad<AsResult> {}
 
 Foldable.implement(Result)({
   fold(initial, fn) {
@@ -191,8 +189,6 @@ Foldable.implement(Result)({
   },
 });
 
-export interface AsResult extends Foldable<AsResult> {}
-
 Traversable.implement(Result)({
   traverse(applicative, fn) {
     const [tag, payload] = this.value();
@@ -205,8 +201,6 @@ Traversable.implement(Result)({
     }
   },
 });
-
-export interface AsResult extends Traversable<AsResult> {}
 
 function result_ok<item>(value: item): Ok<item> {
   return ["ok", value];

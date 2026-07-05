@@ -1,24 +1,31 @@
-import { type As, define, type Dictionary, kind, type Value } from "./trait.ts";
+import {
+  type As,
+  define,
+  type Dictionary,
+  kind,
+  type type_item,
+  type type_value,
+  type Value,
+} from "./trait.ts";
 import type { Effect, Lift } from "./effects.ts";
 import { Applicative, Format, Functor, Monad } from "./traits.ts";
 
 export type Task<item> = () => Promise<item>;
 
-export const task_kind = Symbol("Task");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [task_kind]: Task<item>;
-  }
+export interface AsTask
+  extends
+    As<AsTask>,
+    Format<AsTask>,
+    Functor<AsTask>,
+    Applicative<AsTask>,
+    Monad<AsTask> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: Task<this[typeof type_item]>;
 }
-
-export interface AsTask extends As<typeof task_kind> {}
 
 type TaskValue<item> = Value<AsTask, item>;
 
-export const Task = define<AsTask>(
-  task_kind,
-);
+export const Task = define<AsTask>();
 
 export function succeed<item>(value: item): TaskValue<item> {
   return Task(() => Promise.resolve(value));
@@ -68,7 +75,7 @@ function is_task_value(value: unknown): value is Dictionary {
     return false;
   }
 
-  return (value as Dictionary)[kind] === task_kind;
+  return (value as Dictionary)[kind] === Task[kind];
 }
 
 Format.implement(Task)({
@@ -77,15 +84,11 @@ Format.implement(Task)({
   },
 });
 
-export interface AsTask extends Format<AsTask> {}
-
 Functor.implement(Task)({
   map(fn) {
     return Task(async () => fn(await this.value()()));
   },
 });
-
-export interface AsTask extends Functor<AsTask> {}
 
 Applicative.implement(Task)({
   pure(value) {
@@ -103,8 +106,6 @@ Applicative.implement(Task)({
   },
 });
 
-export interface AsTask extends Applicative<AsTask> {}
-
 Monad.implement(Task)({
   bind(fn) {
     return Task(async () => {
@@ -113,5 +114,3 @@ Monad.implement(Task)({
     });
   },
 });
-
-export interface AsTask extends Monad<AsTask> {}

@@ -1,4 +1,10 @@
-import { type As, define, type Value } from "./trait.ts";
+import {
+  type As,
+  define,
+  type type_item,
+  type type_value,
+  type Value,
+} from "./trait.ts";
 import {
   Alternative,
   Applicative,
@@ -14,21 +20,26 @@ import {
 
 export type IterableT<item> = () => Iterable<item>;
 
-export const iterable_kind = Symbol("IterableT");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [iterable_kind]: IterableT<item>;
-  }
+export interface AsIterable
+  extends
+    As<AsIterable>,
+    Format<AsIterable>,
+    Equal<AsIterable>,
+    Functor<AsIterable>,
+    Applicative<AsIterable>,
+    Semigroup<AsIterable>,
+    Monoid<AsIterable>,
+    Alternative<AsIterable>,
+    Monad<AsIterable>,
+    Foldable<AsIterable>,
+    Traversable<AsIterable> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: IterableT<this[typeof type_item]>;
 }
-
-export interface AsIterable extends As<typeof iterable_kind> {}
 
 type IterableValue<item> = Value<AsIterable, item>;
 
-export const IterableT = define<AsIterable>(
-  iterable_kind,
-);
+export const IterableT = define<AsIterable>();
 
 export function from_factory<item>(
   factory: () => Iterable<item>,
@@ -53,8 +64,6 @@ Format.implement(IterableT)({
   },
 });
 
-export interface AsIterable extends Format<AsIterable> {}
-
 Equal.implement(IterableT)({
   eq(right) {
     const left_iterator = this.value()()[Symbol.iterator]();
@@ -75,8 +84,6 @@ Equal.implement(IterableT)({
   },
 });
 
-export interface AsIterable extends Equal<AsIterable> {}
-
 Functor.implement(IterableT)({
   map(fn) {
     const source = this.value();
@@ -88,8 +95,6 @@ Functor.implement(IterableT)({
     });
   },
 });
-
-export interface AsIterable extends Functor<AsIterable> {}
 
 Applicative.implement(IterableT)({
   pure(value) {
@@ -112,8 +117,6 @@ Applicative.implement(IterableT)({
   },
 });
 
-export interface AsIterable extends Applicative<AsIterable> {}
-
 Semigroup.implement(IterableT)({
   concat(right) {
     const left = this.value();
@@ -126,15 +129,11 @@ Semigroup.implement(IterableT)({
   },
 });
 
-export interface AsIterable extends Semigroup<AsIterable> {}
-
 Monoid.implement(IterableT)({
   empty() {
     return IterableT(function* () {});
   },
 });
-
-export interface AsIterable extends Monoid<AsIterable> {}
 
 Alternative.implement(IterableT)({
   empty() {
@@ -152,8 +151,6 @@ Alternative.implement(IterableT)({
   },
 });
 
-export interface AsIterable extends Alternative<AsIterable> {}
-
 Monad.implement(IterableT)({
   bind(fn) {
     const source = this.value();
@@ -166,8 +163,6 @@ Monad.implement(IterableT)({
   },
 });
 
-export interface AsIterable extends Monad<AsIterable> {}
-
 Foldable.implement(IterableT)({
   fold(initial, fn) {
     let state = initial;
@@ -179,8 +174,6 @@ Foldable.implement(IterableT)({
     return state;
   },
 });
-
-export interface AsIterable extends Foldable<AsIterable> {}
 
 Traversable.implement(IterableT)({
   traverse(applicative, fn) {
@@ -203,8 +196,6 @@ Traversable.implement(IterableT)({
     return out;
   },
 });
-
-export interface AsIterable extends Traversable<AsIterable> {}
 
 function iterable_single<item>(item: item): IterableValue<item> {
   return IterableT(function* () {

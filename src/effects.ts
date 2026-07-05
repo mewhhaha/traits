@@ -1,4 +1,10 @@
-import { type Dictionary, is_trait, kind, type Value } from "./trait.ts";
+import {
+  type Dictionary,
+  type DictionaryValueType,
+  is_trait,
+  kind,
+  type Value,
+} from "./trait.ts";
 
 declare const operation_output: unique symbol;
 
@@ -64,7 +70,8 @@ type EffectRequirements<value> = value extends Effect<
   infer requirements,
   infer _item
 > ? requirements
-  : value extends Value<infer dictionary, infer item> ? Lift<dictionary, item>
+  : value extends Value<infer dictionary extends Dictionary, infer item>
+    ? Lift<dictionary, item>
   : never;
 
 type ScopedYield<requirements, yielded> =
@@ -83,20 +90,16 @@ export type ProgramConstructor =
     scope<requirements>(): ProgramScope<requirements>;
   };
 
-export type DictionaryType<dictionary> = dictionary extends
-  Dictionary<infer type_id> ? type_id
-  : never;
-
 export type WithoutLift<
   requirements,
   dictionary extends Dictionary,
 > = requirements extends Lift<infer lifted, infer _item>
-  ? DictionaryType<lifted> extends DictionaryType<dictionary> ? never
+  ? DictionaryValueType<lifted> extends DictionaryValueType<dictionary> ? never
   : requirements
   : requirements;
 
 export type LiftHandler<
-  dictionary extends Dictionary<PropertyKey>,
+  dictionary extends Dictionary,
   state,
   item,
   out,
@@ -385,13 +388,13 @@ export function run<item>(effect: Effect<never, item>): item {
 
 export function handle_lift<
   requirements,
-  dictionary extends Dictionary<PropertyKey>,
+  dictionary extends Dictionary,
   state,
   item,
   out,
 >(
   effect: Effect<requirements, item>,
-  type_id: DictionaryType<dictionary>,
+  runtime_kind: dictionary[typeof kind],
   state: state,
   handler: LiftHandler<dictionary, state, item, out>,
 ): Effect<WithoutLift<requirements, dictionary>, out> {
@@ -399,16 +402,16 @@ export function handle_lift<
     return pure(handler.done(effect.value, state));
   }
 
-  if (is_lift_of(effect.operation, type_id)) {
+  if (is_lift_of(effect.operation, runtime_kind)) {
     const operation = effect.operation as unknown as Lift<dictionary, unknown>;
     const [value, next] = handler.handle(operation.value, state);
 
-    return handle_lift(effect.resume(value), type_id, next, handler);
+    return handle_lift(effect.resume(value), runtime_kind, next, handler);
   }
 
   return suspend(
     effect.operation as WithoutLift<requirements, dictionary>,
-    (value) => handle_lift(effect.resume(value), type_id, state, handler),
+    (value) => handle_lift(effect.resume(value), runtime_kind, state, handler),
   );
 }
 
@@ -484,10 +487,10 @@ function scope<requirements>(): ProgramScope<requirements> {
   };
 }
 
-export function is_lift_of<type_id extends PropertyKey>(
+export function is_lift_of<dictionary extends Dictionary>(
   operation: unknown,
-  type_id: type_id,
-): operation is Lift<Dictionary<type_id>, unknown> {
+  runtime_kind: dictionary[typeof kind],
+): operation is Lift<dictionary, unknown> {
   if (!has_tag(operation, "lift")) {
     return false;
   }
@@ -502,7 +505,7 @@ export function is_lift_of<type_id extends PropertyKey>(
     return false;
   }
 
-  return (value as Dictionary)[kind] === type_id;
+  return (value as Dictionary)[kind] === runtime_kind;
 }
 
 export function has_tag<tag extends string>(

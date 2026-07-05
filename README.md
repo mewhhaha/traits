@@ -39,10 +39,10 @@ existing contextual value as a fluent `Trait<dictionary, value, item>` and also
 acts as the trait dictionary. Constructors and other helpers are normal exported
 functions that return wrapped values.
 
-Each data type registers its raw value shape in `TraitTypes<dictionary, item>`.
-That maps a dictionary kind to the value it wraps, so
-`Value<typeof Option, item>` can recover that `Option` stores `Option<item>`
-without putting a phantom value member on every dictionary.
+Each data type declares its raw value shape directly on its dictionary interface
+with type-only phantom symbols. That maps the contextual `item` to the raw value
+the dictionary wraps, so `Value<typeof Option, item>` can recover that `Option`
+stores `Option<item>` without a global registry or a public kind symbol.
 
 Trait implementation functions receive the wrapped value as `this`. The
 installer stores that this-based implementation in the canonical symbol slot and
@@ -51,26 +51,20 @@ slot is a unique symbol, so two traits can both have a method named `fmt`
 without sharing a runtime property.
 
 ```ts
-import { type As, define } from "./trait.ts";
+import { type As, define, type type_item, type type_value } from "./trait.ts";
 import { Format, Monad } from "./traits.ts";
 
 export type Option<item> =
   | readonly ["some", item]
   | readonly ["none"];
 
-export const option_kind = Symbol("Option");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [option_kind]: Option<item>;
-  }
+export interface AsOption
+  extends As<AsOption>, Format<AsOption>, Monad<AsOption> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: Option<this[typeof type_item]>;
 }
 
-export interface AsOption extends As<typeof option_kind> {}
-
-export const Option = define<AsOption>(
-  option_kind,
-);
+export const Option = define<AsOption>();
 
 export function some<item>(
   value: item,
@@ -85,11 +79,15 @@ export function none<item = never>() {
 Format.implement(Option)({
   fmt() {
     const option = this.value();
-    return option[0] === "none" ? "None" : "Some(" + option[1] + ")";
+
+    switch (option[0]) {
+      case "none":
+        return "None";
+      case "some":
+        return "Some(" + option[1] + ")";
+    }
   },
 });
-
-export interface AsOption extends Format<AsOption> {}
 
 Monad.implement(Option)({
   bind(fn) {
@@ -102,14 +100,12 @@ Monad.implement(Option)({
     return fn(option[1]);
   },
 });
-
-export interface AsOption extends Monad<AsOption> {}
 ```
 
 See `src/option.ts`, `src/result.ts`, `src/list.ts`, `src/task.ts`,
 `src/array.ts`, `src/map.ts`, and `src/record.ts` for complete examples.
 
-## Fluent Experiment
+## Fluent API
 
 Wrapped values chain directly through the implemented traits:
 
@@ -137,13 +133,13 @@ Most code can use the shorter `Value<dictionary, item>` helper:
 type WrappedOption<item> = Value<typeof Option, item>;
 ```
 
-`define(type_id)` creates the callable dictionary, assigns its kind, and routes
-calls through a cached constructor. The lower-level
+`define<AsOption>()` creates the callable dictionary, assigns an internal kind,
+and routes calls through a cached constructor. The lower-level
 `as_trait(dictionary, value)` and `as_trait_cached(dictionary)` helpers remain
 available for integrations that need to manage construction directly.
 
-Each data type registers its raw value once in `TraitTypes<dictionary, item>`.
-`Value` uses that registry to type helper functions, trait implementations, and
+Each data type declares its raw value shape once on the `As...` interface.
+`Value` uses that shape to type helper functions, trait implementations, and
 fluent methods.
 
 The wrapped value's prototype points at a shared trait prototype, which
@@ -161,8 +157,9 @@ lets TypeScript infer generic implementation parameters from the `this`-based
 method shape. Trait definitions are prototype-backed objects made with
 `define_trait`; each definition inherits the shared installer and implementation
 accessor, while public helper methods keep trait-specific types. Their bodies
-usually dispatch through `call_trait_method`. Outside the declaring module, use
-the same extension point through module augmentation.
+usually dispatch through `call_trait_method`. Outside the declaring module,
+extend a dictionary by augmenting its exported `As...` interface and installing
+the implementation on the callable dictionary.
 
 Implementation methods usually do not need explicit generic parameters. For
 `Traversable.traverse`, collection implementations split empty and non-empty

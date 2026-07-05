@@ -1,22 +1,23 @@
-import { type As, define, type Value } from "./trait.ts";
+import {
+  type As,
+  define,
+  type type_item,
+  type type_value,
+  type Value,
+} from "./trait.ts";
 import { Equal, Format } from "./traits.ts";
 
 export type RegExpT = RegExp;
 
-export const regexp_kind = Symbol("RegExpT");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [regexp_kind]: RegExpT;
-  }
+export interface AsRegExp
+  extends As<AsRegExp>, Format<AsRegExp>, Equal<AsRegExp> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: RegExpT;
 }
-
-export interface AsRegExp extends As<typeof regexp_kind> {}
 
 type RegExpValue = Value<AsRegExp, RegExp>;
 
 export const RegExpT = define<AsRegExp>(
-  regexp_kind,
   function (regexp) {
     return this.as_trait(new RegExp(regexp.source, regexp.flags));
   },
@@ -32,8 +33,6 @@ Format.implement(RegExpT)({
   },
 });
 
-export interface AsRegExp extends Format<AsRegExp> {}
-
 Equal.implement(RegExpT)({
   eq(right) {
     const left = this.value();
@@ -43,5 +42,3 @@ Equal.implement(RegExpT)({
       left.flags === right_value.flags;
   },
 });
-
-export interface AsRegExp extends Equal<AsRegExp> {}

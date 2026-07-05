@@ -1,4 +1,12 @@
-import { define, type Dictionary, kind, type Trait } from "./trait.ts";
+import {
+  type As,
+  define,
+  type Dictionary,
+  kind,
+  type Trait,
+  type type_item,
+  type type_value,
+} from "./trait.ts";
 import {
   type Effect,
   type Lift,
@@ -10,17 +18,15 @@ import { Applicative, Format, Functor, Monad } from "./traits.ts";
 
 export type Reader<environment, item> = (environment: environment) => item;
 
-export const reader_kind = Symbol("Reader");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [reader_kind]: dictionary extends AsReader<infer environment>
-      ? Reader<environment, item>
-      : never;
-  }
-}
-
-export interface AsReader<environment> extends Dictionary<typeof reader_kind> {
+export interface AsReader<environment>
+  extends
+    As<AsReader<environment>>,
+    Format<AsReader<environment>>,
+    Functor<AsReader<environment>>,
+    Applicative<AsReader<environment>>,
+    Monad<AsReader<environment>> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: Reader<environment, this[typeof type_item]>;
   <item>(value: Reader<environment, item>): ReaderValue<environment, item>;
 }
 
@@ -38,9 +44,7 @@ type ReaderConstructor =
     ): ReaderValue<environment, item>;
   };
 
-export const Reader = define<AsReader<unknown>>(
-  reader_kind,
-) as ReaderConstructor;
+export const Reader = define<AsReader<unknown>>() as ReaderConstructor;
 
 export function ask<environment>(): ReaderValue<environment, environment> {
   return Reader((environment: environment) => environment);
@@ -98,7 +102,7 @@ function is_reader_value(value: unknown): value is Dictionary {
     return false;
   }
 
-  return (value as Dictionary)[kind] === reader_kind;
+  return (value as Dictionary)[kind] === Reader[kind];
 }
 
 Format.implement(Reader)({
@@ -107,8 +111,6 @@ Format.implement(Reader)({
   },
 });
 
-export interface AsReader<environment> extends Format<AsReader<environment>> {}
-
 Functor.implement(Reader)({
   map(fn) {
     return Reader((environment: unknown) => {
@@ -116,8 +118,6 @@ Functor.implement(Reader)({
     });
   },
 });
-
-export interface AsReader<environment> extends Functor<AsReader<environment>> {}
 
 Applicative.implement(Reader)({
   pure(value) {
@@ -132,9 +132,6 @@ Applicative.implement(Reader)({
   },
 });
 
-export interface AsReader<environment>
-  extends Applicative<AsReader<environment>> {}
-
 Monad.implement(Reader)({
   bind(fn) {
     return Reader((environment: unknown) => {
@@ -143,5 +140,3 @@ Monad.implement(Reader)({
     });
   },
 });
-
-export interface AsReader<environment> extends Monad<AsReader<environment>> {}

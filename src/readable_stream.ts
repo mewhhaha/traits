@@ -1,24 +1,27 @@
 import { type AsAsyncIterable, AsyncIterableT } from "./async_iterable.ts";
-import { type As, define, type Value } from "./trait.ts";
+import {
+  type As,
+  define,
+  type type_item,
+  type type_value,
+  type Value,
+} from "./trait.ts";
 import { Equal, Format } from "./traits.ts";
 
 export type ReadableStreamT<item> = ReadableStream<item>;
 
-export const readable_stream_kind = Symbol("ReadableStreamT");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [readable_stream_kind]: ReadableStreamT<item>;
-  }
+export interface AsReadableStream
+  extends
+    As<AsReadableStream>,
+    Format<AsReadableStream>,
+    Equal<AsReadableStream> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: ReadableStreamT<this[typeof type_item]>;
 }
-
-export interface AsReadableStream extends As<typeof readable_stream_kind> {}
 
 type ReadableStreamValue<item> = Value<AsReadableStream, item>;
 
-export const ReadableStreamT = define<AsReadableStream>(
-  readable_stream_kind,
-);
+export const ReadableStreamT = define<AsReadableStream>();
 
 export function from_readable_stream<item>(
   stream: ReadableStream<item>,
@@ -56,12 +59,8 @@ Format.implement(ReadableStreamT)({
   },
 });
 
-export interface AsReadableStream extends Format<AsReadableStream> {}
-
 Equal.implement(ReadableStreamT)({
   eq(right) {
     return Object.is(this.value(), right.value());
   },
 });
-
-export interface AsReadableStream extends Equal<AsReadableStream> {}

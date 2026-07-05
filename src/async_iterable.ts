@@ -1,4 +1,10 @@
-import { type As, define, type Value } from "./trait.ts";
+import {
+  type As,
+  define,
+  type type_item,
+  type type_value,
+  type Value,
+} from "./trait.ts";
 import {
   Alternative,
   Applicative,
@@ -11,21 +17,23 @@ import {
 
 export type AsyncIterableT<item> = () => AsyncIterable<item>;
 
-export const async_iterable_kind = Symbol("AsyncIterableT");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [async_iterable_kind]: AsyncIterableT<item>;
-  }
+export interface AsAsyncIterable
+  extends
+    As<AsAsyncIterable>,
+    Format<AsAsyncIterable>,
+    Functor<AsAsyncIterable>,
+    Applicative<AsAsyncIterable>,
+    Semigroup<AsAsyncIterable>,
+    Monoid<AsAsyncIterable>,
+    Alternative<AsAsyncIterable>,
+    Monad<AsAsyncIterable> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: AsyncIterableT<this[typeof type_item]>;
 }
-
-export interface AsAsyncIterable extends As<typeof async_iterable_kind> {}
 
 type AsyncIterableValue<item> = Value<AsAsyncIterable, item>;
 
-export const AsyncIterableT = define<AsAsyncIterable>(
-  async_iterable_kind,
-);
+export const AsyncIterableT = define<AsAsyncIterable>();
 
 export function from_factory<item>(
   factory: () => AsyncIterable<item>,
@@ -57,8 +65,6 @@ Format.implement(AsyncIterableT)({
   },
 });
 
-export interface AsAsyncIterable extends Format<AsAsyncIterable> {}
-
 Functor.implement(AsyncIterableT)({
   map(fn) {
     const source = this.value();
@@ -70,8 +76,6 @@ Functor.implement(AsyncIterableT)({
     });
   },
 });
-
-export interface AsAsyncIterable extends Functor<AsAsyncIterable> {}
 
 Applicative.implement(AsyncIterableT)({
   pure(value) {
@@ -94,8 +98,6 @@ Applicative.implement(AsyncIterableT)({
   },
 });
 
-export interface AsAsyncIterable extends Applicative<AsAsyncIterable> {}
-
 Semigroup.implement(AsyncIterableT)({
   concat(right) {
     const left = this.value();
@@ -108,15 +110,11 @@ Semigroup.implement(AsyncIterableT)({
   },
 });
 
-export interface AsAsyncIterable extends Semigroup<AsAsyncIterable> {}
-
 Monoid.implement(AsyncIterableT)({
   empty() {
     return AsyncIterableT(async function* () {});
   },
 });
-
-export interface AsAsyncIterable extends Monoid<AsAsyncIterable> {}
 
 Alternative.implement(AsyncIterableT)({
   empty() {
@@ -134,8 +132,6 @@ Alternative.implement(AsyncIterableT)({
   },
 });
 
-export interface AsAsyncIterable extends Alternative<AsAsyncIterable> {}
-
 Monad.implement(AsyncIterableT)({
   bind(fn) {
     const source = this.value();
@@ -147,5 +143,3 @@ Monad.implement(AsyncIterableT)({
     });
   },
 });
-
-export interface AsAsyncIterable extends Monad<AsAsyncIterable> {}

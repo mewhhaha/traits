@@ -1,4 +1,10 @@
-import { type As, define, type Value } from "./trait.ts";
+import {
+  type As,
+  define,
+  type type_item,
+  type type_value,
+  type Value,
+} from "./trait.ts";
 import {
   Equal,
   Foldable,
@@ -10,20 +16,22 @@ import {
 
 export type SetT<item> = ReadonlySet<item>;
 
-export const set_kind = Symbol("SetT");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [set_kind]: SetT<item>;
-  }
+export interface AsSet
+  extends
+    As<AsSet>,
+    Format<AsSet>,
+    Equal<AsSet>,
+    Functor<AsSet>,
+    Semigroup<AsSet>,
+    Monoid<AsSet>,
+    Foldable<AsSet> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: SetT<this[typeof type_item]>;
 }
-
-export interface AsSet extends As<typeof set_kind> {}
 
 type SetValue<item> = Value<AsSet, item>;
 
 export const SetT = define<AsSet>(
-  set_kind,
   function (set) {
     return this.as_trait(new Set(set));
   },
@@ -49,8 +57,6 @@ Format.implement(SetT)({
   },
 });
 
-export interface AsSet extends Format<AsSet> {}
-
 Equal.implement(SetT)({
   eq(right) {
     const left = this.value();
@@ -70,15 +76,11 @@ Equal.implement(SetT)({
   },
 });
 
-export interface AsSet extends Equal<AsSet> {}
-
 Functor.implement(SetT)({
   map(fn) {
     return SetT(new Set([...this.value()].map(fn)));
   },
 });
-
-export interface AsSet extends Functor<AsSet> {}
 
 Semigroup.implement(SetT)({
   concat(right) {
@@ -86,15 +88,11 @@ Semigroup.implement(SetT)({
   },
 });
 
-export interface AsSet extends Semigroup<AsSet> {}
-
 Monoid.implement(SetT)({
   empty() {
     return SetT(new Set());
   },
 });
-
-export interface AsSet extends Monoid<AsSet> {}
 
 Foldable.implement(SetT)({
   fold(initial, fn) {
@@ -107,5 +105,3 @@ Foldable.implement(SetT)({
     return state;
   },
 });
-
-export interface AsSet extends Foldable<AsSet> {}

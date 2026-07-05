@@ -1,22 +1,29 @@
-import { type As, define, type Value } from "./trait.ts";
+import {
+  type As,
+  define,
+  type type_item,
+  type type_value,
+  type Value,
+} from "./trait.ts";
 import { Equal, Foldable, Format, Monoid, Semigroup } from "./traits.ts";
 
 export type ArrayBufferT = ArrayBuffer;
 
-export const array_buffer_kind = Symbol("ArrayBufferT");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [array_buffer_kind]: ArrayBufferT;
-  }
+export interface AsArrayBuffer
+  extends
+    As<AsArrayBuffer>,
+    Format<AsArrayBuffer>,
+    Equal<AsArrayBuffer>,
+    Semigroup<AsArrayBuffer>,
+    Monoid<AsArrayBuffer>,
+    Foldable<AsArrayBuffer> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: ArrayBufferT;
 }
-
-export interface AsArrayBuffer extends As<typeof array_buffer_kind> {}
 
 type ArrayBufferValue = Value<AsArrayBuffer, number>;
 
 export const ArrayBufferT = define<AsArrayBuffer>(
-  array_buffer_kind,
   function (buffer) {
     return this.as_trait(buffer.slice(0));
   },
@@ -36,8 +43,6 @@ Format.implement(ArrayBufferT)({
   },
 });
 
-export interface AsArrayBuffer extends Format<AsArrayBuffer> {}
-
 Equal.implement(ArrayBufferT)({
   eq(right) {
     return bytes_equal(
@@ -46,8 +51,6 @@ Equal.implement(ArrayBufferT)({
     );
   },
 });
-
-export interface AsArrayBuffer extends Equal<AsArrayBuffer> {}
 
 Semigroup.implement(ArrayBufferT)({
   concat(right) {
@@ -62,15 +65,11 @@ Semigroup.implement(ArrayBufferT)({
   },
 });
 
-export interface AsArrayBuffer extends Semigroup<AsArrayBuffer> {}
-
 Monoid.implement(ArrayBufferT)({
   empty() {
     return ArrayBufferT(new ArrayBuffer(0));
   },
 });
-
-export interface AsArrayBuffer extends Monoid<AsArrayBuffer> {}
 
 Foldable.implement(ArrayBufferT)({
   fold<item, out>(
@@ -87,8 +86,6 @@ Foldable.implement(ArrayBufferT)({
     return state;
   },
 });
-
-export interface AsArrayBuffer extends Foldable<AsArrayBuffer> {}
 
 function bytes_equal(left: Uint8Array, right: Uint8Array) {
   if (left.length !== right.length) {

@@ -1,4 +1,10 @@
-import { type As, define, type Value } from "./trait.ts";
+import {
+  type As,
+  define,
+  type type_item,
+  type type_value,
+  type Value,
+} from "./trait.ts";
 import {
   Alternative,
   Applicative,
@@ -14,21 +20,26 @@ import {
 
 export type ArrayT<item> = readonly item[];
 
-export const array_kind = Symbol("ArrayT");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [array_kind]: ArrayT<item>;
-  }
+export interface AsArray
+  extends
+    As<AsArray>,
+    Format<AsArray>,
+    Equal<AsArray>,
+    Functor<AsArray>,
+    Applicative<AsArray>,
+    Semigroup<AsArray>,
+    Monoid<AsArray>,
+    Alternative<AsArray>,
+    Monad<AsArray>,
+    Foldable<AsArray>,
+    Traversable<AsArray> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: ArrayT<this[typeof type_item]>;
 }
-
-export interface AsArray extends As<typeof array_kind> {}
 
 type ArrayValue<item> = Value<AsArray, item>;
 
-export const ArrayT = define<AsArray>(
-  array_kind,
-);
+export const ArrayT = define<AsArray>();
 
 export function from_array<item>(items: readonly item[]): ArrayValue<item> {
   return ArrayT([...items]);
@@ -44,8 +55,6 @@ Format.implement(ArrayT)({
     return Deno.inspect(array);
   },
 });
-
-export interface AsArray extends Format<AsArray> {}
 
 Equal.implement(ArrayT)({
   eq(right) {
@@ -66,16 +75,12 @@ Equal.implement(ArrayT)({
   },
 });
 
-export interface AsArray extends Equal<AsArray> {}
-
 Functor.implement(ArrayT)({
   map(fn) {
     const array = this.value();
     return ArrayT(array.map(fn));
   },
 });
-
-export interface AsArray extends Functor<AsArray> {}
 
 Applicative.implement(ArrayT)({
   pure(value) {
@@ -90,8 +95,6 @@ Applicative.implement(ArrayT)({
   },
 });
 
-export interface AsArray extends Applicative<AsArray> {}
-
 Semigroup.implement(ArrayT)({
   concat(right) {
     const left = this.value();
@@ -99,15 +102,11 @@ Semigroup.implement(ArrayT)({
   },
 });
 
-export interface AsArray extends Semigroup<AsArray> {}
-
 Monoid.implement(ArrayT)({
   empty() {
     return ArrayT([]);
   },
 });
-
-export interface AsArray extends Monoid<AsArray> {}
 
 Alternative.implement(ArrayT)({
   empty() {
@@ -120,16 +119,12 @@ Alternative.implement(ArrayT)({
   },
 });
 
-export interface AsArray extends Alternative<AsArray> {}
-
 Monad.implement(ArrayT)({
   bind(fn) {
     const array = this.value();
     return ArrayT(array.flatMap((item) => fn(item).value()));
   },
 });
-
-export interface AsArray extends Monad<AsArray> {}
 
 Foldable.implement(ArrayT)({
   fold(initial, fn) {
@@ -143,8 +138,6 @@ Foldable.implement(ArrayT)({
     return state;
   },
 });
-
-export interface AsArray extends Foldable<AsArray> {}
 
 Traversable.implement(ArrayT)({
   traverse(applicative, fn) {
@@ -164,8 +157,6 @@ Traversable.implement(ArrayT)({
     return out;
   },
 });
-
-export interface AsArray extends Traversable<AsArray> {}
 
 function array_single<item>(item: item): ArrayValue<item> {
   return ArrayT([item]);

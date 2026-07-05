@@ -1,4 +1,10 @@
-import { type As, define, type Value } from "./trait.ts";
+import {
+  type As,
+  define,
+  type type_item,
+  type type_value,
+  type Value,
+} from "./trait.ts";
 import { Equal, Foldable, Format } from "./traits.ts";
 
 export type NumericTypedArray =
@@ -19,20 +25,19 @@ type TypedArrayItem<array> = array extends BigIntTypedArray ? bigint : number;
 
 export type TypedArrayT<item = number | bigint> = AnyTypedArray;
 
-export const typed_array_kind = Symbol("TypedArrayT");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [typed_array_kind]: TypedArrayT<item>;
-  }
+export interface AsTypedArray
+  extends
+    As<AsTypedArray>,
+    Format<AsTypedArray>,
+    Equal<AsTypedArray>,
+    Foldable<AsTypedArray> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: TypedArrayT<this[typeof type_item]>;
 }
-
-export interface AsTypedArray extends As<typeof typed_array_kind> {}
 
 type TypedArrayValue<item> = Value<AsTypedArray, item>;
 
 export const TypedArrayT = define<AsTypedArray>(
-  typed_array_kind,
   function (array) {
     return this.as_trait(clone_typed_array(array));
   },
@@ -55,8 +60,6 @@ Format.implement(TypedArrayT)({
     return Deno.inspect(this.value());
   },
 });
-
-export interface AsTypedArray extends Format<AsTypedArray> {}
 
 Equal.implement(TypedArrayT)({
   eq(right) {
@@ -81,8 +84,6 @@ Equal.implement(TypedArrayT)({
   },
 });
 
-export interface AsTypedArray extends Equal<AsTypedArray> {}
-
 Foldable.implement(TypedArrayT)({
   fold<item, out>(
     this: Value<AsTypedArray, item>,
@@ -98,8 +99,6 @@ Foldable.implement(TypedArrayT)({
     return state;
   },
 });
-
-export interface AsTypedArray extends Foldable<AsTypedArray> {}
 
 function clone_typed_array(array: AnyTypedArray): AnyTypedArray {
   const out = same_constructor(array, array.length);

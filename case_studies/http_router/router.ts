@@ -4,7 +4,13 @@ import type {
   WithoutLift,
 } from "../../src/effects.ts";
 import { type AsReader, run_reader } from "../../src/reader.ts";
-import { type As, define, type Value } from "../../src/trait.ts";
+import {
+  type As,
+  define,
+  type type_item,
+  type type_value,
+  type Value,
+} from "../../src/trait.ts";
 import { Alternative, Applicative, Format, Functor } from "../../src/traits.ts";
 
 export type HttpMethod =
@@ -63,29 +69,26 @@ export type UrlPatternList<item> = {
   match(context: RouteContext): RouteResult<item>;
 };
 
-const url_pattern_list_kind = Symbol("CaseStudy.UrlPatternList");
-
-declare module "../../src/trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [url_pattern_list_kind]: UrlPatternList<item>;
-  }
+export interface AsUrlPatternList
+  extends
+    As<AsUrlPatternList>,
+    Format<AsUrlPatternList>,
+    Functor<AsUrlPatternList>,
+    Applicative<AsUrlPatternList>,
+    Alternative<AsUrlPatternList> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: UrlPatternList<this[typeof type_item]>;
 }
-
-export interface AsUrlPatternList extends As<typeof url_pattern_list_kind> {}
 
 export type UrlPatternListValue<item> = Value<AsUrlPatternList, item>;
 
-export const UrlPatternList = define<AsUrlPatternList>(
-  url_pattern_list_kind,
-);
+export const UrlPatternList = define<AsUrlPatternList>();
 
 Format.implement(UrlPatternList)({
   fmt() {
     return this.value().label;
   },
 });
-
-export interface AsUrlPatternList extends Format<AsUrlPatternList> {}
 
 Functor.implement(UrlPatternList)({
   map(fn) {
@@ -125,8 +128,6 @@ Functor.implement(UrlPatternList)({
     });
   },
 });
-
-export interface AsUrlPatternList extends Functor<AsUrlPatternList> {}
 
 Applicative.implement(UrlPatternList)({
   pure(value) {
@@ -173,8 +174,6 @@ Applicative.implement(UrlPatternList)({
   },
 });
 
-export interface AsUrlPatternList extends Applicative<AsUrlPatternList> {}
-
 Alternative.implement(UrlPatternList)({
   empty() {
     return UrlPatternList(never_url_pattern_list());
@@ -200,8 +199,6 @@ Alternative.implement(UrlPatternList)({
     });
   },
 });
-
-export interface AsUrlPatternList extends Alternative<AsUrlPatternList> {}
 
 export type Parser<item> = {
   parse(value: string): item | undefined;

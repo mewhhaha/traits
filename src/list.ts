@@ -1,4 +1,10 @@
-import { type As, define, type Value } from "./trait.ts";
+import {
+  type As,
+  define,
+  type type_item,
+  type type_value,
+  type Value,
+} from "./trait.ts";
 import {
   Alternative,
   Applicative,
@@ -16,21 +22,26 @@ export type List<item> =
   | { tag: "nil" }
   | { tag: "cons"; head: item; tail: List<item> };
 
-export const list_kind = Symbol("List");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [list_kind]: List<item>;
-  }
+export interface AsList
+  extends
+    As<AsList>,
+    Format<AsList>,
+    Equal<AsList>,
+    Functor<AsList>,
+    Applicative<AsList>,
+    Semigroup<AsList>,
+    Monoid<AsList>,
+    Alternative<AsList>,
+    Monad<AsList>,
+    Foldable<AsList>,
+    Traversable<AsList> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: List<this[typeof type_item]>;
 }
-
-export interface AsList extends As<typeof list_kind> {}
 
 type ListValue<item> = Value<AsList, item>;
 
-export const List = define<AsList>(
-  list_kind,
-);
+export const List = define<AsList>();
 
 export function nil<item>(): ListValue<item> {
   return List(list_nil<item>());
@@ -77,8 +88,6 @@ Format.implement(List)({
   },
 });
 
-export interface AsList extends Format<AsList> {}
-
 Equal.implement(List)({
   eq(right) {
     let left_rest = this.value();
@@ -97,16 +106,12 @@ Equal.implement(List)({
   },
 });
 
-export interface AsList extends Equal<AsList> {}
-
 Functor.implement(List)({
   map(fn) {
     const items = to_array(this);
     return List(list_from_array(items.map(fn)));
   },
 });
-
-export interface AsList extends Functor<AsList> {}
 
 Applicative.implement(List)({
   pure(value) {
@@ -122,23 +127,17 @@ Applicative.implement(List)({
   },
 });
 
-export interface AsList extends Applicative<AsList> {}
-
 Semigroup.implement(List)({
   concat(right) {
     return from_array([...to_array(this), ...to_array(right)]);
   },
 });
 
-export interface AsList extends Semigroup<AsList> {}
-
 Monoid.implement(List)({
   empty() {
     return nil();
   },
 });
-
-export interface AsList extends Monoid<AsList> {}
 
 Alternative.implement(List)({
   empty() {
@@ -150,16 +149,12 @@ Alternative.implement(List)({
   },
 });
 
-export interface AsList extends Alternative<AsList> {}
-
 Monad.implement(List)({
   bind(fn) {
     const out = to_array(this).flatMap((item) => to_array(fn(item)));
     return List(list_from_array(out));
   },
 });
-
-export interface AsList extends Monad<AsList> {}
 
 Foldable.implement(List)({
   fold(initial, fn) {
@@ -172,8 +167,6 @@ Foldable.implement(List)({
     return state;
   },
 });
-
-export interface AsList extends Foldable<AsList> {}
 
 Traversable.implement(List)({
   traverse(applicative, fn) {
@@ -193,8 +186,6 @@ Traversable.implement(List)({
     return out;
   },
 });
-
-export interface AsList extends Traversable<AsList> {}
 
 function list_nil<item>(): List<item> {
   return { tag: "nil" };

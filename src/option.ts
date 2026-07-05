@@ -1,4 +1,10 @@
-import { type As, define, type Value } from "./trait.ts";
+import {
+  type As,
+  define,
+  type type_item,
+  type type_value,
+  type Value,
+} from "./trait.ts";
 import {
   Alternative,
   Applicative,
@@ -17,21 +23,24 @@ export type Option<item> =
 export type Some<item> = readonly ["some", item];
 export type None = readonly ["none"];
 
-export const option_kind = Symbol("Option");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [option_kind]: Option<item>;
-  }
+export interface AsOption
+  extends
+    As<AsOption>,
+    Format<AsOption>,
+    Equal<AsOption>,
+    Functor<AsOption>,
+    Applicative<AsOption>,
+    Alternative<AsOption>,
+    Monad<AsOption>,
+    Foldable<AsOption>,
+    Traversable<AsOption> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: Option<this[typeof type_item]>;
 }
-
-export interface AsOption extends As<typeof option_kind> {}
 
 type OptionValue<item> = Value<AsOption, item>;
 
-export const Option = define<AsOption>(
-  option_kind,
-);
+export const Option = define<AsOption>();
 const none_value = Option(option_none<never>());
 
 export function some<item>(value: item) {
@@ -81,8 +90,6 @@ Format.implement(Option)({
   },
 });
 
-export interface AsOption extends Format<AsOption> {}
-
 Equal.implement(Option)({
   eq(right) {
     const [left_tag, left_payload] = this.value();
@@ -102,8 +109,6 @@ Equal.implement(Option)({
   },
 });
 
-export interface AsOption extends Equal<AsOption> {}
-
 Functor.implement(Option)({
   map(fn) {
     const [tag, payload] = this.value();
@@ -116,8 +121,6 @@ Functor.implement(Option)({
     }
   },
 });
-
-export interface AsOption extends Functor<AsOption> {}
 
 Applicative.implement(Option)({
   pure(value) {
@@ -144,8 +147,6 @@ Applicative.implement(Option)({
   },
 });
 
-export interface AsOption extends Applicative<AsOption> {}
-
 Alternative.implement(Option)({
   empty() {
     return none();
@@ -164,8 +165,6 @@ Alternative.implement(Option)({
   },
 });
 
-export interface AsOption extends Alternative<AsOption> {}
-
 Monad.implement(Option)({
   bind(fn) {
     const [tag, payload] = this.value();
@@ -178,8 +177,6 @@ Monad.implement(Option)({
     }
   },
 });
-
-export interface AsOption extends Monad<AsOption> {}
 
 Foldable.implement(Option)({
   fold(initial, fn) {
@@ -194,8 +191,6 @@ Foldable.implement(Option)({
   },
 });
 
-export interface AsOption extends Foldable<AsOption> {}
-
 Traversable.implement(Option)({
   traverse(applicative, fn) {
     const [tag, payload] = this.value();
@@ -208,8 +203,6 @@ Traversable.implement(Option)({
     }
   },
 });
-
-export interface AsOption extends Traversable<AsOption> {}
 
 function option_some<item>(value: item): Some<item> {
   return ["some", value];

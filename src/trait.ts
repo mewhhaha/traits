@@ -7,14 +7,28 @@ import {
 import type { Trait } from "./trait_value.ts";
 
 export const kind = Symbol("Trait.kind");
+const value_type = Symbol("Trait.value_type");
 
-// deno-lint-ignore no-empty-interface
-export interface TraitTypes<dictionary, item> {}
+export declare const type_item: unique symbol;
+export declare const type_value: unique symbol;
 
-export type ContextValue<dictionary extends Dictionary, item> =
-  dictionary[typeof kind] extends keyof TraitTypes<dictionary, item>
-    ? TraitTypes<dictionary, item>[dictionary[typeof kind]]
-    : never;
+export interface ValueType {
+  readonly [type_item]: unknown;
+  readonly [type_value]: unknown;
+}
+
+export type AppliedValue<type extends ValueType, item> =
+  (type & { readonly [type_item]: item })[typeof type_value];
+
+export type ContextValue<dictionary extends Dictionary, item> = AppliedValue<
+  DictionaryValueType<dictionary>,
+  item
+>;
+
+export type DictionaryValueType<dictionary extends Dictionary> =
+  NonNullable<dictionary[typeof value_type]> extends ValueType
+    ? NonNullable<dictionary[typeof value_type]>
+    : ValueType;
 
 export type Value<dictionary extends Dictionary, item> = Trait<
   dictionary,
@@ -22,12 +36,17 @@ export type Value<dictionary extends Dictionary, item> = Trait<
   item
 >;
 
-export type Dictionary<type_id = unknown> = {
-  [kind]: type_id;
+export type Dictionary<type extends ValueType = ValueType> = {
+  [kind]: unknown;
+  readonly [value_type]?: type;
 };
 
-export interface As<type_id extends PropertyKey> extends Dictionary<type_id> {
-  <item>(value: ContextValue<this, item>): Value<this, item>;
+export interface As<type extends ValueType> extends Dictionary<type> {
+  <item>(value: AppliedValue<type, item>): Trait<
+    this,
+    AppliedValue<type, item>,
+    item
+  >;
 }
 
 export function as_trait<dictionary extends Dictionary, item>(
@@ -70,18 +89,24 @@ export type DictionaryConstructor<dictionary extends Dictionary> = <item>(
   value: ContextValue<dictionary, item>,
 ) => Value<dictionary, item>;
 
+export function define<dictionary extends Dictionary>(): dictionary;
 export function define<dictionary extends Dictionary>(
-  type_id: dictionary[typeof kind],
+  construct: DictionaryConstructor<dictionary>,
+): dictionary;
+export function define<dictionary extends Dictionary>(
   construct?: DictionaryConstructor<dictionary>,
 ): dictionary {
-  if (construct === undefined) {
+  const runtime_kind = Symbol("Trait.dictionary") as dictionary[typeof kind];
+  const construct_dictionary = construct;
+
+  if (construct_dictionary === undefined) {
     const target = function <item>(
       value: ContextValue<dictionary, item>,
     ): Value<dictionary, item> {
       return as_trait(value);
     } as unknown as dictionary;
 
-    target[kind] = type_id;
+    target[kind] = runtime_kind;
     const as_trait = as_trait_cached(target);
 
     return target;
@@ -95,10 +120,10 @@ export function define<dictionary extends Dictionary>(
   const target = function <item>(
     value: ContextValue<dictionary, item>,
   ): Value<dictionary, item> {
-    return construct.call(context, value) as Value<dictionary, item>;
+    return construct_dictionary.call(context, value) as Value<dictionary, item>;
   } as unknown as dictionary;
 
-  target[kind] = type_id;
+  target[kind] = runtime_kind;
   const as_trait = as_trait_cached(target);
 
   return target;
@@ -109,7 +134,10 @@ export type TraitDictionary<
   token extends PropertyKey,
   methods extends object,
 > =
-  & Dictionary<dictionary[typeof kind]>
+  & {
+    [kind]: dictionary[typeof kind];
+    readonly [value_type]?: DictionaryValueType<dictionary>;
+  }
   & { [key in token]: methods }
   & methods;
 

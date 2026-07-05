@@ -1,4 +1,10 @@
-import { type As, define, type Trait } from "./trait.ts";
+import {
+  type As,
+  define,
+  type Trait,
+  type type_item,
+  type type_value,
+} from "./trait.ts";
 import {
   Applicative,
   Equal,
@@ -23,15 +29,18 @@ export type ValidationSemigroup<error> = {
   concat(left: error, right: error): error;
 };
 
-export const validation_kind = Symbol("Validation");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [validation_kind]: Validation<unknown, item>;
-  }
+export interface AsValidation
+  extends
+    As<AsValidation>,
+    Format<AsValidation>,
+    Equal<AsValidation>,
+    Functor<AsValidation>,
+    Applicative<AsValidation>,
+    Foldable<AsValidation>,
+    Traversable<AsValidation> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: Validation<unknown, this[typeof type_item]>;
 }
-
-export interface AsValidation extends As<typeof validation_kind> {}
 
 export type ValidationValue<error, item> = Trait<
   AsValidation,
@@ -47,9 +56,7 @@ type ValidationConstructor =
     ): ValidationValue<error, item>;
   };
 
-export const Validation = define<AsValidation>(
-  validation_kind,
-) as ValidationConstructor;
+export const Validation = define<AsValidation>() as ValidationConstructor;
 
 export function valid<item>(value: item): ValidationValue<never, item> {
   return Validation(validation_valid(value)) as ValidationValue<never, item>;
@@ -85,8 +92,6 @@ Format.implement(Validation)({
   },
 });
 
-export interface AsValidation extends Format<AsValidation> {}
-
 Equal.implement(Validation)({
   eq(right) {
     const [left_tag, left_payload] = this.value();
@@ -115,8 +120,6 @@ Equal.implement(Validation)({
   },
 });
 
-export interface AsValidation extends Equal<AsValidation> {}
-
 Functor.implement(Validation)({
   map(fn) {
     const [tag, payload] = this.value();
@@ -129,8 +132,6 @@ Functor.implement(Validation)({
     }
   },
 });
-
-export interface AsValidation extends Functor<AsValidation> {}
 
 Applicative.implement(Validation)({
   pure(value) {
@@ -173,8 +174,6 @@ Applicative.implement(Validation)({
   },
 });
 
-export interface AsValidation extends Applicative<AsValidation> {}
-
 Foldable.implement(Validation)({
   fold(initial, fn) {
     const [tag, payload] = this.value();
@@ -187,8 +186,6 @@ Foldable.implement(Validation)({
     }
   },
 });
-
-export interface AsValidation extends Foldable<AsValidation> {}
 
 Traversable.implement(Validation)({
   traverse(applicative, fn) {
@@ -208,8 +205,6 @@ Traversable.implement(Validation)({
     }
   },
 });
-
-export interface AsValidation extends Traversable<AsValidation> {}
 
 function validation_valid<item>(value: item): Valid<item> {
   return ["valid", value];

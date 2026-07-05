@@ -1,4 +1,10 @@
-import { type As, define, type Value } from "../../src/trait.ts";
+import {
+  type As,
+  define,
+  type type_item,
+  type type_value,
+  type Value,
+} from "../../src/trait.ts";
 import {
   Alternative,
   Applicative,
@@ -48,27 +54,27 @@ export type Parser<item> = {
   parse(state: ParseState): ParseReply<item>;
 };
 
-const parser_kind = Symbol("CaseStudy.Parser");
-
-declare module "../../src/trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [parser_kind]: Parser<item>;
-  }
+export interface AsParser
+  extends
+    As<AsParser>,
+    Format<AsParser>,
+    Functor<AsParser>,
+    Applicative<AsParser>,
+    Monad<AsParser>,
+    Alternative<AsParser> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: Parser<this[typeof type_item]>;
 }
-
-export interface AsParser extends As<typeof parser_kind> {}
 
 export type ParserValue<item> = Value<AsParser, item>;
 
-export const Parser = define<AsParser>(parser_kind);
+export const Parser = define<AsParser>();
 
 Format.implement(Parser)({
   fmt() {
     return "Parser(" + this.value().label + ")";
   },
 });
-
-export interface AsParser extends Format<AsParser> {}
 
 Functor.implement(Parser)({
   map(fn) {
@@ -91,8 +97,6 @@ Functor.implement(Parser)({
     });
   },
 });
-
-export interface AsParser extends Functor<AsParser> {}
 
 Applicative.implement(Parser)({
   pure(value) {
@@ -133,8 +137,6 @@ Applicative.implement(Parser)({
   },
 });
 
-export interface AsParser extends Applicative<AsParser> {}
-
 Monad.implement(Parser)({
   bind(fn) {
     const source = this.value();
@@ -165,8 +167,6 @@ Monad.implement(Parser)({
     });
   },
 });
-
-export interface AsParser extends Monad<AsParser> {}
 
 Alternative.implement(Parser)({
   empty() {
@@ -215,8 +215,6 @@ Alternative.implement(Parser)({
     );
   },
 });
-
-export interface AsParser extends Alternative<AsParser> {}
 
 export function define_parser<item>(
   label: string,

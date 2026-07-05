@@ -1,18 +1,26 @@
-import { type As, define, type Value } from "./trait.ts";
+import {
+  type As,
+  define,
+  type type_item,
+  type type_value,
+  type Value,
+} from "./trait.ts";
 import { Equal, Foldable, Format, Monoid, Semigroup } from "./traits.ts";
 
 export type URLSearchParamsEntry = readonly [string, string];
 export type URLSearchParamsT = URLSearchParams;
 
-export const url_search_params_kind = Symbol("URLSearchParamsT");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [url_search_params_kind]: URLSearchParamsT;
-  }
+export interface AsURLSearchParams
+  extends
+    As<AsURLSearchParams>,
+    Format<AsURLSearchParams>,
+    Equal<AsURLSearchParams>,
+    Semigroup<AsURLSearchParams>,
+    Monoid<AsURLSearchParams>,
+    Foldable<AsURLSearchParams> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: URLSearchParamsT;
 }
-
-export interface AsURLSearchParams extends As<typeof url_search_params_kind> {}
 
 type URLSearchParamsValue = Value<
   AsURLSearchParams,
@@ -20,7 +28,6 @@ type URLSearchParamsValue = Value<
 >;
 
 export const URLSearchParamsT = define<AsURLSearchParams>(
-  url_search_params_kind,
   function (params) {
     return this.as_trait(new URLSearchParams(params));
   },
@@ -50,8 +57,6 @@ Format.implement(URLSearchParamsT)({
   },
 });
 
-export interface AsURLSearchParams extends Format<AsURLSearchParams> {}
-
 Equal.implement(URLSearchParamsT)({
   eq(right) {
     const left_entries = [...this.value().entries()];
@@ -74,8 +79,6 @@ Equal.implement(URLSearchParamsT)({
   },
 });
 
-export interface AsURLSearchParams extends Equal<AsURLSearchParams> {}
-
 Semigroup.implement(URLSearchParamsT)({
   concat(right) {
     const out = new URLSearchParams(this.value());
@@ -88,15 +91,11 @@ Semigroup.implement(URLSearchParamsT)({
   },
 });
 
-export interface AsURLSearchParams extends Semigroup<AsURLSearchParams> {}
-
 Monoid.implement(URLSearchParamsT)({
   empty() {
     return URLSearchParamsT(new URLSearchParams());
   },
 });
-
-export interface AsURLSearchParams extends Monoid<AsURLSearchParams> {}
 
 Foldable.implement(URLSearchParamsT)({
   fold<item, out>(
@@ -113,5 +112,3 @@ Foldable.implement(URLSearchParamsT)({
     return state;
   },
 });
-
-export interface AsURLSearchParams extends Foldable<AsURLSearchParams> {}

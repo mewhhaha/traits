@@ -1,5 +1,11 @@
 import { from_array } from "../../src/array.ts";
-import { type As, define, type Value } from "../../src/trait.ts";
+import {
+  type As,
+  define,
+  type type_item,
+  type type_value,
+  type Value,
+} from "../../src/trait.ts";
 import { Foldable, Format, Monoid, Semigroup } from "../../src/traits.ts";
 import type {
   AnalyzeResult,
@@ -8,21 +14,19 @@ import type {
   FileSummary,
 } from "./types.ts";
 
-export const report_kind = Symbol("AnalyzerReport");
-
-declare module "../../src/trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [report_kind]: AnalyzerReport;
-  }
+export interface AsReport
+  extends
+    As<AsReport>,
+    Format<AsReport>,
+    Semigroup<AsReport>,
+    Monoid<AsReport> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: AnalyzerReport;
 }
-
-export interface AsReport extends As<typeof report_kind> {}
 
 export type ReportValue = Value<AsReport, AnalyzerReport>;
 
-export const Report = define<AsReport>(
-  report_kind,
-);
+export const Report = define<AsReport>();
 
 export function empty_report(): AnalyzerReport {
   return {
@@ -139,23 +143,17 @@ Format.implement(Report)({
   },
 });
 
-export interface AsReport extends Format<AsReport> {}
-
 Semigroup.implement(Report)({
   concat(right) {
     return Report(concat_reports(this.value(), right.value()));
   },
 });
 
-export interface AsReport extends Semigroup<AsReport> {}
-
 Monoid.implement(Report)({
   empty() {
     return Report(empty_report());
   },
 });
-
-export interface AsReport extends Monoid<AsReport> {}
 
 function concat_diagnostics(
   left: readonly FileDiagnostic[],

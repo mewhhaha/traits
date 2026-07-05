@@ -1,4 +1,10 @@
-import { type As, define, type Value } from "./trait.ts";
+import {
+  type As,
+  define,
+  type type_item,
+  type type_value,
+  type Value,
+} from "./trait.ts";
 import {
   Applicative,
   Equal,
@@ -12,20 +18,23 @@ import {
 
 export type MapT<item> = ReadonlyMap<string, item>;
 
-export const map_kind = Symbol("MapT");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [map_kind]: MapT<item>;
-  }
+export interface AsMap
+  extends
+    As<AsMap>,
+    Format<AsMap>,
+    Equal<AsMap>,
+    Functor<AsMap>,
+    Semigroup<AsMap>,
+    Monoid<AsMap>,
+    Foldable<AsMap>,
+    Traversable<AsMap> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: MapT<this[typeof type_item]>;
 }
-
-export interface AsMap extends As<typeof map_kind> {}
 
 type MapValue<item> = Value<AsMap, item>;
 
 export const MapT = define<AsMap>(
-  map_kind,
   function (map) {
     return this.as_trait(new Map(map));
   },
@@ -60,8 +69,6 @@ Format.implement(MapT)({
   },
 });
 
-export interface AsMap extends Format<AsMap> {}
-
 Equal.implement(MapT)({
   eq(right) {
     const left = this.value();
@@ -81,8 +88,6 @@ Equal.implement(MapT)({
   },
 });
 
-export interface AsMap extends Equal<AsMap> {}
-
 Functor.implement(MapT)({
   map(fn) {
     const map = this.value();
@@ -95,8 +100,6 @@ Functor.implement(MapT)({
     return MapT(out);
   },
 });
-
-export interface AsMap extends Functor<AsMap> {}
 
 Semigroup.implement(MapT)({
   concat(right) {
@@ -111,15 +114,11 @@ Semigroup.implement(MapT)({
   },
 });
 
-export interface AsMap extends Semigroup<AsMap> {}
-
 Monoid.implement(MapT)({
   empty() {
     return MapT(new Map());
   },
 });
-
-export interface AsMap extends Monoid<AsMap> {}
 
 Foldable.implement(MapT)({
   fold(initial, fn) {
@@ -133,8 +132,6 @@ Foldable.implement(MapT)({
     return state;
   },
 });
-
-export interface AsMap extends Foldable<AsMap> {}
 
 Traversable.implement(MapT)({
   traverse(applicative, fn) {
@@ -157,8 +154,6 @@ Traversable.implement(MapT)({
     return out;
   },
 });
-
-export interface AsMap extends Traversable<AsMap> {}
 
 function map_single<item>(key: string) {
   return (value: item): MapValue<item> => MapT(new Map([[key, value]]));

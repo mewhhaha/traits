@@ -1,8 +1,11 @@
 import {
+  type As,
   define,
   type Dictionary,
   kind,
   type Trait,
+  type type_item,
+  type type_value,
   type Value,
 } from "./trait.ts";
 import {
@@ -16,16 +19,15 @@ import { Applicative, Format, Functor, Monad } from "./traits.ts";
 
 export type State<state, item> = (state: state) => readonly [item, state];
 
-export const state_kind = Symbol("State");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [state_kind]: dictionary extends AsState<infer state> ? State<state, item>
-      : never;
-  }
-}
-
-export interface AsState<state> extends Dictionary<typeof state_kind> {
+export interface AsState<state>
+  extends
+    As<AsState<state>>,
+    Format<AsState<state>>,
+    Functor<AsState<state>>,
+    Applicative<AsState<state>>,
+    Monad<AsState<state>> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: State<state, this[typeof type_item]>;
   <item>(value: State<state, item>): StateValue<state, item>;
 }
 
@@ -41,9 +43,7 @@ type StateConstructor =
     <state, item>(value: State<state, item>): StateValue<state, item>;
   };
 
-export const State = define<AsState<unknown>>(
-  state_kind,
-) as StateConstructor;
+export const State = define<AsState<unknown>>() as StateConstructor;
 
 export function get<state>(): StateValue<state, state> {
   return State((state: state) => [state, state]);
@@ -105,7 +105,7 @@ function is_state_value(value: unknown): value is Dictionary {
     return false;
   }
 
-  return (value as Dictionary)[kind] === state_kind;
+  return (value as Dictionary)[kind] === State[kind];
 }
 
 export function eval_state<state, item>(
@@ -128,8 +128,6 @@ Format.implement(State)({
   },
 });
 
-export interface AsState<state> extends Format<AsState<state>> {}
-
 Functor.implement(State)({
   map(fn) {
     return State((state: unknown) => {
@@ -138,8 +136,6 @@ Functor.implement(State)({
     });
   },
 });
-
-export interface AsState<state> extends Functor<AsState<state>> {}
 
 Applicative.implement(State)({
   pure(value) {
@@ -156,8 +152,6 @@ Applicative.implement(State)({
   },
 });
 
-export interface AsState<state> extends Applicative<AsState<state>> {}
-
 Monad.implement(State)({
   bind(fn) {
     return State((state: unknown) => {
@@ -166,5 +160,3 @@ Monad.implement(State)({
     });
   },
 });
-
-export interface AsState<state> extends Monad<AsState<state>> {}

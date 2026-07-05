@@ -1,4 +1,10 @@
-import { type As, define, type Value } from "./trait.ts";
+import {
+  type As,
+  define,
+  type type_item,
+  type type_value,
+  type Value,
+} from "./trait.ts";
 import { Applicative, Format, Functor, Monad } from "./traits.ts";
 
 const tvar_value = Symbol("TVar.value");
@@ -17,21 +23,20 @@ type StmJournal = {
 
 export type Stm<item> = (journal: StmJournal) => item;
 
-export const stm_kind = Symbol("Stm");
-
-declare module "./trait.ts" {
-  interface TraitTypes<dictionary, item> {
-    [stm_kind]: Stm<item>;
-  }
+export interface AsStm
+  extends
+    As<AsStm>,
+    Format<AsStm>,
+    Functor<AsStm>,
+    Applicative<AsStm>,
+    Monad<AsStm> {
+  readonly [type_item]: unknown;
+  readonly [type_value]: Stm<this[typeof type_item]>;
 }
-
-export interface AsStm extends As<typeof stm_kind> {}
 
 type StmValue<item> = Value<AsStm, item>;
 
-export const Stm = define<AsStm>(
-  stm_kind,
-);
+export const Stm = define<AsStm>();
 
 export class StmError extends Error {
   constructor(message: string) {
@@ -123,15 +128,11 @@ Format.implement(Stm)({
   },
 });
 
-export interface AsStm extends Format<AsStm> {}
-
 Functor.implement(Stm)({
   map(fn) {
     return Stm((journal) => fn(run_stm(this, journal)));
   },
 });
-
-export interface AsStm extends Functor<AsStm> {}
 
 Applicative.implement(Stm)({
   pure(value) {
@@ -146,8 +147,6 @@ Applicative.implement(Stm)({
   },
 });
 
-export interface AsStm extends Applicative<AsStm> {}
-
 Monad.implement(Stm)({
   bind(fn) {
     return Stm((journal) => {
@@ -156,8 +155,6 @@ Monad.implement(Stm)({
     });
   },
 });
-
-export interface AsStm extends Monad<AsStm> {}
 
 function run_stm<item>(
   transaction: StmValue<item>,

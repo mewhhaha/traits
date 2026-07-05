@@ -100,7 +100,7 @@ Deno.test({
 import { Program } from "../src/effects.ts";
 
 const program = Program(function* () {
-  return yield* json({ ok: true });
+  return yield* json({ right: true });
 });
 `);
 
@@ -108,7 +108,7 @@ const program = Program(function* () {
     assert_equals(result.diagnostics, []);
     assert_includes(
       result.code,
-      "const program = Effect.from(json({ ok: true }));",
+      "const program = Effect.from(json({ right: true }));",
     );
     assert_true(
       !result.code.includes("Effect.bind(Effect.from(json"),
@@ -143,11 +143,11 @@ const program = App(function* () {
       let exit_code: number;
 
       switch (result_tag) {
-        case "ok":
+        case "right":
           yield* stdout(result_payload);
           exit_code = 0;
           break;
-        case "err":
+        case "left":
           yield* stdout(format_error(result_payload));
           exit_code = 1;
           break;

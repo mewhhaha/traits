@@ -4,7 +4,7 @@ import { pipe as fp_pipe } from "fp-ts/function";
 import { Left, Right } from "purify-ts/Either";
 import * as TrueResult from "true-myth/result";
 
-import { err as traits_err, ok as traits_ok } from "../src/result.ts";
+import { left as traits_left, right as traits_right } from "../src/either.ts";
 import { Applicative, Do } from "../src/traits.ts";
 
 const passes = 25;
@@ -317,7 +317,7 @@ Deno.bench("native route parser", () => {
   _sink = checksum;
 });
 
-Deno.bench("traits Result Do+lift route parser", () => {
+Deno.bench("traits Either Do+lift route parser", () => {
   let checksum = 0;
 
   for (let pass = 0; pass < passes; pass += 1) {
@@ -580,9 +580,9 @@ function traits_from_plain<item>(result: PlainResult<item>) {
 
   switch (tag) {
     case "err":
-      return traits_err<item>(payload);
+      return traits_left<string, item>(payload);
     case "ok":
-      return traits_ok(payload);
+      return traits_right(payload);
   }
 }
 
@@ -835,9 +835,9 @@ function consume_traits(
   const [tag, payload] = value;
 
   switch (tag) {
-    case "err":
+    case "left":
       return -String(payload).length;
-    case "ok":
+    case "right":
       return payload.score;
   }
 }

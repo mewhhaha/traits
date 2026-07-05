@@ -6,12 +6,12 @@ import {
   type Value,
 } from "../trait.ts";
 
-export const equal_trait = Symbol("Equal");
+export const eq_trait = Symbol("Eq");
 
-export interface Equal<dictionary extends Dictionary> extends
+export interface Eq<dictionary extends Dictionary> extends
   TraitDictionary<
     dictionary,
-    typeof equal_trait,
+    typeof eq_trait,
     {
       eq: <item>(
         this: Value<dictionary, item>,
@@ -20,9 +20,9 @@ export interface Equal<dictionary extends Dictionary> extends
     }
   > {}
 
-export const Equal = define_trait(equal_trait, {
+export const Eq = define_trait(eq_trait, {
   eq<
-    dictionary extends Equal<dictionary>,
+    dictionary extends Eq<dictionary>,
     item,
   >(
     left: Value<dictionary, item>,

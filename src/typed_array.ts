@@ -5,7 +5,7 @@ import {
   type type_value,
   type Value,
 } from "./trait.ts";
-import { Equal, Foldable, Format } from "./traits.ts";
+import { Eq, Foldable, Show } from "./traits.ts";
 
 export type NumericTypedArray =
   | Int8Array
@@ -28,8 +28,8 @@ export type TypedArrayT<item = number | bigint> = AnyTypedArray;
 export interface AsTypedArray
   extends
     As<AsTypedArray>,
-    Format<AsTypedArray>,
-    Equal<AsTypedArray>,
+    Show<AsTypedArray>,
+    Eq<AsTypedArray>,
     Foldable<AsTypedArray> {
   readonly [type_item]: unknown;
   readonly [type_value]: TypedArrayT<this[typeof type_item]>;
@@ -55,13 +55,13 @@ export function to_typed_array<item>(
   return clone_typed_array(array.value()) as TypedArrayT<item>;
 }
 
-Format.implement(TypedArrayT)({
-  fmt() {
+Show.implement(TypedArrayT)({
+  show() {
     return Deno.inspect(this.value());
   },
 });
 
-Equal.implement(TypedArrayT)({
+Eq.implement(TypedArrayT)({
   eq(right) {
     const left = this.value();
     const right_value = right.value();

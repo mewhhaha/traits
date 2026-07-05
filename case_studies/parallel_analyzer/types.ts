@@ -1,4 +1,4 @@
-import type { Result } from "../../src/result.ts";
+import type { Either } from "../../src/either.ts";
 
 export type SourceFile = {
   readonly path: string;
@@ -22,7 +22,7 @@ export type FileDiagnostic = {
   readonly message: string;
 };
 
-export type AnalyzeResult = Result<FileSummary, FileDiagnostic>;
+export type AnalyzeResult = Either<FileDiagnostic, FileSummary>;
 
 export type AnalyzerReport = {
   readonly files: number;

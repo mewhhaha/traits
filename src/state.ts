@@ -15,14 +15,14 @@ import {
   suspend,
   type WithoutLift,
 } from "./effects.ts";
-import { Applicative, Format, Functor, Monad } from "./traits.ts";
+import { Applicative, Functor, Monad, Show } from "./traits.ts";
 
 export type State<state, item> = (state: state) => readonly [item, state];
 
 export interface AsState<state>
   extends
     As<AsState<state>>,
-    Format<AsState<state>>,
+    Show<AsState<state>>,
     Functor<AsState<state>>,
     Applicative<AsState<state>>,
     Monad<AsState<state>> {
@@ -122,8 +122,8 @@ export function exec_state<state, item>(
   return stateful.value()(state)[1];
 }
 
-Format.implement(State)({
-  fmt() {
+Show.implement(State)({
+  show() {
     return "State(?)";
   },
 });

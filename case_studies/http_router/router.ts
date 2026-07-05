@@ -11,7 +11,7 @@ import {
   type type_value,
   type Value,
 } from "../../src/trait.ts";
-import { Alternative, Applicative, Format, Functor } from "../../src/traits.ts";
+import { Alternative, Applicative, Functor, Show } from "../../src/traits.ts";
 
 export type HttpMethod =
   | "GET"
@@ -72,7 +72,7 @@ export type UrlPatternList<item> = {
 export interface AsUrlPatternList
   extends
     As<AsUrlPatternList>,
-    Format<AsUrlPatternList>,
+    Show<AsUrlPatternList>,
     Functor<AsUrlPatternList>,
     Applicative<AsUrlPatternList>,
     Alternative<AsUrlPatternList> {
@@ -84,8 +84,8 @@ export type UrlPatternListValue<item> = Value<AsUrlPatternList, item>;
 
 export const UrlPatternList = define<AsUrlPatternList>();
 
-Format.implement(UrlPatternList)({
-  fmt() {
+Show.implement(UrlPatternList)({
+  show() {
     return this.value().label;
   },
 });

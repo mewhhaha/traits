@@ -21,7 +21,7 @@ This repo provides functional programming traits:
 - `Applicative`: lift values and apply contextual functions.
 - `Monad`: chain context-dependent computations.
 - `Foldable`: reduce contextual values into a summary.
-- `Format` and `Equal`: small utility traits used by examples and tests.
+- `Show` and `Eq`: small utility traits used by examples and tests.
 
 Prefer simple, inspectable library code. If a change needs advanced type
 machinery, add it only when it improves the public API or examples.

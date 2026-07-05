@@ -10,19 +10,18 @@ import { type AsTask, from_fn, run_task } from "../src/task.ts";
 import { type AsWriter, run_writer, tell } from "../src/writer.ts";
 
 export async function run_effect_examples() {
-  const [effect_result_value, effect_result_logs] = await Effect.handle_with(
+  const [effect_result_value, effect_result_logs] = await Effect.interpret(
     effect_program,
-    [
-      (effect) =>
-        run_reader(effect, {
-          label: "step",
-          increment: 2,
-        }),
-      (effect) => run_state(effect, 40),
-      (effect) => run_writer(effect, array_from_array<string>([])),
-      run_task,
-    ],
-  );
+  )
+    .handle((effect) =>
+      run_reader(effect, {
+        label: "step",
+        increment: 2,
+      })
+    )
+    .handle((effect) => run_state(effect, 40))
+    .handle((effect) => run_writer(effect, array_from_array<string>([])))
+    .run(run_task);
 
   console.log(
     "effect reader state writer task",

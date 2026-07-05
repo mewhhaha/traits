@@ -5,7 +5,7 @@ import {
   type type_value,
   type Value,
 } from "./trait.ts";
-import { Equal, Foldable, Format, Monoid, Semigroup } from "./traits.ts";
+import { Eq, Foldable, Monoid, Semigroup, Show } from "./traits.ts";
 
 export type FormDataEntry = readonly [string, FormDataEntryValue];
 export type FormDataT = FormData;
@@ -13,8 +13,8 @@ export type FormDataT = FormData;
 export interface AsFormData
   extends
     As<AsFormData>,
-    Format<AsFormData>,
-    Equal<AsFormData>,
+    Show<AsFormData>,
+    Eq<AsFormData>,
     Semigroup<AsFormData>,
     Monoid<AsFormData>,
     Foldable<AsFormData> {
@@ -40,13 +40,13 @@ export function to_entries(form_data: FormDataValue): FormDataEntry[] {
   return [...form_data.value().entries()];
 }
 
-Format.implement(FormDataT)({
-  fmt() {
+Show.implement(FormDataT)({
+  show() {
     return Deno.inspect([...this.value().entries()]);
   },
 });
 
-Equal.implement(FormDataT)({
+Eq.implement(FormDataT)({
   eq(right) {
     const left_entries = [...this.value().entries()];
     const right_entries = [...right.value().entries()];

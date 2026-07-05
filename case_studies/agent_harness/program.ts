@@ -47,13 +47,13 @@ export const agent_harness = AgentApp(function* () {
         const [result_tag, result_payload] = result.value();
 
         switch (result_tag) {
-          case "ok":
+          case "right":
             yield* append_messages([
               ["assistant", "read_file " + path],
               ["tool", "read_file " + path + "\n" + result_payload],
             ]);
             break;
-          case "err":
+          case "left":
             yield* append_messages([
               ["assistant", "read_file " + path],
               ["tool", format_file_system_error(result_payload)],
@@ -72,13 +72,13 @@ export const agent_harness = AgentApp(function* () {
         const [result_tag, result_payload] = result.value();
 
         switch (result_tag) {
-          case "ok":
+          case "right":
             yield* append_messages([
               ["assistant", "write_file " + path],
               ["tool", "wrote " + path],
             ]);
             break;
-          case "err":
+          case "left":
             yield* append_messages([
               ["assistant", "write_file " + path],
               ["tool", format_file_system_error(result_payload)],

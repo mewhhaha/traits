@@ -8,9 +8,9 @@ import {
 import {
   Alternative,
   Applicative,
-  Format,
   Functor,
   Monad,
+  Show,
 } from "../../src/traits.ts";
 
 export type SourcePosition = {
@@ -35,7 +35,7 @@ export type ParseOutcome<item> =
   | readonly ["failed", ParseError];
 
 export type ParseReply<item> =
-  | readonly ["ok", ParseSuccess<item>]
+  | readonly ["right", ParseSuccess<item>]
   | ParseFailure;
 
 type ParseSuccess<item> = {
@@ -44,7 +44,7 @@ type ParseSuccess<item> = {
   readonly consumed: boolean;
 };
 
-type ParseFailure = readonly ["err", {
+type ParseFailure = readonly ["left", {
   readonly error: ParseError;
   readonly consumed: boolean;
 }];
@@ -57,7 +57,7 @@ export type Parser<item> = {
 export interface AsParser
   extends
     As<AsParser>,
-    Format<AsParser>,
+    Show<AsParser>,
     Functor<AsParser>,
     Applicative<AsParser>,
     Monad<AsParser>,
@@ -70,8 +70,8 @@ export type ParserValue<item> = Value<AsParser, item>;
 
 export const Parser = define<AsParser>();
 
-Format.implement(Parser)({
-  fmt() {
+Show.implement(Parser)({
+  show() {
     return "Parser(" + this.value().label + ")";
   },
 });
@@ -85,9 +85,9 @@ Functor.implement(Parser)({
       const [tag, payload] = reply;
 
       switch (tag) {
-        case "err":
+        case "left":
           return reply;
-        case "ok":
+        case "right":
           return ok_with(
             fn(payload.value),
             payload.state,
@@ -114,16 +114,16 @@ Applicative.implement(Parser)({
         const [fn_tag, fn_payload] = fn_reply;
 
         switch (fn_tag) {
-          case "err":
+          case "left":
             return fn_reply;
-          case "ok": {
+          case "right": {
             const value_reply = value_parser.parse(fn_payload.state);
             const [value_tag, value_payload] = value_reply;
 
             switch (value_tag) {
-              case "err":
+              case "left":
                 return carry_consumed(value_reply, fn_payload.consumed);
-              case "ok":
+              case "right":
                 return ok_with(
                   fn_payload.value(value_payload.value),
                   value_payload.state,
@@ -146,16 +146,16 @@ Monad.implement(Parser)({
       const [tag, payload] = reply;
 
       switch (tag) {
-        case "err":
+        case "left":
           return reply;
-        case "ok": {
+        case "right": {
           const next = fn(payload.value).value().parse(payload.state);
           const [next_tag, next_payload] = next;
 
           switch (next_tag) {
-            case "err":
+            case "left":
               return carry_consumed(next, payload.consumed);
-            case "ok":
+            case "right":
               return ok_with(
                 next_payload.value,
                 next_payload.state,
@@ -184,9 +184,9 @@ Alternative.implement(Parser)({
         const [left_tag, left_payload] = left;
 
         switch (left_tag) {
-          case "ok":
+          case "right":
             return left;
-          case "err": {
+          case "left": {
             if (left_payload.consumed) {
               return left;
             }
@@ -195,15 +195,15 @@ Alternative.implement(Parser)({
             const [right_tag, right_payload] = right_reply;
 
             switch (right_tag) {
-              case "ok":
+              case "right":
                 return right_reply;
-              case "err": {
+              case "left": {
                 const error = merge_errors(
                   left_payload.error,
                   right_payload.error,
                 );
 
-                return ["err", {
+                return ["left", {
                   error,
                   consumed: right_payload.consumed,
                 }];
@@ -246,16 +246,16 @@ export function parse_all<item>(
   const [tag, payload] = reply;
 
   switch (tag) {
-    case "err":
+    case "left":
       return ["failed", payload.error];
-    case "ok": {
+    case "right": {
       const end = eof().value().parse(payload.state);
       const [end_tag, end_payload] = end;
 
       switch (end_tag) {
-        case "err":
+        case "left":
           return ["failed", end_payload.error];
-        case "ok":
+        case "right":
           return ["parsed", payload.value];
       }
     }
@@ -306,14 +306,14 @@ export function label<item>(
     const [tag, payload] = reply;
 
     switch (tag) {
-      case "ok":
+      case "right":
         return reply;
-      case "err":
+      case "left":
         if (payload.consumed) {
           return reply;
         }
 
-        return ["err", {
+        return ["left", {
           error: {
             ...payload.error,
             expected: [expected],
@@ -330,10 +330,10 @@ export function attempt<item>(parser: ParserValue<item>): ParserValue<item> {
     const [tag, payload] = reply;
 
     switch (tag) {
-      case "ok":
+      case "right":
         return reply;
-      case "err":
-        return ["err", {
+      case "left":
+        return ["left", {
           error: payload.error,
           consumed: false,
         }];
@@ -349,9 +349,9 @@ export function look_ahead<item>(
     const [tag, payload] = reply;
 
     switch (tag) {
-      case "err":
+      case "left":
         return reply;
-      case "ok":
+      case "right":
         return ok_with(payload.value, state, false);
     }
   });
@@ -366,9 +366,9 @@ export function not_followed_by<item>(
     const [tag] = reply;
 
     switch (tag) {
-      case "err":
+      case "left":
         return ok_with(undefined, state, false);
-      case "ok":
+      case "right":
         return failure(state, [expected], "unexpected input", false);
     }
   });
@@ -561,13 +561,13 @@ export function many<item>(parser: ParserValue<item>): ParserValue<item[]> {
       const [tag, payload] = reply;
 
       switch (tag) {
-        case "err":
+        case "left":
           if (payload.consumed) {
             return carry_consumed(reply, consumed);
           }
 
           return ok_with(values, current, consumed);
-        case "ok":
+        case "right":
           if (!payload.consumed) {
             return failure(
               current,
@@ -585,7 +585,7 @@ export function many<item>(parser: ParserValue<item>): ParserValue<item[]> {
   });
 }
 
-export function some<item>(parser: ParserValue<item>): ParserValue<item[]> {
+export function just<item>(parser: ParserValue<item>): ParserValue<item[]> {
   return parser.bind((first) => {
     return many(parser).map((rest) => {
       return [first, ...rest];
@@ -601,9 +601,9 @@ export function optional<item>(
     const [tag, payload] = reply;
 
     switch (tag) {
-      case "ok":
+      case "right":
         return reply;
-      case "err":
+      case "left":
         if (payload.consumed) {
           return reply;
         }
@@ -624,9 +624,9 @@ export function choice<item>(
       const [tag, payload] = reply;
 
       switch (tag) {
-        case "ok":
+        case "right":
           return reply;
-        case "err":
+        case "left":
           if (payload.consumed) {
             return reply;
           }
@@ -640,7 +640,7 @@ export function choice<item>(
     }
 
     if (merged !== undefined) {
-      return ["err", {
+      return ["left", {
         error: merged,
         consumed: false,
       }];
@@ -687,13 +687,13 @@ export function sep_by<item, separator>(
     const [first_tag, first_payload] = first;
 
     switch (first_tag) {
-      case "err":
+      case "left":
         if (first_payload.consumed) {
           return first;
         }
 
         return ok_with([], state, false);
-      case "ok":
+      case "right":
         break;
     }
 
@@ -706,20 +706,20 @@ export function sep_by<item, separator>(
       const [separator_tag, separator_payload] = separator;
 
       switch (separator_tag) {
-        case "err":
+        case "left":
           if (separator_payload.consumed) {
             return carry_consumed(separator, consumed);
           }
 
           return ok_with(values, current, consumed);
-        case "ok": {
+        case "right": {
           const next = item_parser.value().parse(separator_payload.state);
           const [next_tag, next_payload] = next;
 
           switch (next_tag) {
-            case "err":
+            case "left":
               return carry_consumed(next, true);
-            case "ok":
+            case "right":
               values.push(next_payload.value);
               current = next_payload.state;
               consumed = true;
@@ -739,13 +739,13 @@ export function sep_end_by<item, separator>(
     const [first_tag, first_payload] = first;
 
     switch (first_tag) {
-      case "err":
+      case "left":
         if (first_payload.consumed) {
           return first;
         }
 
         return ok_with([], state, false);
-      case "ok":
+      case "right":
         if (!first_payload.consumed) {
           return failure(
             state,
@@ -766,13 +766,13 @@ export function sep_end_by<item, separator>(
       const [separator_tag, separator_payload] = separator;
 
       switch (separator_tag) {
-        case "err":
+        case "left":
           if (separator_payload.consumed) {
             return carry_consumed(separator, consumed);
           }
 
           return ok_with(values, current, consumed);
-        case "ok": {
+        case "right": {
           if (!separator_payload.consumed) {
             return failure(
               current,
@@ -787,13 +787,13 @@ export function sep_end_by<item, separator>(
           const [next_tag, next_payload] = next;
 
           switch (next_tag) {
-            case "err":
+            case "left":
               if (next_payload.consumed) {
                 return carry_consumed(next, true);
               }
 
               return ok_with(values, after_separator, true);
-            case "ok":
+            case "right":
               if (!next_payload.consumed) {
                 return failure(
                   after_separator,
@@ -843,7 +843,7 @@ function ok_with<item>(
   state: ParseState,
   consumed: boolean,
 ): ParseReply<item> {
-  return ["ok", {
+  return ["right", {
     value,
     state,
     consumed,
@@ -856,7 +856,7 @@ function failure(
   message: string | undefined,
   consumed: boolean,
 ): ParseFailure {
-  return ["err", {
+  return ["left", {
     error: {
       position: {
         source: state.source,
@@ -879,7 +879,7 @@ function carry_consumed<item>(
     return reply;
   }
 
-  return ["err", {
+  return ["left", {
     error: reply[1].error,
     consumed: true,
   }];

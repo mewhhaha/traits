@@ -7,10 +7,10 @@ import {
 } from "./trait.ts";
 import {
   Applicative,
-  Equal,
+  Eq,
   Foldable,
-  Format,
   Functor,
+  Show,
   Traversable,
 } from "./traits.ts";
 
@@ -32,8 +32,8 @@ export type ValidationSemigroup<error> = {
 export interface AsValidation
   extends
     As<AsValidation>,
-    Format<AsValidation>,
-    Equal<AsValidation>,
+    Show<AsValidation>,
+    Eq<AsValidation>,
     Functor<AsValidation>,
     Applicative<AsValidation>,
     Foldable<AsValidation>,
@@ -79,8 +79,8 @@ export function invalid_with<error, item = never>(
   >;
 }
 
-Format.implement(Validation)({
-  fmt() {
+Show.implement(Validation)({
+  show() {
     const [tag, payload] = this.value();
 
     switch (tag) {
@@ -92,7 +92,7 @@ Format.implement(Validation)({
   },
 });
 
-Equal.implement(Validation)({
+Eq.implement(Validation)({
   eq(right) {
     const [left_tag, left_payload] = this.value();
     const [right_tag, right_payload] = right.value();

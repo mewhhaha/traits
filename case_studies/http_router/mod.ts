@@ -1,4 +1,4 @@
-import { Format } from "../../src/traits.ts";
+import { Show } from "../../src/traits.ts";
 import {
   bad_request_page,
   create_message_page,
@@ -76,7 +76,7 @@ export function route_http(request: Request): Response {
 }
 
 export async function run_http_router_case_study() {
-  console.log("http router routes", Format.fmt(router));
+  console.log("http router routes", Show.show(router));
 
   for (
     const request of [

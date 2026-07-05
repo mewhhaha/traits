@@ -8,13 +8,13 @@ import {
 import {
   Alternative,
   Applicative,
-  Equal,
+  Eq,
   Foldable,
-  Format,
   Functor,
   Monad,
   Monoid,
   Semigroup,
+  Show,
   Traversable,
 } from "./traits.ts";
 
@@ -23,8 +23,8 @@ export type ArrayT<item> = readonly item[];
 export interface AsArray
   extends
     As<AsArray>,
-    Format<AsArray>,
-    Equal<AsArray>,
+    Show<AsArray>,
+    Eq<AsArray>,
     Functor<AsArray>,
     Applicative<AsArray>,
     Semigroup<AsArray>,
@@ -49,14 +49,14 @@ export function to_array<item>(array: ArrayValue<item>): item[] {
   return [...array.value()];
 }
 
-Format.implement(ArrayT)({
-  fmt() {
+Show.implement(ArrayT)({
+  show() {
     const array = this.value();
     return Deno.inspect(array);
   },
 });
 
-Equal.implement(ArrayT)({
+Eq.implement(ArrayT)({
   eq(right) {
     const left = this.value();
     const right_value = right.value();

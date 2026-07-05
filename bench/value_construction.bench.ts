@@ -1,11 +1,11 @@
-import { Option, type Option as OptionContext, some } from "../src/option.ts";
+import { just, Maybe, type Maybe as MaybeContext } from "../src/maybe.ts";
 import { as_trait, as_trait_cached, type Trait } from "../src/trait.ts";
 
 // Each benchmark iteration performs this many constructions or read cycles.
 const iterations = 10_000;
 let _sink: unknown;
 
-type BenchValue = OptionContext<number>;
+type BenchValue = MaybeContext<number>;
 
 const dictionary = {
   map(this: unknown, fn: (value: number) => number): number {
@@ -14,7 +14,7 @@ const dictionary = {
 };
 
 const construct_trait = as_trait_cached(dictionary);
-const branch_lookup_payload = raw_some(1);
+const branch_lookup_payload = raw_just(1);
 
 type ConstructTrait<dictionary extends object = object> = <
   value,
@@ -67,31 +67,31 @@ const prototype = {
   },
 };
 
-Deno.bench("raw option payload construction", () => {
+Deno.bench("raw maybe payload construction", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = raw_some(index);
+    current = raw_just(index);
   }
 
   _sink = current;
 });
 
-Deno.bench("current some() value construction", () => {
+Deno.bench("current just() value construction", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = some(index);
+    current = just(index);
   }
 
   _sink = current;
 });
 
-Deno.bench("current Option(raw) value construction", () => {
+Deno.bench("current Maybe(raw) value construction", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = Option(raw_some(index));
+    current = Maybe(raw_just(index));
   }
 
   _sink = current;
@@ -101,7 +101,7 @@ Deno.bench("current as_trait(dictionary, raw) construction", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = as_trait(dictionary, raw_some(index));
+    current = as_trait(dictionary, raw_just(index));
   }
 
   _sink = current;
@@ -111,7 +111,7 @@ Deno.bench("cached as_trait_cached(dictionary)(raw) construction", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = construct_trait<BenchValue, number>(raw_some(index));
+    current = construct_trait<BenchValue, number>(raw_just(index));
   }
 
   _sink = current;
@@ -121,7 +121,7 @@ Deno.bench("weakmap cached as_trait(dictionary, raw) construction", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = weakmap_cached_as_trait(dictionary, raw_some(index));
+    current = weakmap_cached_as_trait(dictionary, raw_just(index));
   }
 
   _sink = current;
@@ -131,7 +131,7 @@ Deno.bench("external symbol cached as_trait(dictionary, raw)", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = symbol_cached_as_trait(dictionary, raw_some(index));
+    current = symbol_cached_as_trait(dictionary, raw_just(index));
   }
 
   _sink = current;
@@ -141,7 +141,7 @@ Deno.bench("lazy self-replacing constructor(raw) construction", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = lazy_construct_trait(raw_some(index));
+    current = lazy_construct_trait(raw_just(index));
   }
 
   _sink = current;
@@ -201,7 +201,7 @@ Deno.bench("tuple [dictionary, raw] construction", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = tuple_value(dictionary, raw_some(index));
+    current = tuple_value(dictionary, raw_just(index));
   }
 
   _sink = current;
@@ -211,7 +211,7 @@ Deno.bench("record {dictionary, raw} construction", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = record_value_of(dictionary, raw_some(index));
+    current = record_value_of(dictionary, raw_just(index));
   }
 
   _sink = current;
@@ -221,17 +221,17 @@ Deno.bench("prototype symbol object construction", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = prototype_value_of(dictionary, raw_some(index));
+    current = prototype_value_of(dictionary, raw_just(index));
   }
 
   _sink = current;
 });
 
-Deno.bench("current Option(raw).value() read", () => {
+Deno.bench("current Maybe(raw).value() read", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = Option(raw_some(index)).value();
+    current = Maybe(raw_just(index)).value();
   }
 
   _sink = current;
@@ -241,7 +241,7 @@ Deno.bench("cached as_trait_cached(dictionary)(raw).value() read", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = construct_trait<BenchValue, number>(raw_some(index)).value();
+    current = construct_trait<BenchValue, number>(raw_just(index)).value();
   }
 
   _sink = current;
@@ -251,7 +251,7 @@ Deno.bench("tuple [dictionary, raw][1] read", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = tuple_value(dictionary, raw_some(index))[1];
+    current = tuple_value(dictionary, raw_just(index))[1];
   }
 
   _sink = current;
@@ -261,14 +261,14 @@ Deno.bench("prototype symbol object value() read", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = prototype_value_of(dictionary, raw_some(index)).value();
+    current = prototype_value_of(dictionary, raw_just(index)).value();
   }
 
   _sink = current;
 });
 
-function raw_some(value: number): BenchValue {
-  return ["some", value];
+function raw_just(value: number): BenchValue {
+  return ["just", value];
 }
 
 function weakmap_cached_as_trait<dictionary extends object, value>(

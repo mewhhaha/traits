@@ -334,12 +334,11 @@ function make_fp_program() {
 }
 
 async function run_effect(program: ReturnType<typeof make_program>) {
-  const [value, logs] = await Effect.handle_with(program, [
-    (effect) => run_reader(effect, config),
-    (effect) => run_state(effect, 40),
-    (effect) => run_writer(effect, array_from_array<string>([])),
-    run_task,
-  ]);
+  const [value, logs] = await Effect.interpret(program)
+    .handle((effect) => run_reader(effect, config))
+    .handle((effect) => run_state(effect, 40))
+    .handle((effect) => run_writer(effect, array_from_array<string>([])))
+    .run(run_task);
 
   return [value, array_to_array(logs)] as const;
 }

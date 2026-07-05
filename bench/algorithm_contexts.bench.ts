@@ -6,9 +6,9 @@ import {
 } from "../src/iterable.ts";
 import { type AsList, from_array as list_from_array } from "../src/list.ts";
 import { from_entries as map_from_entries } from "../src/map.ts";
-import { type AsOption, some } from "../src/option.ts";
+import { type AsMaybe, just } from "../src/maybe.ts";
 import { from_entries as record_from_entries } from "../src/record.ts";
-import { type AsResult, ok } from "../src/result.ts";
+import { type AsEither, right } from "../src/either.ts";
 import { from_iterable as set_from_iterable } from "../src/set.ts";
 import type { Value } from "../src/trait.ts";
 import {
@@ -81,15 +81,15 @@ const record_events = record_from_entries(
 );
 const set_events = set_from_iterable(events);
 
-const option_event = some(events[0]);
-const option_id = some(1);
-const option_weight = some(10);
-const option_active = some(true);
+const maybe_event = just(events[0]);
+const maybe_id = just(1);
+const maybe_weight = just(10);
+const maybe_active = just(true);
 
-const result_event = ok(events[0]);
-const result_id = ok(1);
-const result_weight = ok(10);
-const result_active = ok(true);
+const either_event = right(events[0]);
+const either_id = right(1);
+const either_weight = right(10);
+const either_active = right(true);
 
 const validation_event = valid(events[0]);
 const validation_id = valid(1);
@@ -178,21 +178,21 @@ Deno.bench("algorithm functor traits SetT", () => {
   _sink = current;
 });
 
-Deno.bench("algorithm functor traits Option", () => {
+Deno.bench("algorithm functor traits Maybe", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = score_events(option_event);
+    current = score_events(maybe_event);
   }
 
   _sink = current;
 });
 
-Deno.bench("algorithm functor traits Result", () => {
+Deno.bench("algorithm functor traits Either", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = score_events(result_event);
+    current = score_events(either_event);
   }
 
   _sink = current;
@@ -272,21 +272,21 @@ Deno.bench("algorithm applicative traits IterableT product forced", () => {
   _sink = current;
 });
 
-Deno.bench("algorithm applicative traits Option", () => {
+Deno.bench("algorithm applicative traits Maybe", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = build_features(option_id, option_weight, option_active);
+    current = build_features(maybe_id, maybe_weight, maybe_active);
   }
 
   _sink = current;
 });
 
-Deno.bench("algorithm applicative traits Result", () => {
+Deno.bench("algorithm applicative traits Either", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = build_features(result_id, result_weight, result_active);
+    current = build_features(either_id, either_weight, either_active);
   }
 
   _sink = current;
@@ -384,28 +384,28 @@ Deno.bench("algorithm monad traits IterableT dependent product forced", () => {
   _sink = current;
 });
 
-Deno.bench("algorithm monad traits Option", () => {
+Deno.bench("algorithm monad traits Maybe", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
     current = dependent_features(
-      option_id,
-      option_weight_for,
-      option_active_for,
+      maybe_id,
+      maybe_weight_for,
+      maybe_active_for,
     );
   }
 
   _sink = current;
 });
 
-Deno.bench("algorithm monad traits Result", () => {
+Deno.bench("algorithm monad traits Either", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
     current = dependent_features(
-      result_id,
-      result_weight_for,
-      result_active_for,
+      either_id,
+      either_weight_for,
+      either_active_for,
     );
   }
 
@@ -567,24 +567,24 @@ function iterable_active_for(
   });
 }
 
-function option_weight_for(id: number): Value<AsOption, number> {
-  return some(id * 10);
+function maybe_weight_for(id: number): Value<AsMaybe, number> {
+  return just(id * 10);
 }
 
-function option_active_for(
+function maybe_active_for(
   id: number,
   weight: number,
-): Value<AsOption, boolean> {
-  return some(weight % 2 === 0 && id % 2 === 1);
+): Value<AsMaybe, boolean> {
+  return just(weight % 2 === 0 && id % 2 === 1);
 }
 
-function result_weight_for(id: number): Value<AsResult, number> {
-  return ok(id * 10);
+function either_weight_for(id: number): Value<AsEither, number> {
+  return right(id * 10);
 }
 
-function result_active_for(
+function either_active_for(
   id: number,
   weight: number,
-): Value<AsResult, boolean> {
-  return ok(weight % 2 === 0 && id % 2 === 1);
+): Value<AsEither, boolean> {
+  return right(weight % 2 === 0 && id % 2 === 1);
 }

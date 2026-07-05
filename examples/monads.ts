@@ -1,6 +1,6 @@
 import { from_array as array_from_array } from "../src/array.ts";
 import { ask, asks, local } from "../src/reader.ts";
-import { err, from_number, ok } from "../src/result.ts";
+import { from_number, left, right } from "../src/either.ts";
 import { exec_state, get, gets, modify } from "../src/state.ts";
 import {
   atomically,
@@ -63,7 +63,7 @@ export async function run_monad_examples() {
     return checking_after + savings_after;
   }));
 
-  console.log("decoded account", decoded_account.fmt());
+  console.log("decoded account", decoded_account.show());
   console.log("task Do result", await task_result.run());
   console.log(
     "reader endpoint",
@@ -82,7 +82,7 @@ export async function run_monad_examples() {
   console.log(
     "array Do",
     array_from_array([1, 2]).bind((value) => array_from_array([value * 10]))
-      .fmt(),
+      .show(),
   );
 }
 
@@ -111,40 +111,40 @@ function decode_account_payload(input: unknown) {
 
 function object_value(value: unknown, name: string) {
   if (typeof value === "object" && value !== null && !Array.isArray(value)) {
-    return ok(value as Record<string, unknown>);
+    return right(value as Record<string, unknown>);
   }
 
-  return err<Record<string, unknown>>(name + " must be an object");
+  return left<string, Record<string, unknown>>(name + " must be an object");
 }
 
 function field(record: Record<string, unknown>, name: string) {
   if (Object.hasOwn(record, name)) {
-    return ok(record[name]);
+    return right(record[name]);
   }
 
-  return err<unknown>(name + " is missing");
+  return left<string, unknown>(name + " is missing");
 }
 
 function string_value(value: unknown, name: string) {
   if (typeof value === "string") {
-    return ok(value);
+    return right(value);
   }
 
-  return err<string>(name + " must be a string");
+  return left<string, string>(name + " must be a string");
 }
 
 function boolean_value(value: unknown, name: string) {
   if (typeof value === "boolean") {
-    return ok(value);
+    return right(value);
   }
 
-  return err<boolean>(name + " must be a boolean");
+  return left<string, boolean>(name + " must be a boolean");
 }
 
 function require_true(value: boolean, message: string) {
   if (value) {
-    return ok(undefined);
+    return right(undefined);
   }
 
-  return err<void>(message);
+  return left<string, void>(message);
 }

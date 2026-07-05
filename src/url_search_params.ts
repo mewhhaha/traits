@@ -5,7 +5,7 @@ import {
   type type_value,
   type Value,
 } from "./trait.ts";
-import { Equal, Foldable, Format, Monoid, Semigroup } from "./traits.ts";
+import { Eq, Foldable, Monoid, Semigroup, Show } from "./traits.ts";
 
 export type URLSearchParamsEntry = readonly [string, string];
 export type URLSearchParamsT = URLSearchParams;
@@ -13,8 +13,8 @@ export type URLSearchParamsT = URLSearchParams;
 export interface AsURLSearchParams
   extends
     As<AsURLSearchParams>,
-    Format<AsURLSearchParams>,
-    Equal<AsURLSearchParams>,
+    Show<AsURLSearchParams>,
+    Eq<AsURLSearchParams>,
     Semigroup<AsURLSearchParams>,
     Monoid<AsURLSearchParams>,
     Foldable<AsURLSearchParams> {
@@ -51,13 +51,13 @@ export function to_entries(
   return [...params.value().entries()];
 }
 
-Format.implement(URLSearchParamsT)({
-  fmt() {
+Show.implement(URLSearchParamsT)({
+  show() {
     return Deno.inspect([...this.value().entries()]);
   },
 });
 
-Equal.implement(URLSearchParamsT)({
+Eq.implement(URLSearchParamsT)({
   eq(right) {
     const left_entries = [...this.value().entries()];
     const right_entries = [...right.value().entries()];

@@ -15,9 +15,9 @@ export function analyze_source(file: SourceFile): AnalyzeResult {
 
   switch (tag) {
     case "parsed":
-      return ["ok", summarize_declarations(file.path, payload.declarations)];
+      return ["right", summarize_declarations(file.path, payload.declarations)];
     case "failed":
-      return ["err", parse_diagnostic(file.path, payload)];
+      return ["left", parse_diagnostic(file.path, payload)];
   }
 }
 

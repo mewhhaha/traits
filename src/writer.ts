@@ -17,11 +17,11 @@ import {
 } from "./effects.ts";
 import {
   Applicative,
-  Format,
   Functor,
   Monad,
   Monoid,
   type Monoid as MonoidDictionary,
+  Show,
 } from "./traits.ts";
 
 export type Writer<
@@ -35,7 +35,7 @@ export interface AsWriter<
   log,
 > extends
   As<AsWriter<output, log>>,
-  Format<AsWriter<output, log>>,
+  Show<AsWriter<output, log>>,
   Functor<AsWriter<output, log>>,
   Applicative<AsWriter<output, log>>,
   Monad<AsWriter<output, log>> {
@@ -153,8 +153,8 @@ type WriterLog<requirements> = requirements extends Lift<
 > ? log
   : never;
 
-Format.implement(Writer)({
-  fmt() {
+Show.implement(Writer)({
+  show() {
     const [value, output] = this.value();
     return "Writer(" + Deno.inspect(value) + ", " +
       Deno.inspect((output as Value<Dictionary, unknown>).value()) + ")";

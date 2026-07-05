@@ -5,12 +5,12 @@ import {
   type type_value,
   type Value,
 } from "./trait.ts";
-import { Equal, Format } from "./traits.ts";
+import { Eq, Show } from "./traits.ts";
 
 export type WeakSetT<item = object> = WeakSet<object>;
 
 export interface AsWeakSet
-  extends As<AsWeakSet>, Format<AsWeakSet>, Equal<AsWeakSet> {
+  extends As<AsWeakSet>, Show<AsWeakSet>, Eq<AsWeakSet> {
   readonly [type_item]: unknown;
   readonly [type_value]: WeakSetT<this[typeof type_item]>;
 }
@@ -25,13 +25,13 @@ export function from_iterable<item extends object>(
   return WeakSetT(new WeakSet<object>(items));
 }
 
-Format.implement(WeakSetT)({
-  fmt() {
+Show.implement(WeakSetT)({
+  show() {
     return "WeakSet(?)";
   },
 });
 
-Equal.implement(WeakSetT)({
+Eq.implement(WeakSetT)({
   eq(right) {
     return Object.is(this.value(), right.value());
   },

@@ -7,8 +7,8 @@ import { Just, Nothing } from "purify-ts/Maybe";
 import * as TrueMaybe from "true-myth/maybe";
 import * as TrueResult from "true-myth/result";
 
-import { none, some } from "../src/option.ts";
-import { err, ok } from "../src/result.ts";
+import { just, nothing } from "../src/maybe.ts";
+import { left, right } from "../src/either.ts";
 import { Applicative } from "../src/traits.ts";
 import { invalid, valid } from "../src/validation.ts";
 
@@ -20,7 +20,7 @@ const error = "bad";
 const add_one = (value: number) => value + 1;
 const double = (value: number) => value * 2;
 
-const traits_option_double = (value: number) => some(double(value));
+const traits_maybe_double = (value: number) => just(double(value));
 const fp_option_double = (value: number) => FpOption.some(double(value));
 const effect_option_double = (value: number) =>
   EffectOption.some(double(value));
@@ -32,7 +32,7 @@ const fp_option_chain_double = FpOption.chain(fp_option_double);
 const true_maybe_map_add_one = TrueMaybe.map(add_one);
 const true_maybe_and_then_double = TrueMaybe.andThen(true_maybe_double);
 
-const traits_result_double = (value: number) => ok(double(value));
+const traits_either_double = (value: number) => right(double(value));
 const fp_either_double = <error>(value: number) => {
   return FpEither.right<error, number>(double(value));
 };
@@ -46,11 +46,11 @@ const fp_either_chain_double = FpEither.chain(fp_either_double);
 const true_result_map_add_one = TrueResult.map(add_one);
 const true_result_and_then_double = TrueResult.andThen(true_result_double);
 
-Deno.bench("traits Option some construction", () => {
+Deno.bench("traits Maybe just construction", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = some(index);
+    current = just(index);
   }
 
   _sink = current;
@@ -96,38 +96,38 @@ Deno.bench("true-myth Maybe just construction", () => {
   _sink = current;
 });
 
-Deno.bench("traits Option some map+bind", () => {
+Deno.bench("traits Maybe just map+bind", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = some(index).map(add_one).bind(traits_option_double);
+    current = just(index).map(add_one).bind(traits_maybe_double);
   }
 
   _sink = current;
 });
 
-Deno.bench("traits Option some fluent ap", () => {
+Deno.bench("traits Maybe just fluent ap", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = some((left: number) => {
+    current = just((left: number) => {
       return (right: number) => left + right;
     })
-      .ap(some(index))
-      .ap(some(index + 1));
+      .ap(just(index))
+      .ap(just(index + 1));
   }
 
   _sink = current;
 });
 
-Deno.bench("traits Option some lift", () => {
+Deno.bench("traits Maybe just lift", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
     current = Applicative.lift(
       (left, right) => left + right,
-      some(index),
-      some(index + 1),
+      just(index),
+      just(index + 1),
     );
   }
 
@@ -195,38 +195,38 @@ Deno.bench("true-myth Maybe just map+andThen", () => {
   _sink = current;
 });
 
-Deno.bench("traits Option none map+bind", () => {
+Deno.bench("traits Maybe nothing map+bind", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = none<number>().map(add_one).bind(traits_option_double);
+    current = nothing<number>().map(add_one).bind(traits_maybe_double);
   }
 
   _sink = current;
 });
 
-Deno.bench("traits Option none fluent ap", () => {
+Deno.bench("traits Maybe nothing fluent ap", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = some((left: number) => {
+    current = just((left: number) => {
       return (right: number) => left + right;
     })
-      .ap(some(index))
-      .ap(none<number>());
+      .ap(just(index))
+      .ap(nothing<number>());
   }
 
   _sink = current;
 });
 
-Deno.bench("traits Option none lift", () => {
+Deno.bench("traits Maybe nothing lift", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
     current = Applicative.lift(
       (left, right) => left + right,
-      some(index),
-      none<number>(),
+      just(index),
+      nothing<number>(),
     );
   }
 
@@ -292,11 +292,11 @@ Deno.bench("true-myth Maybe nothing map+andThen", () => {
   _sink = current;
 });
 
-Deno.bench("traits Result ok construction", () => {
+Deno.bench("traits Either right construction", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = ok(index);
+    current = right(index);
   }
 
   _sink = current;
@@ -342,38 +342,38 @@ Deno.bench("true-myth Result ok construction", () => {
   _sink = current;
 });
 
-Deno.bench("traits Result ok map+bind", () => {
+Deno.bench("traits Either right map+bind", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = ok(index).map(add_one).bind(traits_result_double);
+    current = right(index).map(add_one).bind(traits_either_double);
   }
 
   _sink = current;
 });
 
-Deno.bench("traits Result ok fluent ap", () => {
+Deno.bench("traits Either right fluent ap", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = ok((left: number) => {
+    current = right((left: number) => {
       return (right: number) => left + right;
     })
-      .ap(ok(index))
-      .ap(ok(index + 1));
+      .ap(right(index))
+      .ap(right(index + 1));
   }
 
   _sink = current;
 });
 
-Deno.bench("traits Result ok lift", () => {
+Deno.bench("traits Either right lift", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
     current = Applicative.lift(
       (left, right) => left + right,
-      ok(index),
-      ok(index + 1),
+      right(index),
+      right(index + 1),
     );
   }
 
@@ -441,38 +441,40 @@ Deno.bench("true-myth Result ok map+andThen", () => {
   _sink = current;
 });
 
-Deno.bench("traits Result err map+bind", () => {
+Deno.bench("traits Either left map+bind", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = err<number>(error).map(add_one).bind(traits_result_double);
+    current = left<string, number>(error).map(add_one).bind(
+      traits_either_double,
+    );
   }
 
   _sink = current;
 });
 
-Deno.bench("traits Result err fluent ap", () => {
+Deno.bench("traits Either left fluent ap", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
-    current = ok((left: number) => {
+    current = right((left: number) => {
       return (right: number) => left + right;
     })
-      .ap(ok(index))
-      .ap(err<number>(error));
+      .ap(right(index))
+      .ap(left<string, number>(error));
   }
 
   _sink = current;
 });
 
-Deno.bench("traits Result err lift", () => {
+Deno.bench("traits Either left lift", () => {
   let current: unknown;
 
   for (let index = 0; index < iterations; index += 1) {
     current = Applicative.lift(
       (left, right) => left + right,
-      ok(index),
-      err<number>(error),
+      right(index),
+      left<string, number>(error),
     );
   }
 

@@ -1,6 +1,6 @@
 import { from_array } from "../src/list.ts";
-import { none, type Option, some } from "../src/option.ts";
-import { err, from_number, ok, type Result } from "../src/result.ts";
+import { just, type Maybe, nothing } from "../src/maybe.ts";
+import { type Either, from_number, left, right } from "../src/either.ts";
 import {
   invalid as validation_invalid,
   valid as validation_valid,
@@ -12,56 +12,56 @@ import {
   label_values,
   sum_values,
 } from "../src/examples.ts";
-import { Applicative, Format } from "../src/traits.ts";
+import { Applicative, Show } from "../src/traits.ts";
 
 export async function run_basic_examples() {
-  const option = some(21);
-  const doubled_option = option.map((value) => {
+  const maybe = just(21);
+  const doubled_maybe = maybe.map((value) => {
     return value * 2;
   });
-  const switched_option = describe_option(option.value());
-  const switched_none = describe_option(none<number>().value());
+  const switched_maybe = describe_maybe(maybe.value());
+  const switched_nothing = describe_maybe(nothing<number>().value());
 
   const list = from_array([1, 2, 3]);
   const labeled_list = label_values(list);
-  const result = ok("42")
+  const either = right("42")
     .bind((text) => from_number(Number.parseInt(text, 10)));
-  const switched_result = describe_result(
+  const switched_left = describe_either(
     keep_positive(
-      ok(-1),
-      (value) => err("negative: " + value.toString()),
+      right(-1),
+      (value) => left("negative: " + value.toString()),
     ).value(),
   );
-  const switched_ok = describe_result(result.value());
+  const switched_right = describe_either(either.value());
 
   const applicative_list = from_array([
     (value: number) => value + 1,
     (value: number) => value * 10,
   ])
     .ap(from_array([1, 2]));
-  const generic_option_sum = add_values(some(20), some(22));
+  const generic_maybe_sum = add_values(just(20), just(22));
   const generic_list_sum = add_values(
     from_array([1, 10]),
     from_array([2, 20]),
   );
-  const positive_result = keep_positive(
-    ok(-1),
-    (value) => err("negative: " + value.toString()),
+  const positive_either = keep_positive(
+    right(-1),
+    (value) => left("negative: " + value.toString()),
   );
-  const fluent_option = some((left: number) => {
+  const fluent_maybe = just((left: number) => {
     return (right: number) => left + right;
   })
-    .ap(some(20))
-    .ap(some(22));
-  const fluent_result = ok("42")
+    .ap(just(20))
+    .ap(just(22));
+  const fluent_either = right("42")
     .bind((text) => from_number(Number.parseInt(text, 10)))
     .map((value) => value + 1);
   const fluent_list = from_array([1, 2, 3])
     .map((value) => value * 2);
   const optional_profile = Applicative.lift(
     (display_name, email) => ({ display_name, email }),
-    some("Ada"),
-    some("ada@example.test"),
+    just("Ada"),
+    just("ada@example.test"),
   );
   const parsed_config = Applicative.lift(
     (host, port) => ({ host, port }),
@@ -85,56 +85,56 @@ export async function run_basic_examples() {
     validate_password("short"),
   );
 
-  console.log("option", doubled_option.fmt());
-  console.log("option switch", switched_option);
-  console.log("none switch", switched_none);
-  console.log("list labels", Format.fmt(labeled_list));
+  console.log("maybe", doubled_maybe.show());
+  console.log("maybe switch", switched_maybe);
+  console.log("nothing switch", switched_nothing);
+  console.log("list labels", Show.show(labeled_list));
   console.log("list sum", sum_values(list));
-  console.log("result", result.fmt());
-  console.log("applicative list", applicative_list.fmt());
-  console.log("generic option sum", Format.fmt(generic_option_sum));
-  console.log("generic list sum", Format.fmt(generic_list_sum));
-  console.log("generic positive result", Format.fmt(positive_result));
-  console.log("result switch err", switched_result);
-  console.log("result switch ok", switched_ok);
-  console.log("fluent option", fluent_option.fmt());
-  console.log("fluent result", fluent_result.fmt());
-  console.log("fluent list", fluent_list.fmt());
-  console.log("lift optional profile", optional_profile.fmt());
-  console.log("lift parsed config", parsed_config.fmt());
-  console.log("lift dice scores", dice_scores.fmt());
+  console.log("either", either.show());
+  console.log("applicative list", applicative_list.show());
+  console.log("generic maybe sum", Show.show(generic_maybe_sum));
+  console.log("generic list sum", Show.show(generic_list_sum));
+  console.log("generic positive either", Show.show(positive_either));
+  console.log("either switch left", switched_left);
+  console.log("either switch right", switched_right);
+  console.log("fluent maybe", fluent_maybe.show());
+  console.log("fluent either", fluent_either.show());
+  console.log("fluent list", fluent_list.show());
+  console.log("lift optional profile", optional_profile.show());
+  console.log("lift parsed config", parsed_config.show());
+  console.log("lift dice scores", dice_scores.show());
   console.log("lift parallel task", await parallel_task.run());
-  console.log("lift validation", signup_validation.fmt());
+  console.log("lift validation", signup_validation.show());
 }
 
-function describe_option(value: Option<number>) {
+function describe_maybe(value: Maybe<number>) {
   const [tag, payload] = value;
 
   switch (tag) {
-    case "some":
-      return "some:" + payload.toString();
-    case "none":
-      return "none";
+    case "just":
+      return "just:" + payload.toString();
+    case "nothing":
+      return "nothing";
   }
 }
 
-function describe_result(value: Result<number, unknown>) {
+function describe_either(value: Either<unknown, number>) {
   const [tag, payload] = value;
 
   switch (tag) {
-    case "ok":
-      return "ok:" + payload.toString();
-    case "err":
-      return "err:" + String(payload);
+    case "right":
+      return "right:" + payload.toString();
+    case "left":
+      return "left:" + String(payload);
   }
 }
 
 function non_empty_string(value: string, name: string) {
   if (value.length > 0) {
-    return ok(value);
+    return right(value);
   }
 
-  return err<string>(name + " must not be empty");
+  return left<string, string>(name + " must not be empty");
 }
 
 function validate_username(value: string) {

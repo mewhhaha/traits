@@ -8,13 +8,13 @@ import {
 import {
   Alternative,
   Applicative,
-  Equal,
+  Eq,
   Foldable,
-  Format,
   Functor,
   Monad,
   Monoid,
   Semigroup,
+  Show,
   Traversable,
 } from "./traits.ts";
 
@@ -25,8 +25,8 @@ export type List<item> =
 export interface AsList
   extends
     As<AsList>,
-    Format<AsList>,
-    Equal<AsList>,
+    Show<AsList>,
+    Eq<AsList>,
     Functor<AsList>,
     Applicative<AsList>,
     Semigroup<AsList>,
@@ -81,14 +81,14 @@ function list_from_array<item>(items: item[]): List<item> {
   return list;
 }
 
-Format.implement(List)({
-  fmt() {
+Show.implement(List)({
+  show() {
     const items = to_array(this).map((item) => Deno.inspect(item));
     return "[" + items.join(", ") + "]";
   },
 });
 
-Equal.implement(List)({
+Eq.implement(List)({
   eq(right) {
     let left_rest = this.value();
     let right_rest = right.value();

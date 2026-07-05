@@ -120,7 +120,9 @@ function run_parallel_analyzer_dry(modules: ModuleSet): number {
       { value(): readonly string[] },
     ]
   >;
-  const [report, logs] = modules.effects.Effect.run(effect);
+  const [report, logs] = modules.effects.Effect.interpret(effect).run(
+    modules.effects.run,
+  );
 
   return report.files + report.parsed + report.failed + logs.value().length;
 }

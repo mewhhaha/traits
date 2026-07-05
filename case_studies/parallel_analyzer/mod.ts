@@ -115,17 +115,17 @@ export async function run_parallel_analyzer(
   workers: number,
 ): Promise<AnalyzerRun> {
   const started = performance.now();
-  const [report, logs] = await Effect.handle_with(parallel_analyzer, [
-    (effect) =>
+  const [report, logs] = await Effect.interpret(parallel_analyzer)
+    .handle((effect) =>
       run_reader(effect, {
         files,
         workers,
-      }),
-    (effect) => run_writer(effect, from_array<string>([])),
-    (effect) => run_analyze_sources_with_workers(effect, worker_url),
-    (effect) => run_parallel(effect),
-    (effect) => run_task(effect),
-  ]);
+      })
+    )
+    .handle((effect) => run_writer(effect, from_array<string>([])))
+    .handle((effect) => run_analyze_sources_with_workers(effect, worker_url))
+    .handle((effect) => run_parallel(effect))
+    .run(run_task);
 
   return {
     report,
@@ -222,17 +222,17 @@ async function run_parallel_analyzer_with_pool(
   pool: WorkerPool<SourceFile, AnalyzeResult>,
 ): Promise<AnalyzerRun> {
   const started = performance.now();
-  const [report, logs] = await Effect.handle_with(parallel_analyzer, [
-    (effect) =>
+  const [report, logs] = await Effect.interpret(parallel_analyzer)
+    .handle((effect) =>
       run_reader(effect, {
         files,
         workers,
-      }),
-    (effect) => run_writer(effect, from_array<string>([])),
-    (effect) => run_analyze_sources_with_workers(effect, worker_url),
-    (effect) => run_parallel_with_pool(effect, pool),
-    (effect) => run_task(effect),
-  ]);
+      })
+    )
+    .handle((effect) => run_writer(effect, from_array<string>([])))
+    .handle((effect) => run_analyze_sources_with_workers(effect, worker_url))
+    .handle((effect) => run_parallel_with_pool(effect, pool))
+    .run(run_task);
 
   return {
     report,

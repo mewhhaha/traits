@@ -6,15 +6,12 @@ import {
   type type_value,
   type Value,
 } from "./trait.ts";
-import { Equal, Format } from "./traits.ts";
+import { Eq, Show } from "./traits.ts";
 
 export type ReadableStreamT<item> = ReadableStream<item>;
 
 export interface AsReadableStream
-  extends
-    As<AsReadableStream>,
-    Format<AsReadableStream>,
-    Equal<AsReadableStream> {
+  extends As<AsReadableStream>, Show<AsReadableStream>, Eq<AsReadableStream> {
   readonly [type_item]: unknown;
   readonly [type_value]: ReadableStreamT<this[typeof type_item]>;
 }
@@ -53,13 +50,13 @@ export function to_async_iterable<item>(
   });
 }
 
-Format.implement(ReadableStreamT)({
-  fmt() {
+Show.implement(ReadableStreamT)({
+  show() {
     return "ReadableStream(?)";
   },
 });
 
-Equal.implement(ReadableStreamT)({
+Eq.implement(ReadableStreamT)({
   eq(right) {
     return Object.is(this.value(), right.value());
   },

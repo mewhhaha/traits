@@ -5,7 +5,7 @@ import {
   type type_value,
   type Value,
 } from "./trait.ts";
-import { Applicative, Format, Functor, Monad } from "./traits.ts";
+import { Applicative, Functor, Monad, Show } from "./traits.ts";
 
 const tvar_value = Symbol("TVar.value");
 
@@ -26,7 +26,7 @@ export type Stm<item> = (journal: StmJournal) => item;
 export interface AsStm
   extends
     As<AsStm>,
-    Format<AsStm>,
+    Show<AsStm>,
     Functor<AsStm>,
     Applicative<AsStm>,
     Monad<AsStm> {
@@ -122,8 +122,8 @@ export function atomically<item>(transaction: StmValue<item>): item {
   return value;
 }
 
-Format.implement(Stm)({
-  fmt() {
+Show.implement(Stm)({
+  show() {
     return "Stm(?)";
   },
 });

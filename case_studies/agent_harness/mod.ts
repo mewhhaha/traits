@@ -38,14 +38,13 @@ export async function run_agent_harness(): Promise<AgentHarnessReport> {
   const writes = new Map<string, string>();
   const file_system = io_file_system(files, writes);
   const model = default_language_model();
-  const [state_result, stdout] = await Effect.handle_with(agent_harness, [
-    (effect) => run_reader(effect, default_agent_input()),
-    (effect) => run_state(effect, [] as AgentTranscript),
-    (effect) => run_writer(effect, from_array<string>([])),
-    (effect) => run_language_model(effect, model),
-    (effect) => run_file_system(effect, file_system),
-    run_task,
-  ]);
+  const [state_result, stdout] = await Effect.interpret(agent_harness)
+    .handle((effect) => run_reader(effect, default_agent_input()))
+    .handle((effect) => run_state(effect, [] as AgentTranscript))
+    .handle((effect) => run_writer(effect, from_array<string>([])))
+    .handle((effect) => run_language_model(effect, model))
+    .handle((effect) => run_file_system(effect, file_system))
+    .run(run_task);
   const [result] = state_result;
 
   return {

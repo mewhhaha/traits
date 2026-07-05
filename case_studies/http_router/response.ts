@@ -6,6 +6,7 @@ import {
   Effect,
   type Effect as EffectValue,
   Program,
+  run,
   type Uses,
 } from "../../src/effects.ts";
 import { type AsWriter, run_writer, tell } from "../../src/writer.ts";
@@ -22,7 +23,9 @@ export type HttpProgram = EffectValue<HttpBody, HttpMetadata>;
 const empty_body = async_iterable<string>(async function* () {});
 
 export function to_response(program: HttpProgram): Response {
-  const [metadata, chunks] = Effect.run(run_writer(program, empty_body));
+  const [metadata, chunks] = Effect.interpret(
+    run_writer(program, empty_body),
+  ).run(run);
 
   return new Response(
     readable_from_async_iterable(encode_body(chunks.run())),

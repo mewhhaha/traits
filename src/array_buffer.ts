@@ -5,15 +5,15 @@ import {
   type type_value,
   type Value,
 } from "./trait.ts";
-import { Equal, Foldable, Format, Monoid, Semigroup } from "./traits.ts";
+import { Eq, Foldable, Monoid, Semigroup, Show } from "./traits.ts";
 
 export type ArrayBufferT = ArrayBuffer;
 
 export interface AsArrayBuffer
   extends
     As<AsArrayBuffer>,
-    Format<AsArrayBuffer>,
-    Equal<AsArrayBuffer>,
+    Show<AsArrayBuffer>,
+    Eq<AsArrayBuffer>,
     Semigroup<AsArrayBuffer>,
     Monoid<AsArrayBuffer>,
     Foldable<AsArrayBuffer> {
@@ -37,13 +37,13 @@ export function to_bytes(buffer: ArrayBufferValue): Uint8Array {
   return new Uint8Array(buffer.value().slice(0));
 }
 
-Format.implement(ArrayBufferT)({
-  fmt() {
+Show.implement(ArrayBufferT)({
+  show() {
     return Deno.inspect(new Uint8Array(this.value()));
   },
 });
 
-Equal.implement(ArrayBufferT)({
+Eq.implement(ArrayBufferT)({
   eq(right) {
     return bytes_equal(
       new Uint8Array(this.value()),

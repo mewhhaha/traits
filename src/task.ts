@@ -8,14 +8,14 @@ import {
   type Value,
 } from "./trait.ts";
 import type { Effect, Lift } from "./effects.ts";
-import { Applicative, Format, Functor, Monad } from "./traits.ts";
+import { Applicative, Functor, Monad, Show } from "./traits.ts";
 
 export type Task<item> = () => Promise<item>;
 
 export interface AsTask
   extends
     As<AsTask>,
-    Format<AsTask>,
+    Show<AsTask>,
     Functor<AsTask>,
     Applicative<AsTask>,
     Monad<AsTask> {
@@ -78,8 +78,8 @@ function is_task_value(value: unknown): value is Dictionary {
   return (value as Dictionary)[kind] === Task[kind];
 }
 
-Format.implement(Task)({
-  fmt() {
+Show.implement(Task)({
+  show() {
     return "Task(?)";
   },
 });

@@ -6,7 +6,7 @@ import {
   type type_value,
   type Value,
 } from "../../src/trait.ts";
-import { Foldable, Format, Monoid, Semigroup } from "../../src/traits.ts";
+import { Foldable, Monoid, Semigroup, Show } from "../../src/traits.ts";
 import type {
   AnalyzeResult,
   AnalyzerReport,
@@ -15,11 +15,7 @@ import type {
 } from "./types.ts";
 
 export interface AsReport
-  extends
-    As<AsReport>,
-    Format<AsReport>,
-    Semigroup<AsReport>,
-    Monoid<AsReport> {
+  extends As<AsReport>, Show<AsReport>, Semigroup<AsReport>, Monoid<AsReport> {
   readonly [type_item]: unknown;
   readonly [type_value]: AnalyzerReport;
 }
@@ -76,9 +72,9 @@ export function report_from_result(result: AnalyzeResult): AnalyzerReport {
   const [tag, payload] = result;
 
   switch (tag) {
-    case "ok":
+    case "right":
       return report_from_summary(payload);
-    case "err":
+    case "left":
       return report_from_diagnostic(payload);
   }
 }
@@ -131,8 +127,8 @@ export function concat_report_value(
   return Monoid.concat(left, Report(right));
 }
 
-Format.implement(Report)({
-  fmt() {
+Show.implement(Report)({
+  show() {
     const report = this.value();
 
     return "AnalyzerReport(" +

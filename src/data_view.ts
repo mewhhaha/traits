@@ -5,15 +5,15 @@ import {
   type type_value,
   type Value,
 } from "./trait.ts";
-import { Equal, Foldable, Format, Monoid, Semigroup } from "./traits.ts";
+import { Eq, Foldable, Monoid, Semigroup, Show } from "./traits.ts";
 
 export type DataViewT = DataView;
 
 export interface AsDataView
   extends
     As<AsDataView>,
-    Format<AsDataView>,
-    Equal<AsDataView>,
+    Show<AsDataView>,
+    Eq<AsDataView>,
     Semigroup<AsDataView>,
     Monoid<AsDataView>,
     Foldable<AsDataView> {
@@ -37,13 +37,13 @@ export function to_bytes(view: DataViewValue): Uint8Array {
   return new Uint8Array(clone_data_view(view.value()).buffer);
 }
 
-Format.implement(DataViewT)({
-  fmt() {
+Show.implement(DataViewT)({
+  show() {
     return Deno.inspect(to_view_bytes(this.value()));
   },
 });
 
-Equal.implement(DataViewT)({
+Eq.implement(DataViewT)({
   eq(right) {
     return bytes_equal(
       to_view_bytes(this.value()),

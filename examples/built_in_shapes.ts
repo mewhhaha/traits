@@ -19,7 +19,7 @@ import {
   from_entries as map_from_entries,
   to_record as map_to_record,
 } from "../src/map.ts";
-import { ok } from "../src/result.ts";
+import { right } from "../src/either.ts";
 import {
   from_entries as record_from_entries,
   to_record as record_to_record,
@@ -40,7 +40,7 @@ import {
 } from "../src/url_search_params.ts";
 import { from_entries as weak_map_from_entries } from "../src/weak_map.ts";
 import { from_iterable as weak_set_from_iterable } from "../src/weak_set.ts";
-import { Alternative, Format, Traversable } from "../src/traits.ts";
+import { Alternative, Show, Traversable } from "../src/traits.ts";
 
 export async function run_builtin_shape_examples() {
   const array_monad = array_from_array([1, 2, 3])
@@ -104,12 +104,12 @@ export async function run_builtin_shape_examples() {
   const error_value = from_error(new TypeError("expected value"));
   const traversed_record = Traversable.traverse(
     record_from_entries<number>([["id", 42], ["limit", 10]]),
-    ok(undefined),
-    (value) => ok(value.toString()),
+    right(undefined),
+    (value) => right(value.toString()),
   ).map((record) => record_to_record(record));
 
-  console.log("array monad", array_monad.fmt());
-  console.log("array alternative", Format.fmt(array_alternative));
+  console.log("array monad", array_monad.show());
+  console.log("array alternative", Show.show(array_alternative));
   console.log("map functor", Deno.inspect(map_to_record(mapped_map)));
   console.log("record functor", Deno.inspect(record_to_record(mapped_record)));
   console.log("set functor", Deno.inspect([...set_to_set(mapped_set)]));
@@ -125,18 +125,18 @@ export async function run_builtin_shape_examples() {
     "readable stream adapter",
     Deno.inspect(await async_iterable_to_array(readable_as_iterable)),
   );
-  console.log("array buffer concat", byte_buffer.fmt());
-  console.log("data view bytes", byte_view.fmt());
+  console.log("array buffer concat", byte_buffer.show());
+  console.log("data view bytes", byte_view.show());
   console.log(
     "typed array fold",
     typed_numbers.fold(0, (sum, byte) => sum + Number(byte)),
   );
   console.log("url params", Deno.inspect(url_params_to_entries(query_params)));
   console.log("form data", Deno.inspect(form_data_to_entries(form_fields)));
-  console.log("weak map", weak_map.fmt());
-  console.log("weak set", weak_set.fmt());
-  console.log("date", date_value.fmt());
-  console.log("regexp", regexp_value.fmt());
-  console.log("error", error_value.fmt());
-  console.log("record traverse result", traversed_record.fmt());
+  console.log("weak map", weak_map.show());
+  console.log("weak set", weak_set.show());
+  console.log("date", date_value.show());
+  console.log("regexp", regexp_value.show());
+  console.log("error", error_value.show());
+  console.log("record traverse result", traversed_record.show());
 }

@@ -5,11 +5,11 @@ import {
   type type_value,
   type Value,
 } from "./trait.ts";
-import { Equal, Format } from "./traits.ts";
+import { Eq, Show } from "./traits.ts";
 
 export type ErrorT = Error;
 
-export interface AsError extends As<AsError>, Format<AsError>, Equal<AsError> {
+export interface AsError extends As<AsError>, Show<AsError>, Eq<AsError> {
   readonly [type_item]: unknown;
   readonly [type_value]: ErrorT;
 }
@@ -22,13 +22,13 @@ export function from_error(error: Error): ErrorValue {
   return ErrorT(error) as ErrorValue;
 }
 
-Format.implement(ErrorT)({
-  fmt() {
+Show.implement(ErrorT)({
+  show() {
     return this.value().name + ": " + this.value().message;
   },
 });
 
-Equal.implement(ErrorT)({
+Eq.implement(ErrorT)({
   eq(right) {
     const left = this.value();
     const right_value = right.value();

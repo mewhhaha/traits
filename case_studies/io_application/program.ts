@@ -32,11 +32,11 @@ export const cli_program = App(function* () {
       let exit_code: number;
 
       switch (result_tag) {
-        case "ok":
+        case "right":
           yield* stdout(result_payload);
           exit_code = 0;
           break;
-        case "err":
+        case "left":
           yield* stdout(format_file_system_error(result_payload));
           exit_code = 1;
           break;
@@ -51,11 +51,11 @@ export const cli_program = App(function* () {
       let exit_code: number;
 
       switch (result_tag) {
-        case "ok":
+        case "right":
           yield* stdout("wrote " + payload.path);
           exit_code = 0;
           break;
-        case "err":
+        case "left":
           yield* stdout(format_file_system_error(result_payload));
           exit_code = 1;
           break;

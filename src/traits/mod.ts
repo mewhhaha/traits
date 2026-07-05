@@ -1,5 +1,5 @@
-export * from "./format.ts";
-export * from "./equal.ts";
+export * from "./show.ts";
+export * from "./eq.ts";
 export * from "./semigroup.ts";
 export * from "./monoid.ts";
 export * from "./functor.ts";

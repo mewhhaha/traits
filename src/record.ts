@@ -7,12 +7,12 @@ import {
 } from "./trait.ts";
 import {
   Applicative,
-  Equal,
+  Eq,
   Foldable,
-  Format,
   Functor,
   Monoid,
   Semigroup,
+  Show,
   Traversable,
 } from "./traits.ts";
 
@@ -21,8 +21,8 @@ export type RecordT<item> = Readonly<Record<string, item>>;
 export interface AsRecord
   extends
     As<AsRecord>,
-    Format<AsRecord>,
-    Equal<AsRecord>,
+    Show<AsRecord>,
+    Eq<AsRecord>,
     Functor<AsRecord>,
     Semigroup<AsRecord>,
     Monoid<AsRecord>,
@@ -52,14 +52,14 @@ export function to_record<item>(
   return { ...record.value() };
 }
 
-Format.implement(RecordT)({
-  fmt() {
+Show.implement(RecordT)({
+  show() {
     const record = this.value();
     return Deno.inspect(record);
   },
 });
 
-Equal.implement(RecordT)({
+Eq.implement(RecordT)({
   eq(right) {
     const left = this.value();
     const right_value = right.value();

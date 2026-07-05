@@ -8,13 +8,13 @@ import {
 import {
   Alternative,
   Applicative,
-  Equal,
+  Eq,
   Foldable,
-  Format,
   Functor,
   Monad,
   Monoid,
   Semigroup,
+  Show,
   Traversable,
 } from "./traits.ts";
 
@@ -23,8 +23,8 @@ export type IterableT<item> = () => Iterable<item>;
 export interface AsIterable
   extends
     As<AsIterable>,
-    Format<AsIterable>,
-    Equal<AsIterable>,
+    Show<AsIterable>,
+    Eq<AsIterable>,
     Functor<AsIterable>,
     Applicative<AsIterable>,
     Semigroup<AsIterable>,
@@ -58,13 +58,13 @@ export function to_array<item>(iterable: IterableValue<item>): item[] {
   return [...iterable.value()()];
 }
 
-Format.implement(IterableT)({
-  fmt() {
+Show.implement(IterableT)({
+  show() {
     return Deno.inspect([...this.value()()]);
   },
 });
 
-Equal.implement(IterableT)({
+Eq.implement(IterableT)({
   eq(right) {
     const left_iterator = this.value()()[Symbol.iterator]();
     const right_iterator = right.value()()[Symbol.iterator]();

@@ -2,7 +2,7 @@ import {
   from_array as array_from_array,
   to_array as array_to_array,
 } from "../src/array.ts";
-import { Effect, Program } from "../src/effects.ts";
+import { Effect, Program, run } from "../src/effects.ts";
 import { ask, asks, run_reader } from "../src/reader.ts";
 import { get, modify, run_state } from "../src/state.ts";
 import { from_fn, run_task } from "../src/task.ts";
@@ -47,7 +47,7 @@ Deno.bench("Reader Program construct+run", () => {
 
   for (let index = 0; index < iterations; index += 1) {
     checksum += consume_reader(
-      Effect.run(run_reader(make_reader_program(), config)),
+      Effect.interpret(run_reader(make_reader_program(), config)).run(run),
     );
   }
 
@@ -59,7 +59,9 @@ Deno.bench("Reader transformed Program construct+run", () => {
 
   for (let index = 0; index < iterations; index += 1) {
     checksum += consume_reader(
-      Effect.run(run_reader(make_reader_program_transformed(), config)),
+      Effect.interpret(
+        run_reader(make_reader_program_transformed(), config),
+      ).run(run),
     );
   }
 
@@ -93,7 +95,9 @@ Deno.bench("Reader Program reuse+run", () => {
   let checksum = 0;
 
   for (let index = 0; index < iterations; index += 1) {
-    checksum += consume_reader(Effect.run(run_reader(program, config)));
+    checksum += consume_reader(
+      Effect.interpret(run_reader(program, config)).run(run),
+    );
   }
 
   _sink = checksum;
@@ -104,7 +108,9 @@ Deno.bench("Reader transformed Program reuse+run", () => {
   let checksum = 0;
 
   for (let index = 0; index < iterations; index += 1) {
-    checksum += consume_reader(Effect.run(run_reader(program, config)));
+    checksum += consume_reader(
+      Effect.interpret(run_reader(program, config)).run(run),
+    );
   }
 
   _sink = checksum;
@@ -134,7 +140,9 @@ Deno.bench("State Program construct+run", () => {
   let checksum = 0;
 
   for (let index = 0; index < iterations; index += 1) {
-    checksum += consume_state(Effect.run(run_state(make_state_program(), 40)));
+    checksum += consume_state(
+      Effect.interpret(run_state(make_state_program(), 40)).run(run),
+    );
   }
 
   _sink = checksum;
@@ -145,7 +153,9 @@ Deno.bench("State transformed Program construct+run", () => {
 
   for (let index = 0; index < iterations; index += 1) {
     checksum += consume_state(
-      Effect.run(run_state(make_state_program_transformed(), 40)),
+      Effect.interpret(run_state(make_state_program_transformed(), 40)).run(
+        run,
+      ),
     );
   }
 
@@ -179,7 +189,9 @@ Deno.bench("State Program reuse+run", () => {
   let checksum = 0;
 
   for (let index = 0; index < iterations; index += 1) {
-    checksum += consume_state(Effect.run(run_state(program, 40)));
+    checksum += consume_state(
+      Effect.interpret(run_state(program, 40)).run(run),
+    );
   }
 
   _sink = checksum;
@@ -190,7 +202,9 @@ Deno.bench("State transformed Program reuse+run", () => {
   let checksum = 0;
 
   for (let index = 0; index < iterations; index += 1) {
-    checksum += consume_state(Effect.run(run_state(program, 40)));
+    checksum += consume_state(
+      Effect.interpret(run_state(program, 40)).run(run),
+    );
   }
 
   _sink = checksum;
@@ -221,9 +235,9 @@ Deno.bench("Writer Program construct+run", () => {
 
   for (let index = 0; index < iterations; index += 1) {
     checksum += consume_writer(
-      Effect.run(
+      Effect.interpret(
         run_writer(make_writer_program(), array_from_array<string>([])),
-      ),
+      ).run(run),
     );
   }
 
@@ -235,12 +249,12 @@ Deno.bench("Writer transformed Program construct+run", () => {
 
   for (let index = 0; index < iterations; index += 1) {
     checksum += consume_writer(
-      Effect.run(
+      Effect.interpret(
         run_writer(
           make_writer_program_transformed(),
           array_from_array<string>([]),
         ),
-      ),
+      ).run(run),
     );
   }
 
@@ -275,7 +289,9 @@ Deno.bench("Writer Program reuse+run", () => {
 
   for (let index = 0; index < iterations; index += 1) {
     checksum += consume_writer(
-      Effect.run(run_writer(program, array_from_array<string>([]))),
+      Effect.interpret(run_writer(program, array_from_array<string>([]))).run(
+        run,
+      ),
     );
   }
 
@@ -288,7 +304,9 @@ Deno.bench("Writer transformed Program reuse+run", () => {
 
   for (let index = 0; index < iterations; index += 1) {
     checksum += consume_writer(
-      Effect.run(run_writer(program, array_from_array<string>([]))),
+      Effect.interpret(run_writer(program, array_from_array<string>([]))).run(
+        run,
+      ),
     );
   }
 

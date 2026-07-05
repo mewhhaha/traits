@@ -1,8 +1,8 @@
 export * from "./trait.ts";
 export * from "./tagged.ts";
 export * from "./traits.ts";
-export * from "./option.ts";
-export * from "./result.ts";
+export * from "./maybe.ts";
+export * from "./either.ts";
 export * from "./list.ts";
 export * from "./task.ts";
 export * from "./reader.ts";
@@ -11,9 +11,11 @@ export * from "./writer.ts";
 export * from "./stm.ts";
 export * from "./validation.ts";
 export * from "./parallel.ts";
-export { Effect, Program } from "./effects.ts";
+export * from "./loop.ts";
+export { Effect, Program, run } from "./effects.ts";
 export type {
   EffectHandler,
+  EffectInterpreter,
   EffectRunner,
   Lift,
   Operation,

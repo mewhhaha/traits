@@ -7,12 +7,12 @@ import {
 } from "./trait.ts";
 import {
   Applicative,
-  Equal,
+  Eq,
   Foldable,
-  Format,
   Functor,
   Monoid,
   Semigroup,
+  Show,
   Traversable,
 } from "./traits.ts";
 
@@ -21,8 +21,8 @@ export type MapT<item> = ReadonlyMap<string, item>;
 export interface AsMap
   extends
     As<AsMap>,
-    Format<AsMap>,
-    Equal<AsMap>,
+    Show<AsMap>,
+    Eq<AsMap>,
     Functor<AsMap>,
     Semigroup<AsMap>,
     Monoid<AsMap>,
@@ -62,14 +62,14 @@ export function to_record<item>(
   return Object.fromEntries(map.value());
 }
 
-Format.implement(MapT)({
-  fmt() {
+Show.implement(MapT)({
+  show() {
     const map = this.value();
     return Deno.inspect(map);
   },
 });
 
-Equal.implement(MapT)({
+Eq.implement(MapT)({
   eq(right) {
     const left = this.value();
     const right_value = right.value();

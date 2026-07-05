@@ -5,12 +5,12 @@ import {
   type type_value,
   type Value,
 } from "./trait.ts";
-import { Equal, Format } from "./traits.ts";
+import { Eq, Show } from "./traits.ts";
 
 export type WeakMapT<item> = WeakMap<object, item>;
 
 export interface AsWeakMap
-  extends As<AsWeakMap>, Format<AsWeakMap>, Equal<AsWeakMap> {
+  extends As<AsWeakMap>, Show<AsWeakMap>, Eq<AsWeakMap> {
   readonly [type_item]: unknown;
   readonly [type_value]: WeakMapT<this[typeof type_item]>;
 }
@@ -25,13 +25,13 @@ export function from_entries<item>(
   return WeakMapT(new WeakMap(entries));
 }
 
-Format.implement(WeakMapT)({
-  fmt() {
+Show.implement(WeakMapT)({
+  show() {
     return "WeakMap(?)";
   },
 });
 
-Equal.implement(WeakMapT)({
+Eq.implement(WeakMapT)({
   eq(right) {
     return Object.is(this.value(), right.value());
   },

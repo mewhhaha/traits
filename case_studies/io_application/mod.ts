@@ -51,12 +51,11 @@ export async function run_cli(
     mode = "io";
   }
 
-  const [exit_code, stdout] = await Effect.handle_with(cli_program, [
-    (effect) => run_reader(effect, input),
-    (effect) => run_writer(effect, from_array<string>([])),
-    (effect) => run_file_system(effect, file_system),
-    run_task,
-  ]);
+  const [exit_code, stdout] = await Effect.interpret(cli_program)
+    .handle((effect) => run_reader(effect, input))
+    .handle((effect) => run_writer(effect, from_array<string>([])))
+    .handle((effect) => run_file_system(effect, file_system))
+    .run(run_task);
 
   return {
     mode,

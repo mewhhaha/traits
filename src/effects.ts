@@ -66,6 +66,16 @@ export type EffectRunner<requirements, item, out> = (
   effect: Effect<requirements, item>,
 ) => out;
 
+export type EffectInterpreter<requirements, item> = {
+  handle<next_requirements, next_item>(
+    handler: EffectHandler<requirements, item, next_requirements, next_item>,
+  ): EffectInterpreter<next_requirements, next_item>;
+
+  run<out>(runner: EffectRunner<requirements, item, out>): out;
+
+  value(): Effect<requirements, item>;
+};
+
 type EffectRequirements<value> = value extends Effect<
   infer requirements,
   infer _item
@@ -121,6 +131,32 @@ const EffectPrototype: EffectBase<unknown, unknown> = {
   [Symbol.iterator]: effect_iterator,
 };
 
+const EffectInterpreterPrototype = {
+  handle(
+    this: EffectInterpreterTarget<unknown, unknown>,
+    handler: EffectHandler<unknown, unknown, unknown, unknown>,
+  ): EffectInterpreter<unknown, unknown> {
+    return interpret(handler(this.effect));
+  },
+
+  run<out>(
+    this: EffectInterpreterTarget<unknown, unknown>,
+    runner: EffectRunner<unknown, unknown, out>,
+  ): out {
+    return runner(this.effect);
+  },
+
+  value(
+    this: EffectInterpreterTarget<unknown, unknown>,
+  ): Effect<unknown, unknown> {
+    return this.effect;
+  },
+};
+
+type EffectInterpreterTarget<requirements, item> = {
+  readonly effect: Effect<requirements, item>;
+};
+
 export const Program = Object.assign(program, {
   scope,
 }) as ProgramConstructor;
@@ -134,7 +170,7 @@ export const Effect = {
   map,
   bind,
   handle_with,
-  run,
+  interpret,
 };
 
 export function pure<item>(value: item): Effect<never, item> {
@@ -375,6 +411,14 @@ export function handle_with(
   }
 
   return handled;
+}
+
+export function interpret<requirements, item>(
+  effect: Effect<requirements, item>,
+): EffectInterpreter<requirements, item> {
+  return Object.assign(Object.create(EffectInterpreterPrototype), {
+    effect,
+  }) as EffectInterpreter<requirements, item>;
 }
 
 export function run<item>(effect: Effect<never, item>): item {

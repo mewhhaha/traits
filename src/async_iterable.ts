@@ -8,11 +8,11 @@ import {
 import {
   Alternative,
   Applicative,
-  Format,
   Functor,
   Monad,
   Monoid,
   Semigroup,
+  Show,
 } from "./traits.ts";
 
 export type AsyncIterableT<item> = () => AsyncIterable<item>;
@@ -20,7 +20,7 @@ export type AsyncIterableT<item> = () => AsyncIterable<item>;
 export interface AsAsyncIterable
   extends
     As<AsAsyncIterable>,
-    Format<AsAsyncIterable>,
+    Show<AsAsyncIterable>,
     Functor<AsAsyncIterable>,
     Applicative<AsAsyncIterable>,
     Semigroup<AsAsyncIterable>,
@@ -59,8 +59,8 @@ export async function to_array<item>(
   return items;
 }
 
-Format.implement(AsyncIterableT)({
-  fmt() {
+Show.implement(AsyncIterableT)({
+  show() {
     return "AsyncIterable(?)";
   },
 });

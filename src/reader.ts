@@ -14,14 +14,14 @@ import {
   suspend,
   type WithoutLift,
 } from "./effects.ts";
-import { Applicative, Format, Functor, Monad } from "./traits.ts";
+import { Applicative, Functor, Monad, Show } from "./traits.ts";
 
 export type Reader<environment, item> = (environment: environment) => item;
 
 export interface AsReader<environment>
   extends
     As<AsReader<environment>>,
-    Format<AsReader<environment>>,
+    Show<AsReader<environment>>,
     Functor<AsReader<environment>>,
     Applicative<AsReader<environment>>,
     Monad<AsReader<environment>> {
@@ -105,8 +105,8 @@ function is_reader_value(value: unknown): value is Dictionary {
   return (value as Dictionary)[kind] === Reader[kind];
 }
 
-Format.implement(Reader)({
-  fmt() {
+Show.implement(Reader)({
+  show() {
     return "Reader(?)";
   },
 });

@@ -13,7 +13,7 @@ case studies, benchmarks, and a source transformer:
 - `Traversable` for flipping structures through an applicative
 - `Semigroup` and `Monoid` for appendable/empty structures
 - `Alternative` for empty/fallback list-like contexts
-- `Format` and `Equal` as small utility traits
+- `Show` and `Eq` as small utility traits
 
 ## Run
 
@@ -41,68 +41,67 @@ functions that return wrapped values.
 
 Each data type declares its raw value shape directly on its dictionary interface
 with type-only phantom symbols. That maps the contextual `item` to the raw value
-the dictionary wraps, so `Value<typeof Option, item>` can recover that `Option`
-stores `Option<item>` without a global registry or a public kind symbol.
+the dictionary wraps, so `Value<typeof Maybe, item>` can recover that `Maybe`
+stores `Maybe<item>` without a global registry or a public kind symbol.
 
 Trait implementation functions receive the wrapped value as `this`. The
 installer stores that this-based implementation in the canonical symbol slot and
-exposes direct fluent aliases like `.fmt()` and `.map()`. The canonical trait
-slot is a unique symbol, so two traits can both have a method named `fmt`
+exposes direct fluent aliases like `.show()` and `.map()`. The canonical trait
+slot is a unique symbol, so two traits can both have a method named `show`
 without sharing a runtime property.
 
 ```ts
 import { type As, define, type type_item, type type_value } from "./trait.ts";
-import { Format, Monad } from "./traits.ts";
+import { Monad, Show } from "./traits.ts";
 
-export type Option<item> =
-  | readonly ["some", item]
-  | readonly ["none"];
+export type Maybe<item> =
+  | readonly ["just", item]
+  | readonly ["nothing"];
 
-export interface AsOption
-  extends As<AsOption>, Format<AsOption>, Monad<AsOption> {
+export interface AsMaybe extends As<AsMaybe>, Show<AsMaybe>, Monad<AsMaybe> {
   readonly [type_item]: unknown;
-  readonly [type_value]: Option<this[typeof type_item]>;
+  readonly [type_value]: Maybe<this[typeof type_item]>;
 }
 
-export const Option = define<AsOption>();
+export const Maybe = define<AsMaybe>();
 
-export function some<item>(
+export function just<item>(
   value: item,
 ) {
-  return Option(["some", value]);
+  return Maybe(["just", value]);
 }
 
-export function none<item = never>() {
-  return Option(["none"]);
+export function nothing<item = never>() {
+  return Maybe(["nothing"]);
 }
 
-Format.implement(Option)({
-  fmt() {
-    const option = this.value();
+Show.implement(Maybe)({
+  show() {
+    const maybe = this.value();
 
-    switch (option[0]) {
-      case "none":
-        return "None";
-      case "some":
-        return "Some(" + option[1] + ")";
+    switch (maybe[0]) {
+      case "nothing":
+        return "Nothing";
+      case "just":
+        return "Just(" + maybe[1] + ")";
     }
   },
 });
 
-Monad.implement(Option)({
+Monad.implement(Maybe)({
   bind(fn) {
-    const option = this.value();
+    const maybe = this.value();
 
-    if (option[0] === "none") {
-      return none();
+    if (maybe[0] === "nothing") {
+      return nothing();
     }
 
-    return fn(option[1]);
+    return fn(maybe[1]);
   },
 });
 ```
 
-See `src/option.ts`, `src/result.ts`, `src/list.ts`, `src/task.ts`,
+See `src/maybe.ts`, `src/either.ts`, `src/list.ts`, `src/task.ts`,
 `src/array.ts`, `src/map.ts`, and `src/record.ts` for complete examples.
 
 ## Fluent API
@@ -110,14 +109,14 @@ See `src/option.ts`, `src/result.ts`, `src/list.ts`, `src/task.ts`,
 Wrapped values chain directly through the implemented traits:
 
 ```ts
-const sum = some((left: number) => {
+const sum = just((left: number) => {
   return (right: number) => left + right;
 })
-  .ap(some(20))
-  .ap(some(22));
+  .ap(just(20))
+  .ap(just(22));
 
-sum.value(); // ["some", 42]
-sum.eq(some(42)); // true
+sum.value(); // ["just", 42]
+sum.eq(just(42)); // true
 ```
 
 If the wrapped raw value is a function, the wrapper also exposes `.run(...)` as
@@ -128,17 +127,17 @@ examples.
 The same-named function wraps an existing raw context when you already have one:
 
 ```ts
-const doubled = Option(sum.value()).map((value) => value * 2);
+const doubled = Maybe(sum.value()).map((value) => value * 2);
 ```
 
 The public trait-wrapped value protocol is `Trait<dictionary, value, item>`.
 Most code can use the shorter `Value<dictionary, item>` helper:
 
 ```ts
-type WrappedOption<item> = Value<typeof Option, item>;
+type WrappedMaybe<item> = Value<typeof Maybe, item>;
 ```
 
-`define<AsOption>()` creates the callable dictionary, assigns an internal kind,
+`define<AsMaybe>()` creates the callable dictionary, assigns an internal kind,
 and routes calls through a cached constructor. The lower-level
 `as_trait(dictionary, value)` and `as_trait_cached(dictionary)` helpers remain
 available for integrations that need to manage construction directly.
@@ -157,7 +156,7 @@ own constructors.
 
 Each data type exports an open dictionary interface. Trait implementations are
 validated and installed through curried trait-level installers like
-`Format.implement(Option)({ ... })`. The first call fixes the dictionary, which
+`Show.implement(Maybe)({ ... })`. The first call fixes the dictionary, which
 lets TypeScript infer generic implementation parameters from the `this`-based
 method shape. Trait definitions are prototype-backed objects made with
 `define_trait`; each definition inherits the shared installer and implementation
@@ -212,20 +211,20 @@ Size.implement(List)({
 });
 ```
 
-There is no `OptionBox` or `OptionTrait` type. The fluent methods are derived
-from the dictionary shape plus the wrapped value and item type.
+There is no `MaybeBox` or `MaybeTrait` type. The fluent methods are derived from
+the dictionary shape plus the wrapped value and item type.
 
 Direct fluent aliases still work when a data type opts into them:
 
 ```ts
-const parsed = ok("42").bind((text) => {
+const parsed = right("42").bind((text) => {
   return from_number(Number.parseInt(text, 10));
 });
 
-parsed.value(); // ["ok", 42]
+parsed.value(); // ["right", 42]
 ```
 
-`Result` does not fix the error payload to `string`; `err(value)` keeps the
+`Either` does not fix the error payload to `string`; `left(value)` keeps the
 error value's type. The examples use strings because they are easy to inspect.
 
 `Do` is generator-based do notation. It runs a generator over one monad
@@ -233,13 +232,13 @@ dictionary and uses `yield*` to bind each wrapped value:
 
 ```ts
 const decoded = Do(function* () {
-  const text = yield* ok("42");
+  const text = yield* right("42");
   const number = yield* from_number(Number.parseInt(text, 10));
 
   return number + 1;
 });
 
-decoded.value(); // ["ok", 43]
+decoded.value(); // ["right", 43]
 ```
 
 `Task` shows the same trait shape for deferred async work:
@@ -290,12 +289,11 @@ const program = App(function* () {
   return yield* get<number>();
 });
 
-await Effect.handle_with(program, [
-  (effect) => run_reader(effect, { label: "step", increment: 2 }),
-  (effect) => run_state(effect, 40),
-  (effect) => run_writer(effect, array_from_array<string>([])),
-  run_task,
-]);
+await Effect.interpret(program)
+  .handle((effect) => run_reader(effect, { label: "step", increment: 2 }))
+  .handle((effect) => run_state(effect, 40))
+  .handle((effect) => run_writer(effect, array_from_array<string>([])))
+  .run(run_task);
 ```
 
 ## Build-Time Transform
@@ -331,6 +329,22 @@ line:
 deno task transform --write src/file.ts
 ```
 
+## Tail Loops
+
+Use `loop(initial, step)` for explicit tail recursion without growing the
+JavaScript call stack. The callback returns either `done(value)` or
+`rec(nextState)`, so only tail calls are expressible:
+
+```ts
+const factorial = loop({ n: 6, acc: 1 }, ({ n, acc }) => {
+  if (n <= 1) {
+    return done(acc);
+  }
+
+  return rec({ n: n - 1, acc: acc * n });
+});
+```
+
 ## Benchmarks
 
 The benchmark folder is part of the library maintenance harness. The broad task
@@ -344,6 +358,7 @@ Focused benchmarks can be run directly:
 
 ```sh
 deno bench --allow-env --allow-read --allow-write=/tmp bench/algorithm_contexts.bench.ts
+deno bench bench/iterable_pipeline.bench.ts
 deno bench --allow-env --allow-read --allow-write=/tmp bench/do_vs_program.bench.ts
 deno task bench:case-studies
 ```
@@ -356,11 +371,15 @@ different contexts:
 - a `Monad` dependent product builder
 
 It compares native arrays and generators with `ArrayT`, `List`, `IterableT`,
-`Option`, `Result`, `Validation`, and the functor-only `MapT`, `RecordT`, and
+`Maybe`, `Either`, `Validation`, and the functor-only `MapT`, `RecordT`, and
 `SetT`. `IterableT` is intentionally replayable (`() => Iterable<item>`) so its
 list-like applicative and monad instances remain lawful. A raw JavaScript
 `Iterator` is one-shot, so the benchmark uses native generator baselines for
 that shape and forces them to arrays before recording the result.
+
+`bench/iterable_pipeline.bench.ts` focuses on one lazy pipeline and compares
+`IterableT` against materializing every `Array.map` step, native generator maps,
+and a manual fused loop baseline.
 
 ## Haskell Comparisons
 
@@ -375,8 +394,8 @@ fmap (+1) (Just 41)
 ```
 
 ```ts
-Functor.map(some(41), (value) => value + 1);
-some(41).map((value) => value + 1);
+Functor.map(just(41), (value) => value + 1);
+just(41).map((value) => value + 1);
 ```
 
 ### Applicative
@@ -388,15 +407,15 @@ some(41).map((value) => value + 1);
 ```ts
 Applicative.lift(
   (left, right) => left + right,
-  some(20),
-  some(22),
+  just(20),
+  just(22),
 );
 
-some((left: number) => {
+just((left: number) => {
   return (right: number) => left + right;
 })
-  .ap(some(20))
-  .ap(some(22));
+  .ap(just(20))
+  .ap(just(22));
 ```
 
 The applicative API is explicit TypeScript: use `Applicative.lift` when the
@@ -448,25 +467,25 @@ function read_port(text: string) {
   const port = Number.parseInt(text, 10);
 
   if (!Number.isInteger(port)) {
-    return none<number>();
+    return nothing<number>();
   }
 
-  return some(port);
+  return just(port);
 }
 
 function safe_port(text: string) {
   return read_port(text)
     .bind((port) => {
       if (port > 0) {
-        return some(port);
+        return just(port);
       }
 
-      return none();
+      return nothing();
     });
 }
 ```
 
-`Result` fills the same role as a conventional `Either error item`:
+`Either` fills the same role as a conventional `Either error item`:
 
 ```hs
 decode input =
@@ -529,13 +548,13 @@ sequenceA [Just 1, Just 2, Just 3]
 ```ts
 Traversable.traverse(
   array_from_array(["1", "2", "3"]),
-  result_ok(undefined),
-  (text) => result_from_number(Number.parseInt(text, 10)),
+  either_right(undefined),
+  (text) => either_from_number(Number.parseInt(text, 10)),
 );
 
 Traversable.sequence(
-  array_from_array([some(1), some(2), some(3)]),
-  some(undefined),
+  array_from_array([just(1), just(2), just(3)]),
+  just(undefined),
 );
 ```
 
@@ -586,7 +605,7 @@ Nothing <|> Just 42
 ```
 
 ```ts
-Alternative.alt(none<number>(), some(42));
+Alternative.alt(nothing<number>(), just(42));
 
 Alternative.alt(
   array_from_array([1, 2]),
@@ -594,7 +613,7 @@ Alternative.alt(
 );
 ```
 
-`Alternative` is the common "empty plus choice" interface. `Option` chooses the
+`Alternative` is the common "empty plus choice" interface. `Maybe` chooses the
 first successful branch, arrays concatenate branches, and parser examples use
 the same idea for backtracking choices.
 
@@ -729,16 +748,15 @@ const program = App(function* () {
   return yield* get<number>();
 });
 
-await Effect.handle_with(program, [
-  (effect) => run_reader(effect, { label: "step", increment: 2 }),
-  (effect) => run_state(effect, 40),
-  (effect) => run_writer(effect, array_from_array<string>([])),
-  run_task,
-]);
+await Effect.interpret(program)
+  .handle((effect) => run_reader(effect, { label: "step", increment: 2 }))
+  .handle((effect) => run_state(effect, 40))
+  .handle((effect) => run_writer(effect, array_from_array<string>([])))
+  .run(run_task);
 ```
 
 Each handler removes one capability from the effect type and returns a smaller
-effect. The final `run_task` entry is the terminal runner that executes the
+effect. The final `.run(run_task)` call is the terminal runner that executes the
 remaining `Task` effect. That gives a transformer-like composition story without
 defining `ReaderT`, `StateT`, `WriterT`, and every concrete stack combination.
 
@@ -891,23 +909,23 @@ with an explicit semigroup.
 The useful question for a JavaScript shape is which laws it can support without
 surprising runtime behavior.
 
-| JavaScript shape                 | Wrapper in this repo             | Natural traits                                                                                                           |
-| -------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| `readonly item[]`                | `ArrayT`                         | `Functor`, `Applicative`, `Monad`, `Foldable`, `Traversable`, `Semigroup`, `Monoid`, `Alternative`                       |
-| recursive list                   | `List`                           | Same list-like traits, useful for generator-heavy algorithms                                                             |
-| `ReadonlyMap<string, item>`      | `MapT`                           | `Functor`, `Foldable`, `Traversable`, `Semigroup`, `Monoid`                                                              |
-| `Readonly<Record<string, item>>` | `RecordT`                        | Same value-focused traits as `MapT`                                                                                      |
-| `Set<item>`                      | `SetT`                           | `Functor`, `Foldable`, `Semigroup`, `Monoid`; mapping keeps JavaScript set semantics and can collapse duplicates         |
-| `PromiseLike<item>`              | `Task` via `from_promise`        | Use `Task` so work is deferred; raw promises are already running                                                         |
-| `() => Promise<item>`            | `Task` via `from_fn`             | `Functor`, parallel `Applicative`, sequential `Monad`                                                                    |
-| `Iterable<item>` / generator     | `IterableT`                      | replayable lazy `Functor`, `Applicative`, `Monad`, `Foldable`, `Traversable`, `Semigroup`, `Monoid`, `Alternative`       |
-| `AsyncIterable<item>`            | `AsyncIterableT`                 | replayable async `Functor`, `Applicative`, `Monad`, `Semigroup`, `Monoid`, `Alternative`; collect with `to_array`        |
-| `ReadableStream<item>`           | `ReadableStreamT`                | opaque stream wrapper plus `to_async_iterable`; native streams are stateful and can be locked/consumed                   |
-| typed arrays                     | `TypedArrayT`                    | `Format`, `Equal`, `Foldable`; no general `Functor` because output must stay compatible with the typed-array constructor |
-| `ArrayBuffer` / `DataView`       | `ArrayBufferT` / `DataViewT`     | byte-level `Format`, `Equal`, `Foldable`, `Semigroup`, `Monoid`                                                          |
-| `URLSearchParams` / `FormData`   | `URLSearchParamsT` / `FormDataT` | entry-level `Format`, `Equal`, `Foldable`, `Semigroup`, `Monoid`; usually decode into `Result` or `Validation` first     |
-| `WeakMap` / `WeakSet`            | `WeakMapT` / `WeakSetT`          | opaque `Format` and identity `Equal`; no fold because JavaScript intentionally makes them non-iterable                   |
-| `Date`, `RegExp`, `Error`        | `DateT`, `RegExpT`, `ErrorT`     | `Format` and `Equal` utility wrappers, not `Functor`/`Monad` containers                                                  |
+| JavaScript shape                 | Wrapper in this repo             | Natural traits                                                                                                      |
+| -------------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `readonly item[]`                | `ArrayT`                         | `Functor`, `Applicative`, `Monad`, `Foldable`, `Traversable`, `Semigroup`, `Monoid`, `Alternative`                  |
+| recursive list                   | `List`                           | Same list-like traits, useful for generator-heavy algorithms                                                        |
+| `ReadonlyMap<string, item>`      | `MapT`                           | `Functor`, `Foldable`, `Traversable`, `Semigroup`, `Monoid`                                                         |
+| `Readonly<Record<string, item>>` | `RecordT`                        | Same value-focused traits as `MapT`                                                                                 |
+| `Set<item>`                      | `SetT`                           | `Functor`, `Foldable`, `Semigroup`, `Monoid`; mapping keeps JavaScript set semantics and can collapse duplicates    |
+| `PromiseLike<item>`              | `Task` via `from_promise`        | Use `Task` so work is deferred; raw promises are already running                                                    |
+| `() => Promise<item>`            | `Task` via `from_fn`             | `Functor`, parallel `Applicative`, sequential `Monad`                                                               |
+| `Iterable<item>` / generator     | `IterableT`                      | replayable lazy `Functor`, `Applicative`, `Monad`, `Foldable`, `Traversable`, `Semigroup`, `Monoid`, `Alternative`  |
+| `AsyncIterable<item>`            | `AsyncIterableT`                 | replayable async `Functor`, `Applicative`, `Monad`, `Semigroup`, `Monoid`, `Alternative`; collect with `to_array`   |
+| `ReadableStream<item>`           | `ReadableStreamT`                | opaque stream wrapper plus `to_async_iterable`; native streams are stateful and can be locked/consumed              |
+| typed arrays                     | `TypedArrayT`                    | `Show`, `Eq`, `Foldable`; no general `Functor` because output must stay compatible with the typed-array constructor |
+| `ArrayBuffer` / `DataView`       | `ArrayBufferT` / `DataViewT`     | byte-level `Show`, `Eq`, `Foldable`, `Semigroup`, `Monoid`                                                          |
+| `URLSearchParams` / `FormData`   | `URLSearchParamsT` / `FormDataT` | entry-level `Show`, `Eq`, `Foldable`, `Semigroup`, `Monoid`; usually decode into `Either` or `Validation` first     |
+| `WeakMap` / `WeakSet`            | `WeakMapT` / `WeakSetT`          | opaque `Show` and identity `Eq`; no fold because JavaScript intentionally makes them non-iterable                   |
+| `Date`, `RegExp`, `Error`        | `DateT`, `RegExpT`, `ErrorT`     | `Show` and `Eq` utility wrappers, not `Functor`/`Monad` containers                                                  |
 
 `SetT` keeps JavaScript `Set` behavior. Equality is identity for objects and
 SameValueZero for primitives, so mapping can collapse values:
@@ -923,6 +941,23 @@ Many iterators are one-shot mutable cursors. The preferred constructors store a
 factory, `() => Iterable<item>` or `() => AsyncIterable<item>`. The plain
 `from_iterable` helper materializes values to make a replayable source. Calling
 a continuation more than once must not accidentally reuse a consumed iterator.
+
+Chained `IterableT` maps compose lazily. Each `.map` adds a generator layer, but
+it does not allocate an intermediate collection. Work happens when a consumer
+iterates, folds, or materializes the final value:
+
+```ts
+const values = iterable_from_factory(function* () {
+  yield* [1, 2, 3];
+});
+
+const pipeline = values
+  .map((value) => value + 1)
+  .map((value) => value * 10)
+  .map((value) => "value:" + value.toString());
+
+iterable_to_array(pipeline); // ["value:20", "value:30", "value:40"]
+```
 
 `ReadableStream` has similar constraints plus cancellation and backpressure. The
 pragmatic shape is usually:
@@ -991,27 +1026,30 @@ import {
 } from "./src/mod.ts";
 ```
 
-Each data type has an open dictionary interface such as `AsOption` or `AsList`.
+Each data type has an open dictionary interface such as `AsMaybe` or `AsList`.
 Entries are added one trait at a time next to the implementation.
-`Format.implement(Option)({ ... })` validates that every required `Format`
-method exists, installs the collision-free symbol slot, and copies direct fluent
+`Show.implement(Maybe)({ ... })` validates that every required `Show` method
+exists, installs the collision-free symbol slot, and copies direct fluent
 aliases onto the dictionary.
 
 ## Examples
 
 Focused examples live in `examples/`:
 
-- `examples/basics.ts` covers `Option`, `Result`, `Applicative`, validation,
+- `examples/basics.ts` covers `Maybe`, `Either`, `Applicative`, validation,
   pattern guards, and `match`.
 - `examples/custom_trait.ts` shows extending a data type with a local trait.
 - `examples/built_in_shapes.ts` covers JavaScript-shaped wrappers such as
   arrays, maps, sets, iterables, streams, form data, and binary buffers.
 - `examples/monads.ts` shows `Do` with `Reader`, `State`, `Task`, `Stm`, and
-  decoding with `Result`.
+  decoding with `Either`.
 - `examples/effects.ts` composes `Reader`, `State`, `Writer`, and `Task` with
   `Program`.
 
 `examples/main.ts` is only a runner for those focused files.
+
+`learn_you_a_traits_for_greater_good/` is a longer Haskell-inspired tutorial
+made of executable lessons. Run it with `deno task learn`.
 
 Larger application-shaped demos live in `case_studies/`:
 
@@ -1022,6 +1060,14 @@ Larger application-shaped demos live in `case_studies/`:
   first-match `Alternative` route list. Handlers are `Program`s with `Reader`
   for route input and `Writer<AsyncIterableT<string>>` for streamed response
   bodies, so the same router can return HTML pages or JSON responses.
+- `case_studies/cloudflare_crud_worker/` models a Cloudflare Worker CRUD API for
+  `/todos`. The request program uses `Reader` for request context, `Task` for
+  JSON body reads and async storage, a custom `Database` effect for list/create/
+  read/update/delete operations, a custom `Clock` effect for timestamps, and a
+  custom `Trace` effect for request and domain events. The same program can run
+  against an in-memory dry-run database with trace lines collected through
+  `Writer`, or against a D1-style runtime with trace events sent through a
+  console/task sink.
 - `case_studies/io_application/` models a small CLI with `echo`, `cat`, and
   `write` commands. It uses a custom `FileSystem` effect for
   `ReadFile`/`WriteFile`, `Reader` for argv, `Writer` for stdout lines, and
@@ -1039,8 +1085,8 @@ Larger application-shaped demos live in `case_studies/`:
 against constructor-cache variants and cheaper construction shapes. Each
 benchmark iteration performs 10,000 inner-loop constructions or read cycles:
 
-- raw option payload construction
-- current `some(...)`, `Option(raw)`, and `as_trait(dictionary, raw)`
+- raw maybe payload construction
+- current `just(...)`, `Maybe(raw)`, and `as_trait(dictionary, raw)`
   construction
 - cached `as_trait_cached(dictionary)(raw)` construction
 - WeakMap, hidden-symbol, and lazy self-replacing constructor-cache variants
@@ -1049,13 +1095,13 @@ benchmark iteration performs 10,000 inner-loop constructions or read cycles:
 - prototype-backed symbol object construction
 - `value()` or direct payload reads for the current, tuple, and prototype shapes
 
-`bench/library_comparison.bench.ts` compares this repository's `Option` and
-`Result` wrappers with similar data types from `fp-ts`, `effect`, `purify-ts`,
+`bench/library_comparison.bench.ts` compares this repository's `Maybe` and
+`Either` wrappers with similar data types from `fp-ts`, `effect`, `purify-ts`,
 and `true-myth`:
 
-- `Option`/`Maybe` and `Result`/`Either` construction.
+- `Maybe`/`Maybe` and `Either`/`Either` construction.
 - Happy-path `map` plus `bind`/`chain`/`flatMap` composition.
-- Failure-path `none`/`left`/`err` composition.
+- Failure-path `nothing`/`left`/`left` composition.
 
 These are microbenchmarks, not a full library ranking. The libraries expose
 different runtime shapes: this repo boxes values with a trait dictionary,

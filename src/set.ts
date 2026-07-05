@@ -5,22 +5,15 @@ import {
   type type_value,
   type Value,
 } from "./trait.ts";
-import {
-  Equal,
-  Foldable,
-  Format,
-  Functor,
-  Monoid,
-  Semigroup,
-} from "./traits.ts";
+import { Eq, Foldable, Functor, Monoid, Semigroup, Show } from "./traits.ts";
 
 export type SetT<item> = ReadonlySet<item>;
 
 export interface AsSet
   extends
     As<AsSet>,
-    Format<AsSet>,
-    Equal<AsSet>,
+    Show<AsSet>,
+    Eq<AsSet>,
     Functor<AsSet>,
     Semigroup<AsSet>,
     Monoid<AsSet>,
@@ -51,13 +44,13 @@ export function to_set<item>(set: SetValue<item>): Set<item> {
   return new Set(set.value());
 }
 
-Format.implement(SetT)({
-  fmt() {
+Show.implement(SetT)({
+  show() {
     return Deno.inspect(this.value());
   },
 });
 
-Equal.implement(SetT)({
+Eq.implement(SetT)({
   eq(right) {
     const left = this.value();
     const right_value = right.value();

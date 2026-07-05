@@ -5,11 +5,11 @@ import {
   type type_value,
   type Value,
 } from "./trait.ts";
-import { Equal, Format } from "./traits.ts";
+import { Eq, Show } from "./traits.ts";
 
 export type DateT = Date;
 
-export interface AsDate extends As<AsDate>, Format<AsDate>, Equal<AsDate> {
+export interface AsDate extends As<AsDate>, Show<AsDate>, Eq<AsDate> {
   readonly [type_item]: unknown;
   readonly [type_value]: DateT;
 }
@@ -26,13 +26,13 @@ export function from_date(date: Date): DateValue {
   return DateT(date) as DateValue;
 }
 
-Format.implement(DateT)({
-  fmt() {
+Show.implement(DateT)({
+  show() {
     return this.value().toISOString();
   },
 });
 
-Equal.implement(DateT)({
+Eq.implement(DateT)({
   eq(right) {
     return Object.is(this.value().getTime(), right.value().getTime());
   },

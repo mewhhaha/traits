@@ -8,11 +8,13 @@ import {
 import {
   Alternative,
   Applicative,
+  compare_unknown,
   Eq,
   Foldable,
   Functor,
   Monad,
   Monoid,
+  Ord,
   Semigroup,
   Show,
   Traversable,
@@ -32,7 +34,8 @@ export interface AsArray
     Alternative<AsArray>,
     Monad<AsArray>,
     Foldable<AsArray>,
-    Traversable<AsArray> {
+    Traversable<AsArray>,
+    Ord<AsArray> {
   readonly [type_item]: unknown;
   readonly [type_value]: ArrayT<this[typeof type_item]>;
 }
@@ -72,6 +75,28 @@ Eq.implement(ArrayT)({
     }
 
     return true;
+  },
+});
+
+Ord.implement(ArrayT)({
+  compare(right) {
+    const left = this.value();
+    const right_value = right.value();
+    const length = Math.min(left.length, right_value.length);
+
+    for (let index = 0; index < length; index += 1) {
+      const order = compare_unknown(left[index], right_value[index]);
+
+      switch (order) {
+        case "eq":
+          break;
+        case "lt":
+        case "gt":
+          return order;
+      }
+    }
+
+    return compare_unknown(left.length, right_value.length);
   },
 });
 

@@ -34,6 +34,8 @@ import {
   from_entries as form_data_from_entries,
   to_entries as form_data_to_entries,
 } from "./form_data.ts";
+import { arr as fn_arr, Fn, fn } from "./fn.ts";
+import { identity } from "./identity.ts";
 import {
   from_factory as iterable_from_factory,
   to_array as iterable_to_array,
@@ -54,6 +56,7 @@ import {
   Maybe,
   nothing as maybe_nothing,
 } from "./maybe.ts";
+import { predicate } from "./predicate.ts";
 import { ask, asks, type AsReader, local, run_reader } from "./reader.ts";
 import {
   from_entries as record_from_entries,
@@ -83,6 +86,7 @@ import {
   run_task,
   succeed as task_succeed,
 } from "./task.ts";
+import { fst, snd, swap, tuple } from "./tuple.ts";
 import { from_typed_array } from "./typed_array.ts";
 import {
   from_entries as url_params_from_entries,
@@ -125,12 +129,21 @@ import { from_iterable as weak_set_from_iterable } from "./weak_set.ts";
 import {
   Alternative,
   Applicative,
+  Arrow,
+  Bifunctor,
+  Category,
+  Comonad,
+  Contravariant,
   Do,
   Eq,
   Foldable,
   Functor,
   Monad,
+  MonadError,
   Monoid,
+  Ord,
+  Parse,
+  Profunctor,
   Semigroup,
   Show,
   Traversable,
@@ -166,6 +179,149 @@ Deno.test("Show and Eq traits dispatch through trait helpers", () => {
     Eq.eq(either_right("done"), either_right("done")),
     "boxed result",
   );
+});
+
+Deno.test("Ord compares standard contexts", () => {
+  assert_equals(Ord.compare(maybe_nothing<number>(), maybe_just(1)), "lt");
+  assert_equals(Ord.compare(maybe_just(2), maybe_just(1)), "gt");
+  assert_equals(
+    Ord.compare(either_left<string, number>("missing"), either_right(1)),
+    "lt",
+  );
+  assert_equals(
+    Ord.compare(array_from_array([1, 2]), array_from_array([1, 3])),
+    "lt",
+  );
+  assert_equals(
+    Ord.compare(list_from_array([1, 3]), list_from_array([1, 2])),
+    "gt",
+  );
+  assert_equals(Ord.max(identity(20), identity(42)).value(), 42);
+});
+
+Deno.test("Bifunctor and MonadError work for Either", () => {
+  const mapped_left = Bifunctor.bimap(
+    either_left<string, number>("missing"),
+    (message: string) => message.length,
+    (value) => value + 1,
+  );
+  const mapped_right = Bifunctor.bimap(
+    either_right<number>(41),
+    (message: string) => message.length,
+    (value) => value + 1,
+  );
+  const recovered = MonadError.catch_error(
+    either_left<string, number>("missing"),
+    (error) => either_right(String(error).length),
+  );
+  const thrown = MonadError.throw_error(
+    either_right<unknown>(undefined),
+    "missing",
+  );
+
+  assert_equals(mapped_left.value(), either_left(7).value());
+  assert_equals(mapped_right.value(), either_right(42).value());
+  assert_equals(recovered.value(), either_right(7).value());
+  assert_equals(thrown.value(), either_left("missing").value());
+});
+
+Deno.test("Contravariant maps input into Predicate", () => {
+  const positive = predicate((value: number) => value > 0);
+  const positive_score = Contravariant.contramap(
+    positive,
+    (user: { readonly score: number }) => user.score,
+  );
+
+  assert_true(positive_score.run({ score: 1 }), "positive score passes");
+  assert_true(!positive_score.run({ score: -1 }), "negative score fails");
+});
+
+Deno.test("Comonad extracts and extends Identity", () => {
+  const value = identity(41);
+  const extended = Comonad.extend(value, (wrapped) => {
+    return wrapped.value() + 1;
+  });
+
+  assert_equals(Comonad.extract(value), 41);
+  assert_equals(extended.value(), 42);
+});
+
+Deno.test("Function traits cover Profunctor, Category, Arrow, and Parse", () => {
+  const direct = fn_arr((value: number) => value + 1);
+  const named_length = Profunctor.dimap(
+    fn((text: string) => text.length),
+    (user: { readonly name: string }) => user.name,
+    (length) => "len:" + length.toString(),
+  );
+  const identity_fn = Category.id(Fn);
+  const composed = Category.compose(
+    fn((value: number) => value * 2),
+    fn((value: number) => value + 1),
+  );
+  const first = Arrow.first(fn((value: number) => value + 1));
+  const second = Arrow.second(fn((value: number) => value + 1));
+  const parsed = Parse.parse(
+    fn((text: string) => Number.parseInt(text, 10)),
+    "42",
+  );
+
+  const run_named_length = named_length.value() as (
+    value: { readonly name: string },
+  ) => string;
+  const run_identity = identity_fn.value() as (value: string) => string;
+  const run_composed = composed.value() as (value: number) => number;
+  const run_first = first.value() as (
+    value: readonly [number, string],
+  ) => readonly [number, string];
+  const run_second = second.value() as (
+    value: readonly [string, number],
+  ) => readonly [string, number];
+
+  assert_equals(direct.run(41), 42);
+  assert_equals(run_named_length({ name: "Ada" }), "len:3");
+  assert_equals(run_identity("same"), "same");
+  assert_equals(run_composed(20), 42);
+  assert_equals(run_first([41, "ok"]), [42, "ok"]);
+  assert_equals(run_second(["ok", 41]), ["ok", 42]);
+  assert_equals(parsed, 42);
+});
+
+Deno.test("Tuple exposes pair helpers and maps over the second slot", () => {
+  const value = tuple("count", 41);
+  const mapped = Functor.map(value, (item) => item + 1);
+  const both = Bifunctor.bimap(
+    value,
+    (label: string) => label.toUpperCase(),
+    (item) => item + 1,
+  );
+  const traversed = Traversable.traverse(
+    value,
+    maybe_just(undefined),
+    (item) => maybe_just(item + 1),
+  );
+  const [traversed_tag, traversed_value] = traversed.value();
+
+  assert_equals(value.value(), ["count", 41] as const);
+  assert_equals(fst(value), "count");
+  assert_equals(snd(value), 41);
+  assert_equals(swap(value).value(), [41, "count"] as const);
+  assert_equals(Show.show(value), 'Tuple("count", 41)');
+  assert_true(Eq.eq(value, tuple("count", 41)), "tuple compares");
+  assert_equals(Ord.compare(tuple("count", 41), tuple("count", 42)), "lt");
+  assert_equals(mapped.value(), tuple("count", 42).value());
+  assert_equals(both.value(), tuple("COUNT", 42).value());
+  assert_equals(
+    Foldable.fold(value, 1, (state, item) => state + item),
+    42,
+  );
+
+  switch (traversed_tag) {
+    case "nothing":
+      throw new Error("expected traversed tuple");
+    case "just":
+      assert_equals(traversed_value.value(), tuple("count", 42).value());
+      break;
+  }
 });
 
 Deno.test("Tuple tagged values can be matched by tag", () => {

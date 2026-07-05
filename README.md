@@ -11,8 +11,14 @@ case studies, benchmarks, and a source transformer:
 - `Monad` for `bind` and `Do`
 - `Foldable` for `fold`
 - `Traversable` for flipping structures through an applicative
+- `Ord` for ordered comparisons
 - `Semigroup` and `Monoid` for appendable/empty structures
 - `Alternative` for empty/fallback list-like contexts
+- `Bifunctor`, `Contravariant`, and `Profunctor` for multi-variance mapping
+- `Category` and `Arrow` for composable function-like contexts
+- `Comonad` for extracting and extending contextual values
+- `MonadError` for monads with recoverable failures
+- `Parse` for parser-like values that can consume string input
 - `Show` and `Eq` as small utility traits
 
 ## Run
@@ -102,8 +108,9 @@ Monad.implement(Maybe)({
 });
 ```
 
-See `src/maybe.ts`, `src/either.ts`, `src/list.ts`, `src/task.ts`,
-`src/array.ts`, `src/map.ts`, and `src/record.ts` for complete examples.
+See `src/maybe.ts`, `src/either.ts`, `src/identity.ts`, `src/predicate.ts`,
+`src/fn.ts`, `src/tuple.ts`, `src/list.ts`, `src/task.ts`, `src/array.ts`,
+`src/map.ts`, and `src/record.ts` for complete examples.
 
 ## Fluent API
 
@@ -122,7 +129,7 @@ sum.eq(just(42)); // true
 
 If the wrapped raw value is a function, the wrapper also exposes `.run(...)` as
 the typed shortcut for `.value()(...)`. That keeps callable data types such as
-`Task`, `Reader`, `State`, and `IterableT` from leaking double calls into
+`Fn`, `Task`, `Reader`, `State`, and `IterableT` from leaking double calls into
 examples.
 
 The same-named function wraps an existing raw context when you already have one:
@@ -527,6 +534,143 @@ function decode(input: unknown) {
     .bind(validate);
 }
 ```
+
+### Ord
+
+```hs
+compare (Just 2) (Just 1)
+maximum [20, 42]
+```
+
+```ts
+Ord.compare(just(2), just(1)); // "gt"
+Ord.max(identity(20), identity(42)).value(); // 42
+```
+
+`Ord` extends `Eq` and returns `"lt"`, `"eq"`, or `"gt"`. `Maybe`, `Either`,
+`Identity`, `ArrayT`, and `List` implement it with the usual tag ordering and
+lexicographic collection comparison.
+
+### Bifunctor and MonadError
+
+```hs
+bimap length (+1) (Left "missing")
+catchError (Left "missing") (\error -> Right (length error))
+```
+
+```ts
+Bifunctor.bimap(
+  either_left<string, number>("missing"),
+  (message) => message.length,
+  (value) => value + 1,
+);
+
+MonadError.catch_error(
+  either_left<string, number>("missing"),
+  (error) => either_right(String(error).length),
+);
+```
+
+`Either` is the natural implementation for both traits. `Validation` stays
+applicative-only here: changing the error type would also need a new semigroup
+for the new error type, so a general `Bifunctor` instance would be misleading.
+
+### Tuple
+
+```hs
+fmap (+1) ("count", 41)
+bimap length (+1) ("count", 41)
+fst ("count", 41)
+```
+
+```ts
+const value = tuple("count", 41);
+
+Functor.map(value, (item) => item + 1).value(); // ["count", 42]
+Bifunctor.bimap(
+  value,
+  (label) => label.length,
+  (item) => item + 1,
+).value(); // [5, 42]
+
+fst(value); // "count"
+snd(value); // 41
+swap(value).value(); // [41, "count"]
+```
+
+`Tuple<left, right>` stores a plain pair as `readonly [left, right]`. Its normal
+`item` slot is the right side, so `Functor`, `Foldable`, and `Traversable` work
+over the second value just like Haskell's `(,) left`. `Bifunctor` maps both
+slots.
+
+### Contravariant
+
+```hs
+contramap score positive
+```
+
+```ts
+const positive = predicate((value: number) => value > 0);
+const positive_score = Contravariant.contramap(
+  positive,
+  (user: { readonly score: number }) => user.score,
+);
+
+positive_score.run({ score: 1 }); // true
+```
+
+`Predicate` is contravariant because mapping happens before the value reaches
+the predicate.
+
+### Comonad
+
+```hs
+extract (Identity 41)
+extend (\wrapped -> extract wrapped + 1) (Identity 41)
+```
+
+```ts
+const value = identity(41);
+
+Comonad.extract(value); // 41
+Comonad.extend(value, (wrapped) => wrapped.value() + 1).value(); // 42
+```
+
+`Identity` is intentionally boring, which makes it a useful lawful carrier for
+`Comonad`.
+
+### Profunctor, Category, Arrow, and Parse
+
+```hs
+dimap name show length
+arr (+1) >>> arr (*2)
+first (arr (+1))
+```
+
+```ts
+const named_length = Profunctor.dimap(
+  fn((text: string) => text.length),
+  (user: { readonly name: string }) => user.name,
+  (length) => "len:" + length.toString(),
+);
+
+const composed = Category.compose(
+  fn((value: number) => value * 2),
+  fn((value: number) => value + 1),
+);
+
+const first = Arrow.first(fn((value: number) => value + 1));
+const parsed = Parse.parse(
+  fn((text: string) => Number.parseInt(text, 10)),
+  "42",
+);
+```
+
+`Fn` is the small function carrier for these traits. Use `fn(...)` or `arr(...)`
+to keep `.run(...)` typed. The higher-arity traits are represented with
+raw-value generics because this library's core `Value<dictionary, item>` tracks
+one item slot, while Haskell's function-like classes are parameterized over both
+input and output.
 
 ### List
 

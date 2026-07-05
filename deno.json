@@ -2,6 +2,7 @@
   "name": "@mewhhaha/traits",
   "version": "0.1.0",
   "license": "MIT",
+  "sideEffects": false,
   "exports": {
     ".": "./src/mod.ts",
     "./transform": "./tools/transform_do_program.ts"

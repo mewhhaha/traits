@@ -7,10 +7,14 @@ import {
 } from "./trait.ts";
 import {
   Applicative,
+  Bifunctor,
+  compare_unknown,
   Eq,
   Foldable,
   Functor,
   Monad,
+  MonadError,
+  Ord,
   Show,
   Traversable,
 } from "./traits.ts";
@@ -30,8 +34,11 @@ export interface AsEither
     Functor<AsEither>,
     Applicative<AsEither>,
     Monad<AsEither>,
+    MonadError<AsEither>,
     Foldable<AsEither>,
-    Traversable<AsEither> {
+    Traversable<AsEither>,
+    Bifunctor<AsEither>,
+    Ord<AsEither> {
   readonly [type_item]: unknown;
   readonly [type_value]: Either<unknown, this[typeof type_item]>;
 }
@@ -125,6 +132,51 @@ Eq.implement(Either)({
   },
 });
 
+Ord.implement(Either)({
+  compare(right) {
+    const [left_tag, left_payload] = this.value();
+    const [right_tag, right_payload] = right.value();
+
+    switch (left_tag) {
+      case "left":
+        switch (right_tag) {
+          case "left":
+            return compare_unknown(left_payload, right_payload);
+          case "right":
+            return "lt";
+        }
+        break;
+      case "right":
+        switch (right_tag) {
+          case "left":
+            return "gt";
+          case "right":
+            return compare_unknown(left_payload, right_payload);
+        }
+        break;
+    }
+
+    return "eq";
+  },
+});
+
+Bifunctor.implement(Either)({
+  bimap<raw, left, right, next_left, next_right>(
+    this: Trait<AsEither, raw, right>,
+    map_left: (value: left) => next_left,
+    map_right: (value: right) => next_right,
+  ) {
+    const [tag, payload] = this.value() as Either<left, right>;
+
+    switch (tag) {
+      case "left":
+        return unknown_trait<next_right>(left(map_left(payload)));
+      case "right":
+        return unknown_trait<next_right>(right(map_right(payload)));
+    }
+  },
+});
+
 Functor.implement(Either)({
   map(fn) {
     const [tag, payload] = this.value();
@@ -176,6 +228,23 @@ Monad.implement(Either)({
   },
 });
 
+MonadError.implement(Either)({
+  throw_error(error) {
+    return left(error);
+  },
+
+  catch_error(handler) {
+    const [tag, payload] = this.value();
+
+    switch (tag) {
+      case "left":
+        return handler(payload);
+      case "right":
+        return same_context(this);
+    }
+  },
+});
+
 Foldable.implement(Either)({
   fold(initial, fn) {
     const [tag, payload] = this.value();
@@ -214,4 +283,8 @@ function either_left<left = string, right = never>(
 
 function same_context<out>(value: unknown): out {
   return value as out;
+}
+
+function unknown_trait<item>(value: unknown): Trait<AsEither, unknown, item> {
+  return value as Trait<AsEither, unknown, item>;
 }

@@ -8,11 +8,13 @@ import {
 import {
   Alternative,
   Applicative,
+  compare_unknown,
   Eq,
   Foldable,
   Functor,
   Monad,
   Monoid,
+  Ord,
   Semigroup,
   Show,
   Traversable,
@@ -34,7 +36,8 @@ export interface AsList
     Alternative<AsList>,
     Monad<AsList>,
     Foldable<AsList>,
-    Traversable<AsList> {
+    Traversable<AsList>,
+    Ord<AsList> {
   readonly [type_item]: unknown;
   readonly [type_value]: List<this[typeof type_item]>;
 }
@@ -103,6 +106,39 @@ Eq.implement(List)({
     }
 
     return left_rest.tag === "nil" && right_rest.tag === "nil";
+  },
+});
+
+Ord.implement(List)({
+  compare(right) {
+    let left_rest = this.value();
+    let right_rest = right.value();
+
+    while (left_rest.tag === "cons" && right_rest.tag === "cons") {
+      const order = compare_unknown(left_rest.head, right_rest.head);
+
+      switch (order) {
+        case "eq":
+          break;
+        case "lt":
+        case "gt":
+          return order;
+      }
+
+      left_rest = left_rest.tail;
+      right_rest = right_rest.tail;
+    }
+
+    if (left_rest.tag === right_rest.tag) {
+      return "eq";
+    }
+
+    switch (left_rest.tag) {
+      case "nil":
+        return "lt";
+      case "cons":
+        return "gt";
+    }
   },
 });
 

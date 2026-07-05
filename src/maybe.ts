@@ -8,10 +8,12 @@ import {
 import {
   Alternative,
   Applicative,
+  compare_unknown,
   Eq,
   Foldable,
   Functor,
   Monad,
+  Ord,
   Show,
   Traversable,
 } from "./traits.ts";
@@ -33,7 +35,8 @@ export interface AsMaybe
     Alternative<AsMaybe>,
     Monad<AsMaybe>,
     Foldable<AsMaybe>,
-    Traversable<AsMaybe> {
+    Traversable<AsMaybe>,
+    Ord<AsMaybe> {
   readonly [type_item]: unknown;
   readonly [type_value]: Maybe<this[typeof type_item]>;
 }
@@ -106,6 +109,34 @@ Eq.implement(Maybe)({
             return Object.is(left_payload, right_payload);
         }
     }
+  },
+});
+
+Ord.implement(Maybe)({
+  compare(right) {
+    const [left_tag, left_payload] = this.value();
+    const [right_tag, right_payload] = right.value();
+
+    switch (left_tag) {
+      case "nothing":
+        switch (right_tag) {
+          case "nothing":
+            return "eq";
+          case "just":
+            return "lt";
+        }
+        break;
+      case "just":
+        switch (right_tag) {
+          case "nothing":
+            return "gt";
+          case "just":
+            return compare_unknown(left_payload, right_payload);
+        }
+        break;
+    }
+
+    return "eq";
   },
 });
 

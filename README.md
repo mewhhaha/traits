@@ -77,26 +77,27 @@ export function nothing<item = never>() {
 
 Show.implement(Maybe)({
   show() {
-    const maybe = this.value();
+    const [tag, value] = this.value();
 
-    switch (maybe[0]) {
+    switch (tag) {
       case "nothing":
         return "Nothing";
       case "just":
-        return "Just(" + maybe[1] + ")";
+        return "Just(" + value + ")";
     }
   },
 });
 
 Monad.implement(Maybe)({
   bind(fn) {
-    const maybe = this.value();
+    const [tag, value] = this.value();
 
-    if (maybe[0] === "nothing") {
-      return nothing();
+    switch (tag) {
+      case "nothing":
+        return nothing();
+      case "just":
+        return fn(value);
     }
-
-    return fn(maybe[1]);
   },
 });
 ```
@@ -226,6 +227,34 @@ parsed.value(); // ["right", 42]
 
 `Either` does not fix the error payload to `string`; `left(value)` keeps the
 error value's type. The examples use strings because they are easy to inspect.
+
+## Tagged Values
+
+Data constructors use tuple tags. Deconstruct the raw value and switch on the
+tag when you want direct branching:
+
+```ts
+const [tag, value] = just(42).value();
+
+switch (tag) {
+  case "nothing":
+    value; // undefined
+    break;
+  case "just":
+    value; // number
+    break;
+}
+```
+
+For expression-style branching, use the `match` helper. The handler record must
+cover every tag in the value:
+
+```ts
+const label = match(just(42).value(), {
+  nothing: () => "missing",
+  just: (value) => "value:" + value.toString(),
+});
+```
 
 `Do` is generator-based do notation. It runs a generator over one monad
 dictionary and uses `yield*` to bind each wrapped value:

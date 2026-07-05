@@ -153,12 +153,11 @@ Alternative.implement(Maybe)({
   },
 
   alt(right) {
-    const maybe = this.value();
-    const [tag] = maybe;
+    const [tag] = this.value();
 
     switch (tag) {
       case "just":
-        return Maybe(maybe);
+        return same_context(this);
       case "nothing":
         return right;
     }

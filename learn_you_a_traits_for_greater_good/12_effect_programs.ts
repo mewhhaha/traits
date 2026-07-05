@@ -1,8 +1,4 @@
-import {
-  type AsArray,
-  from_array as array_from_array,
-  to_array as array_to_array,
-} from "../src/array.ts";
+import { ArrayT, type AsArray, to_array } from "../src/array.ts";
 import { assert_equals } from "../src/assert.ts";
 import { Effect, Program, type Uses } from "../src/effects.ts";
 import { ask, type AsReader, run_reader } from "../src/reader.ts";
@@ -25,15 +21,15 @@ export async function lesson_12_effect_programs() {
     const config = yield* ask<Config>();
     const name = yield* from_fn(() => Promise.resolve("Ada"));
 
-    yield* tell(array_from_array([config.prefix + name]));
+    yield* tell(ArrayT([config.prefix + name]));
 
     return name.length;
   });
   const [value, log] = await Effect.interpret(program)
     .handle((effect) => run_reader(effect, { prefix: "hello " }))
-    .handle((effect) => run_writer(effect, array_from_array<string>([])))
+    .handle((effect) => run_writer(effect, ArrayT<string>([])))
     .run(run_task);
 
   assert_equals(value, 3);
-  assert_equals(array_to_array(log), ["hello Ada"]);
+  assert_equals(to_array(log), ["hello Ada"]);
 }

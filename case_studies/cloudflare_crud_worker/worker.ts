@@ -1,4 +1,4 @@
-import { from_array, to_array } from "../../src/array.ts";
+import { ArrayT, to_array } from "../../src/array.ts";
 import { Effect } from "../../src/effects.ts";
 import { run_reader } from "../../src/reader.ts";
 import { run_task } from "../../src/task.ts";
@@ -7,12 +7,14 @@ import { fixed_clock, run_clock, system_clock } from "./clock.ts";
 import {
   d1_database,
   type D1Database,
+  database_trace_scope,
   type DatabaseRuntime,
   run_database,
 } from "./database.ts";
 import { crud_program } from "./program.ts";
 import {
   console_trace_sink,
+  run_trace_scopes,
   run_trace_to_writer,
   run_trace_with_sink,
   type TraceSink,
@@ -58,6 +60,7 @@ export function handle_request(
   return Effect.interpret(crud_program)
     .handle((effect) => run_reader(effect, context))
     .handle((effect) => run_clock(effect, read_now))
+    .handle((effect) => run_trace_scopes(effect, database_trace_scope))
     .handle((effect) => run_trace_with_sink(effect, trace_sink))
     .handle((effect) => run_database(effect, database))
     .run(run_task);
@@ -70,10 +73,11 @@ export async function handle_request_with_trace_log(
 ): Promise<DryRunResult> {
   const context = request_context(request, options);
   const read_now = clock_from_options(options);
-  const empty_trace = from_array<string>([]);
+  const empty_trace = ArrayT<string>([]);
   const [response, trace] = await Effect.interpret(crud_program)
     .handle((effect) => run_reader(effect, context))
     .handle((effect) => run_clock(effect, read_now))
+    .handle((effect) => run_trace_scopes(effect, database_trace_scope))
     .handle(run_trace_to_writer)
     .handle((effect) => run_database(effect, database))
     .handle((effect) => run_writer(effect, empty_trace))

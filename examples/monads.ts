@@ -1,4 +1,4 @@
-import { from_array as array_from_array } from "../src/array.ts";
+import { ArrayT } from "../src/array.ts";
 import { ask, asks, local } from "../src/reader.ts";
 import { from_number, left, right } from "../src/either.ts";
 import { exec_state, get, gets, modify } from "../src/state.ts";
@@ -81,7 +81,7 @@ export async function run_monad_examples() {
   console.log("stm transfer total", transfer_result);
   console.log(
     "array Do",
-    array_from_array([1, 2]).bind((value) => array_from_array([value * 10]))
+    ArrayT([1, 2]).bind((value) => ArrayT([value * 10]))
       .show(),
   );
 }

@@ -7,6 +7,7 @@ import {
 } from "./trait.ts";
 import {
   Bifunctor,
+  Comonad,
   compare_unknown,
   Eq,
   Foldable,
@@ -27,7 +28,8 @@ export interface AsTuple
     Bifunctor<AsTuple>,
     Functor<AsTuple>,
     Foldable<AsTuple>,
-    Traversable<AsTuple> {
+    Traversable<AsTuple>,
+    Comonad<AsTuple> {
   readonly [type_item]: unknown;
   readonly [type_value]: Tuple<unknown, this[typeof type_item]>;
 }
@@ -139,6 +141,20 @@ Traversable.implement(Tuple)({
     const [left, right] = this.value();
 
     return Functor.map(fn(right), (value) => tuple(left, value));
+  },
+});
+
+Comonad.implement(Tuple)({
+  extract() {
+    const [_left, right] = this.value();
+
+    return right;
+  },
+
+  extend(fn) {
+    const [left] = this.value();
+
+    return tuple(left, fn(this));
   },
 });
 

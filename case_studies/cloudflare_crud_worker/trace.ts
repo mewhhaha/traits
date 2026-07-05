@@ -1,4 +1,4 @@
-import { type AsArray, from_array } from "../../src/array.ts";
+import { ArrayT, type AsArray } from "../../src/array.ts";
 import {
   Effect,
   type Effect as AlgebraicEffect,
@@ -28,6 +28,16 @@ export type TraceRecord = {
   readonly attributes: TraceAttributes;
 };
 
+export type TraceScope = {
+  readonly name: string;
+  readonly attributes?: TraceAttributes;
+  readonly finish_attributes?: (value: unknown) => TraceAttributes;
+};
+
+export type TraceScopeSelector<requirements> = (
+  operation: requirements,
+) => TraceScope | undefined;
+
 export type TraceSink = {
   event(record: TraceRecord): Promise<void>;
 };
@@ -46,6 +56,40 @@ export function trace_event(
   } as TraceEvent);
 }
 
+export function run_trace_scopes<requirements, item>(
+  effect: AlgebraicEffect<requirements, item>,
+  select_scope: TraceScopeSelector<requirements>,
+): AlgebraicEffect<requirements | Trace, item> {
+  if (effect.tag === "pure") {
+    return Effect.pure(effect.value);
+  }
+
+  const scope = select_scope(effect.operation);
+
+  if (scope === undefined) {
+    return Effect.suspend(
+      effect.operation as requirements | Trace,
+      (value) => run_trace_scopes(effect.resume(value), select_scope),
+    );
+  }
+
+  return Effect.bind(
+    trace_event(scope.name + ".start", scope.attributes),
+    () =>
+      Effect.suspend(
+        effect.operation as requirements | Trace,
+        (value) =>
+          Effect.bind(
+            trace_event(
+              scope.name + ".finish",
+              trace_scope_finish_attributes(scope, value),
+            ),
+            () => run_trace_scopes(effect.resume(value), select_scope),
+          ),
+      ),
+  );
+}
+
 export function run_trace_to_writer<requirements, item>(
   effect: AlgebraicEffect<requirements, item>,
 ): AlgebraicEffect<
@@ -62,7 +106,7 @@ export function run_trace_to_writer<requirements, item>(
     const trace = effect.operation as TraceEvent;
 
     return Effect.bind(
-      Effect.lift(tell(from_array([format_trace(trace)]))),
+      Effect.lift(tell(ArrayT([format_trace(trace)]))),
       () => run_trace_to_writer(effect.resume(undefined)),
     );
   }
@@ -132,4 +176,15 @@ function format_trace_record(record: TraceRecord): string {
     attributes
       .map(([key, value]) => key + "=" + String(value))
       .join(" ");
+}
+
+function trace_scope_finish_attributes(
+  scope: TraceScope,
+  value: unknown,
+): TraceAttributes {
+  if (scope.finish_attributes === undefined) {
+    return {};
+  }
+
+  return scope.finish_attributes(value);
 }

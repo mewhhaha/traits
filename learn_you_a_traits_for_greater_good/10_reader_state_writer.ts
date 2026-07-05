@@ -1,7 +1,4 @@
-import {
-  from_array as array_from_array,
-  to_array as array_to_array,
-} from "../src/array.ts";
+import { ArrayT, to_array } from "../src/array.ts";
 import { assert_equals } from "../src/assert.ts";
 import { ask, asks } from "../src/reader.ts";
 import { get, gets, modify } from "../src/state.ts";
@@ -31,11 +28,11 @@ export function lesson_10_reader_state_writer() {
     return { before, after };
   });
   const audit = Do(function* () {
-    yield* tell(array_from_array(["start"]));
+    yield* tell(ArrayT(["start"]));
 
-    const value = yield* writer(40, array_from_array(["value"]));
+    const value = yield* writer(40, ArrayT(["value"]));
 
-    yield* tell(array_from_array(["finish"]));
+    yield* tell(ArrayT(["finish"]));
 
     return value + 2;
   });
@@ -47,5 +44,5 @@ export function lesson_10_reader_state_writer() {
   );
   assert_equals(counter.run(20), [{ before: 20, after: 42 }, 42]);
   assert_equals(audit_value, 42);
-  assert_equals(array_to_array(audit_log), ["start", "value", "finish"]);
+  assert_equals(to_array(audit_log), ["start", "value", "finish"]);
 }

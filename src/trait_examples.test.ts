@@ -14,11 +14,7 @@ import {
   type TaggedOperation,
   type Uses,
 } from "./effects.ts";
-import {
-  type AsArray,
-  from_array as array_from_array,
-  to_array as array_to_array,
-} from "./array.ts";
+import { ArrayT, type AsArray, to_array } from "./array.ts";
 import {
   from_bytes as array_buffer_from_bytes,
   to_bytes as array_buffer_to_bytes,
@@ -189,7 +185,7 @@ Deno.test("Ord compares standard contexts", () => {
     "lt",
   );
   assert_equals(
-    Ord.compare(array_from_array([1, 2]), array_from_array([1, 3])),
+    Ord.compare(ArrayT([1, 2]), ArrayT([1, 3])),
     "lt",
   );
   assert_equals(
@@ -299,6 +295,11 @@ Deno.test("Tuple exposes pair helpers and maps over the second slot", () => {
     maybe_just(undefined),
     (item) => maybe_just(item + 1),
   );
+  const extended = Comonad.extend(value, (wrapped) => {
+    const [label, item] = wrapped.value();
+
+    return String(label) + ":" + item.toString();
+  });
   const [traversed_tag, traversed_value] = traversed.value();
 
   assert_equals(value.value(), ["count", 41] as const);
@@ -310,6 +311,8 @@ Deno.test("Tuple exposes pair helpers and maps over the second slot", () => {
   assert_equals(Ord.compare(tuple("count", 41), tuple("count", 42)), "lt");
   assert_equals(mapped.value(), tuple("count", 42).value());
   assert_equals(both.value(), tuple("COUNT", 42).value());
+  assert_equals(Comonad.extract(value), 41);
+  assert_equals(extended.value(), tuple("count", "count:41").value());
   assert_equals(
     Foldable.fold(value, 1, (state, item) => state + item),
     42,
@@ -859,23 +862,23 @@ Deno.test("State monad threads state through Do", () => {
 
 Deno.test("Writer monad accumulates logs through Do", () => {
   const program = Do(function* () {
-    yield* writer_tell(array_from_array(["start"]));
-    const value = yield* writer_value(40, array_from_array(["value"]));
-    yield* writer_tell(array_from_array(["end"]));
+    yield* writer_tell(ArrayT(["start"]));
+    const value = yield* writer_value(40, ArrayT(["value"]));
+    yield* writer_tell(ArrayT(["end"]));
 
     return value + 2;
   });
   const [value, logs] = program.value() as readonly [
     number,
-    ReturnType<typeof array_from_array<string>>,
+    ReturnType<typeof ArrayT<string>>,
   ];
   const [mapped_value, mapped_logs] = program.map((value) => value + 1)
-    .value() as readonly [number, ReturnType<typeof array_from_array<string>>];
+    .value() as readonly [number, ReturnType<typeof ArrayT<string>>];
 
   assert_equals(value, 42);
-  assert_equals(array_to_array(logs), ["start", "value", "end"]);
+  assert_equals(to_array(logs), ["start", "value", "end"]);
   assert_equals(mapped_value, 43);
-  assert_equals(array_to_array(mapped_logs), ["start", "value", "end"]);
+  assert_equals(to_array(mapped_logs), ["start", "value", "end"]);
 });
 
 Deno.test("Effects compose reader state writer and task with handlers", async () => {
@@ -916,7 +919,7 @@ Deno.test("Effects compose reader state writer and task with handlers", async ()
     });
 
     yield* modify((value: number) => value + config.increment);
-    yield* writer_tell(array_from_array([label + ":" + before.toString()]));
+    yield* writer_tell(ArrayT([label + ":" + before.toString()]));
 
     const after = yield* get<number>();
 
@@ -929,13 +932,13 @@ Deno.test("Effects compose reader state writer and task with handlers", async ()
         increment: 2,
       }),
     (effect) => run_state(effect, 40),
-    (effect) => run_writer(effect, array_from_array<string>([])),
+    (effect) => run_writer(effect, ArrayT<string>([])),
     run_task,
   ]);
   const [result_value, result_logs] = result;
 
   assert_equals(result_value, [{ before: 40, after: 42 }, 42]);
-  assert_equals(array_to_array(result_logs), ["step:async:40"]);
+  assert_equals(to_array(result_logs), ["step:async:40"]);
 
   assert_equals(Effect.interpret(Effect.pure("done")).run(run), "done");
 });
@@ -1095,42 +1098,42 @@ Deno.test("Foldable reduces values inside different contexts", () => {
 Deno.test("Semigroup and Monoid combine collection contexts", () => {
   const list = Semigroup.concat(list_from_array([1, 2]), list_from_array([3]));
   const array = Semigroup.concat(
-    array_from_array([1, 2]),
-    array_from_array([3]),
+    ArrayT([1, 2]),
+    ArrayT([3]),
   );
   const record = Semigroup.concat(
     record_from_entries<number>([["left", 1], ["shared", 1]]),
     record_from_entries<number>([["shared", 2], ["right", 3]]),
   );
-  const empty_array = Monoid.empty(array_from_array<number>([]));
+  const empty_array = Monoid.empty(ArrayT<number>([]));
 
   assert_equals(list_to_array(list), [1, 2, 3]);
-  assert_equals(array_to_array(array), [1, 2, 3]);
+  assert_equals(to_array(array), [1, 2, 3]);
   assert_equals(record_to_record(record), {
     left: 1,
     shared: 2,
     right: 3,
   });
-  assert_equals(array_to_array(empty_array), []);
+  assert_equals(to_array(empty_array), []);
 });
 
 Deno.test("Alternative chooses fallback or combines list-like contexts", () => {
   const option = Alternative.alt(maybe_nothing<number>(), maybe_just(42));
   const kept = Alternative.alt(maybe_just(1), maybe_just(2));
   const list = Alternative.alt(list_from_array([1, 2]), list_from_array([3]));
-  const array = Alternative.alt(array_from_array([1]), array_from_array([2]));
+  const array = Alternative.alt(ArrayT([1]), ArrayT([2]));
   const empty_option = Alternative.empty(maybe_just(0));
 
   assert_equals(option.value(), maybe_just(42).value());
   assert_equals(kept.value(), maybe_just(1).value());
   assert_equals(list_to_array(list), [1, 2, 3]);
-  assert_equals(array_to_array(array), [1, 2]);
+  assert_equals(to_array(array), [1, 2]);
   assert_equals(empty_option.value(), maybe_nothing().value());
 });
 
 Deno.test("Built-in wrappers map and fold over values", () => {
-  const array = array_from_array([1, 2, 3])
-    .bind((value) => array_from_array([value, value * 10]));
+  const array = ArrayT([1, 2, 3])
+    .bind((value) => ArrayT([value, value * 10]));
   const map = map_from_entries<number>([["a", 1], ["b", 2]])
     .map((value) => "value:" + value.toString());
   const record = record_from_entries<number>([["a", 1], ["b", 2]])
@@ -1141,7 +1144,7 @@ Deno.test("Built-in wrappers map and fold over values", () => {
     (state, value) => state + value,
   );
 
-  assert_equals(array_to_array(array), [1, 10, 2, 20, 3, 30]);
+  assert_equals(to_array(array), [1, 10, 2, 20, 3, 30]);
   assert_equals(map_to_record(map), { a: "value:1", b: "value:2" });
   assert_equals(record_to_record(record), { a: 2, b: 4 });
   assert_equals(map_sum, 3);
@@ -1228,7 +1231,7 @@ Deno.test("JavaScript shape wrappers expose conservative traits", async () => {
 
 Deno.test("Traversable flips structures through an applicative", () => {
   const array = Traversable.traverse(
-    array_from_array([1, 2, 3]),
+    ArrayT([1, 2, 3]),
     either_right(undefined),
     (value) => either_right("value:" + value.toString()),
   );
@@ -1245,8 +1248,8 @@ Deno.test("Traversable flips structures through an applicative", () => {
   );
   const option = Traversable.traverse(
     maybe_just(21),
-    array_from_array<unknown>([]),
-    (value) => array_from_array([value, value * 2]),
+    ArrayT<unknown>([]),
+    (value) => ArrayT([value, value * 2]),
   );
   const map = Traversable.traverse(
     map_from_entries<number>([["x", 1], ["y", 2]]),
@@ -1254,7 +1257,7 @@ Deno.test("Traversable flips structures through an applicative", () => {
     (value) => either_right(value + 1),
   );
   const empty_array = Traversable.traverse(
-    array_from_array<number>([]),
+    ArrayT<number>([]),
     either_right(undefined),
     (value) => either_right(value.toString()),
   );
@@ -1299,18 +1302,18 @@ Deno.test("Traversable flips structures through an applicative", () => {
     "expected empty traversed record to succeed",
   );
 
-  assert_equals(array_to_array(array_result), [
+  assert_equals(to_array(array_result), [
     "value:1",
     "value:2",
     "value:3",
   ]);
   assert_equals(record.value(), either_left("negative: -1").value());
   assert_equals(
-    array_to_array(option).map((value) => value.value()),
+    to_array(option).map((value) => value.value()),
     [maybe_just(21).value(), maybe_just(42).value()],
   );
   assert_equals(map_to_record(map_result), { x: 2, y: 3 });
-  assert_equals(array_to_array(empty_array_result), []);
+  assert_equals(to_array(empty_array_result), []);
   assert_equals(list_to_array(empty_list_result), []);
   assert_equals(map_to_record(empty_map_result), {});
   assert_equals(record_to_record(empty_record_result), {});

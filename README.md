@@ -320,7 +320,7 @@ const program = App(function* () {
   const scoped_label = yield* run_reader(label, { label: config.label });
 
   yield* modify((value) => value + config.increment);
-  yield* tell(array_from_array([scoped_label + ":" + before.toString()]));
+  yield* tell(ArrayT([scoped_label + ":" + before.toString()]));
 
   return yield* get<number>();
 });
@@ -328,7 +328,7 @@ const program = App(function* () {
 await Effect.interpret(program)
   .handle((effect) => run_reader(effect, { label: "step", increment: 2 }))
   .handle((effect) => run_state(effect, 40))
-  .handle((effect) => run_writer(effect, array_from_array<string>([])))
+  .handle((effect) => run_writer(effect, ArrayT<string>([])))
   .run(run_task);
 ```
 
@@ -599,9 +599,9 @@ swap(value).value(); // [41, "count"]
 ```
 
 `Tuple<left, right>` stores a plain pair as `readonly [left, right]`. Its normal
-`item` slot is the right side, so `Functor`, `Foldable`, and `Traversable` work
-over the second value just like Haskell's `(,) left`. `Bifunctor` maps both
-slots.
+`item` slot is the right side, so `Functor`, `Foldable`, `Traversable`, and
+`Comonad` work over the second value just like Haskell's `(,) left`. `Bifunctor`
+maps both slots.
 
 ### Contravariant
 
@@ -634,10 +634,20 @@ const value = identity(41);
 
 Comonad.extract(value); // 41
 Comonad.extend(value, (wrapped) => wrapped.value() + 1).value(); // 42
+
+const counted = tuple("count", 41);
+
+Comonad.extract(counted); // 41
+Comonad.extend(counted, (wrapped) => {
+  const [label, item] = wrapped.value();
+
+  return String(label) + ":" + item.toString();
+}).value(); // ["count", "count:41"]
 ```
 
-`Identity` is intentionally boring, which makes it a useful lawful carrier for
-`Comonad`.
+`Identity` is intentionally boring, which makes the laws easy to see. `Tuple` is
+the more practical instance: the left slot remains available as context while
+`extend` computes a new focused right slot from the whole pair.
 
 ### Profunctor, Category, Arrow, and Parse
 
@@ -701,7 +711,7 @@ foldl' (+) 0 [1, 2, 3]
 
 ```ts
 Foldable.fold(
-  array_from_array([1, 2, 3]),
+  ArrayT([1, 2, 3]),
   0,
   (sum, item) => sum + item,
 );
@@ -720,13 +730,13 @@ sequenceA [Just 1, Just 2, Just 3]
 
 ```ts
 Traversable.traverse(
-  array_from_array(["1", "2", "3"]),
+  ArrayT(["1", "2", "3"]),
   either_right(undefined),
   (text) => either_from_number(Number.parseInt(text, 10)),
 );
 
 Traversable.sequence(
-  array_from_array([just(1), just(2), just(3)]),
+  ArrayT([just(1), just(2), just(3)]),
   just(undefined),
 );
 ```
@@ -746,22 +756,22 @@ mconcat [[1], [2], [3]]
 
 ```ts
 Semigroup.concat(
-  array_from_array([1, 2]),
-  array_from_array([3]),
+  ArrayT([1, 2]),
+  ArrayT([3]),
 );
 
 Monoid.concat(
-  Monoid.empty(array_from_array<string>([])),
-  array_from_array(["done"]),
+  Monoid.empty(ArrayT<string>([])),
+  ArrayT(["done"]),
 );
 
 Foldable.fold(
-  array_from_array([
-    array_from_array([1]),
-    array_from_array([2]),
-    array_from_array([3]),
+  ArrayT([
+    ArrayT([1]),
+    ArrayT([2]),
+    ArrayT([3]),
   ]),
-  Monoid.empty(array_from_array<number>([])),
+  Monoid.empty(ArrayT<number>([])),
   Monoid.concat,
 );
 ```
@@ -781,8 +791,8 @@ Nothing <|> Just 42
 Alternative.alt(nothing<number>(), just(42));
 
 Alternative.alt(
-  array_from_array([1, 2]),
-  array_from_array([3, 4]),
+  ArrayT([1, 2]),
+  ArrayT([3, 4]),
 );
 ```
 
@@ -880,7 +890,7 @@ program = do
 
 ```ts
 const program = Do(function* () {
-  yield* tell(array_from_array(["start"]));
+  yield* tell(ArrayT(["start"]));
 
   return 42;
 });
@@ -888,7 +898,7 @@ const program = Do(function* () {
 const [value, logs] = program.value();
 
 value; // 42
-array_to_array(logs); // ["start"]
+to_array(logs); // ["start"]
 ```
 
 `Writer` is parameterized by the monoidal output. Arrays are just one concrete
@@ -916,7 +926,7 @@ const program = App(function* () {
   const before = yield* get<number>();
 
   yield* modify((value: number) => value + config.increment);
-  yield* tell(array_from_array([config.label + ":" + before.toString()]));
+  yield* tell(ArrayT([config.label + ":" + before.toString()]));
 
   return yield* get<number>();
 });
@@ -924,7 +934,7 @@ const program = App(function* () {
 await Effect.interpret(program)
   .handle((effect) => run_reader(effect, { label: "step", increment: 2 }))
   .handle((effect) => run_state(effect, 40))
-  .handle((effect) => run_writer(effect, array_from_array<string>([])))
+  .handle((effect) => run_writer(effect, ArrayT<string>([])))
   .run(run_task);
 ```
 
@@ -1237,10 +1247,13 @@ Larger application-shaped demos live in `case_studies/`:
   `/todos`. The request program uses `Reader` for request context, `Task` for
   JSON body reads and async storage, a custom `Database` effect for list/create/
   read/update/delete operations, a custom `Clock` effect for timestamps, and a
-  custom `Trace` effect for request and domain events. The same program can run
-  against an in-memory dry-run database with trace lines collected through
-  `Writer`, or against a D1-style runtime with trace events sent through a
-  console/task sink.
+  custom `Trace` effect for request and domain events. A trace-scope
+  interpreter can also observe selected effects before their concrete runner,
+  so database operations automatically produce `crud.database.*.start` and
+  `crud.database.*.finish` trace lines without adding trace calls to the route
+  handlers. The same program can run against an in-memory dry-run database with
+  trace lines collected through `Writer`, or against a D1-style runtime with
+  trace events sent through a console/task sink.
 - `case_studies/io_application/` models a small CLI with `echo`, `cat`, and
   `write` commands. It uses a custom `FileSystem` effect for
   `ReadFile`/`WriteFile`, `Reader` for argv, `Writer` for stdout lines, and

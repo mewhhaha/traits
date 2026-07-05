@@ -7,6 +7,7 @@ import {
 } from "../../src/effects.ts";
 import { type EitherValue, left, right } from "../../src/either.ts";
 import { type AsTask, from_fn } from "../../src/task.ts";
+import type { TraceAttributes, TraceScope } from "./trace.ts";
 import type { HttpProblem, Todo, TodoCreate, TodoPatch } from "./types.ts";
 
 export type DatabaseError =
@@ -140,6 +141,36 @@ export function delete_todo(
     tag: "crud.database.delete",
     id,
   } as DeleteTodo);
+}
+
+export function database_trace_scope(
+  operation: unknown,
+): TraceScope | undefined {
+  const tagged = operation as TaggedOperation;
+
+  switch (tagged.tag) {
+    case "crud.database.list":
+      return database_scope("crud.database.list");
+    case "crud.database.create":
+      return database_scope("crud.database.create");
+    case "crud.database.read": {
+      const read = operation as ReadTodo;
+
+      return database_scope("crud.database.read", { todo_id: read.id });
+    }
+    case "crud.database.update": {
+      const update = operation as UpdateTodo;
+
+      return database_scope("crud.database.update", { todo_id: update.id });
+    }
+    case "crud.database.delete": {
+      const remove = operation as DeleteTodo;
+
+      return database_scope("crud.database.delete", { todo_id: remove.id });
+    }
+    default:
+      return undefined;
+  }
 }
 
 export function run_database<requirements, item>(
@@ -419,4 +450,33 @@ function storage_failed(error: unknown): DatabaseError {
   }
 
   return ["storage_failed", { message: String(error) }];
+}
+
+function database_scope(
+  name: string,
+  attributes: TraceAttributes = {},
+): TraceScope {
+  return {
+    name,
+    attributes,
+    finish_attributes: database_result_trace_attributes,
+  };
+}
+
+function database_result_trace_attributes(value: unknown): TraceAttributes {
+  const result = value as DatabaseResult<unknown>;
+  const [tag, payload] = result.value();
+
+  switch (tag) {
+    case "right":
+      return { result: "ok" };
+    case "left": {
+      const [error] = payload;
+
+      return {
+        result: "error",
+        error,
+      };
+    }
+  }
 }

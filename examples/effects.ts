@@ -1,8 +1,4 @@
-import {
-  type AsArray,
-  from_array as array_from_array,
-  to_array as array_to_array,
-} from "../src/array.ts";
+import { ArrayT, type AsArray, to_array } from "../src/array.ts";
 import { Effect, Program, type Uses } from "../src/effects.ts";
 import { ask, type AsReader, run_reader } from "../src/reader.ts";
 import { type AsState, get, modify, run_state } from "../src/state.ts";
@@ -20,13 +16,13 @@ export async function run_effect_examples() {
       })
     )
     .handle((effect) => run_state(effect, 40))
-    .handle((effect) => run_writer(effect, array_from_array<string>([])))
+    .handle((effect) => run_writer(effect, ArrayT<string>([])))
     .run(run_task);
 
   console.log(
     "effect reader state writer task",
     Deno.inspect(
-      [effect_result_value, array_to_array(effect_result_logs)],
+      [effect_result_value, to_array(effect_result_logs)],
     ),
   );
 }
@@ -71,7 +67,7 @@ const effect_program = App(function* () {
   });
 
   yield* modify((value: number) => value + config.increment);
-  yield* tell(array_from_array([label + ":" + before.toString()]));
+  yield* tell(ArrayT([label + ":" + before.toString()]));
 
   const after = yield* get<number>();
 

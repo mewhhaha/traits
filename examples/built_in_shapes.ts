@@ -1,4 +1,4 @@
-import { from_array as array_from_array } from "../src/array.ts";
+import { ArrayT } from "../src/array.ts";
 import { from_bytes as array_buffer_from_bytes } from "../src/array_buffer.ts";
 import {
   from_factory as async_iterable_from_factory,
@@ -43,11 +43,11 @@ import { from_iterable as weak_set_from_iterable } from "../src/weak_set.ts";
 import { Alternative, Show, Traversable } from "../src/traits.ts";
 
 export async function run_builtin_shape_examples() {
-  const array_monad = array_from_array([1, 2, 3])
-    .bind((value) => array_from_array([value, value * 10]));
+  const array_monad = ArrayT([1, 2, 3])
+    .bind((value) => ArrayT([value, value * 10]));
   const array_alternative = Alternative.alt(
-    array_from_array([1]),
-    array_from_array([2, 3]),
+    ArrayT([1]),
+    ArrayT([2, 3]),
   );
   const mapped_map = map_from_entries<number>([["left", 1], ["right", 2]])
     .map((value) => "value:" + value.toString());

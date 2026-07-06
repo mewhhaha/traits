@@ -7,6 +7,7 @@ import {
 } from "./typeclass.ts";
 import {
   Applicative,
+  applicative_lift_method,
   Bifunctor,
   compare_unknown,
   Eq,
@@ -195,6 +196,17 @@ Applicative.instance(Either)({
     return right(value);
   },
 
+  [applicative_lift_method](fn, rest) {
+    const [tag, payload] = this.value();
+
+    switch (tag) {
+      case "left":
+        return same_context(this);
+      case "right":
+        return lift_right(fn, payload, rest);
+    }
+  },
+
   ap(value) {
     const [fn_tag, fn] = this.value();
 
@@ -279,6 +291,43 @@ function either_left<left = string, right = never>(
   value: left,
 ): Either<left, right> {
   return ["left", value];
+}
+
+function lift_right<out>(
+  fn: (...values: unknown[]) => out,
+  first: unknown,
+  rest: readonly WrappedData<AsEither, Either<unknown, unknown>, unknown>[],
+): WrappedData<AsEither, Either<unknown, out>, out> {
+  switch (rest.length) {
+    case 0:
+      return right(fn(first)) as EitherValue<unknown, out>;
+    case 1: {
+      const [tag, payload] = rest[0].value();
+
+      switch (tag) {
+        case "left":
+          return same_context(rest[0]);
+        case "right":
+          return right(fn(first, payload)) as EitherValue<unknown, out>;
+      }
+    }
+  }
+
+  const values = [first];
+
+  for (const current of rest) {
+    const [tag, payload] = current.value();
+
+    switch (tag) {
+      case "left":
+        return same_context(current);
+      case "right":
+        values.push(payload);
+        break;
+    }
+  }
+
+  return right(fn(...values)) as EitherValue<unknown, out>;
 }
 
 function same_context<out>(value: unknown): out {

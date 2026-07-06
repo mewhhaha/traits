@@ -14,7 +14,13 @@ import {
   suspend,
   type WithoutLift,
 } from "./effects.ts";
-import { Applicative, Functor, Monad, Show } from "./typeclasses.ts";
+import {
+  Applicative,
+  applicative_lift_method,
+  Functor,
+  Monad,
+  Show,
+} from "./typeclasses.ts";
 
 export type Reader<environment, item> = (environment: environment) => item;
 
@@ -122,6 +128,21 @@ Functor.instance(Reader)({
 Applicative.instance(Reader)({
   pure(value) {
     return Reader((_environment: unknown) => value);
+  },
+
+  [applicative_lift_method](fn, rest) {
+    const first = this.value();
+    const readers = rest.map((current) => current.value());
+
+    return Reader((environment: unknown) => {
+      const values = [first(environment)];
+
+      for (const reader of readers) {
+        values.push(reader(environment));
+      }
+
+      return fn(...values);
+    });
   },
 
   ap(value) {

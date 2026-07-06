@@ -15,7 +15,13 @@ import {
   suspend,
   type WithoutLift,
 } from "./effects.ts";
-import { Applicative, Functor, Monad, Show } from "./typeclasses.ts";
+import {
+  Applicative,
+  applicative_lift_method,
+  Functor,
+  Monad,
+  Show,
+} from "./typeclasses.ts";
 
 export type State<state, item> = (state: state) => readonly [item, state];
 
@@ -140,6 +146,25 @@ Functor.instance(State)({
 Applicative.instance(State)({
   pure(value) {
     return State((state: unknown) => [value, state]);
+  },
+
+  [applicative_lift_method](fn, rest) {
+    const first = this.value();
+    const stateful_values = rest.map((current) => current.value());
+
+    return State((state: unknown) => {
+      const [first_value, first_state] = first(state);
+      const values = [first_value];
+      let current_state = first_state;
+
+      for (const stateful of stateful_values) {
+        const [value, next_state] = stateful(current_state);
+        values.push(value);
+        current_state = next_state;
+      }
+
+      return [fn(...values), current_state] as const;
+    });
   },
 
   ap(value) {

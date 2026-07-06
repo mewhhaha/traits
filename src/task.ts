@@ -8,7 +8,13 @@ import {
   type type_item,
 } from "./typeclass.ts";
 import type { Effect, Lift } from "./effects.ts";
-import { Applicative, Functor, Monad, Show } from "./typeclasses.ts";
+import {
+  Applicative,
+  applicative_lift_method,
+  Functor,
+  Monad,
+  Show,
+} from "./typeclasses.ts";
 
 export type Task<item> = () => Promise<item>;
 
@@ -93,6 +99,20 @@ Functor.instance(Task)({
 Applicative.instance(Task)({
   pure(value) {
     return succeed(value);
+  },
+
+  [applicative_lift_method](fn, rest) {
+    const first = this.value();
+    const tasks = rest.map((current) => current.value());
+
+    return Task(async () => {
+      const values = await Promise.all([
+        first(),
+        ...tasks.map((task) => task()),
+      ]);
+
+      return fn(...values);
+    });
   },
 
   ap(value) {

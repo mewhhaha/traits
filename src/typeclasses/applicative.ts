@@ -9,22 +9,30 @@ import {
 import { Functor, type Functor as FunctorDictionary } from "./functor.ts";
 
 export const applicative_typeclass = Symbol("Applicative");
+export const applicative_lift_method = Symbol("Applicative.lift");
+
+type ApplicativeImplementation<dictionary extends Dictionary> = {
+  pure: <item>(
+    this: Data<dictionary, unknown>,
+    value: item,
+  ) => Data<dictionary, item>;
+  ap: <from, to>(
+    this: Data<dictionary, (value: NoInfer<from>) => to>,
+    value: Data<dictionary, from>,
+  ) => Data<dictionary, to>;
+  [applicative_lift_method]?: <out>(
+    this: Data<dictionary, unknown>,
+    fn: (...values: unknown[]) => out,
+    rest: readonly Data<dictionary, unknown>[],
+  ) => Data<dictionary, out>;
+};
 
 export interface Applicative<dictionary extends Dictionary>
   extends
     TypeclassDictionary<
       dictionary,
       typeof applicative_typeclass,
-      {
-        pure: <item>(
-          this: Data<dictionary, unknown>,
-          value: item,
-        ) => Data<dictionary, item>;
-        ap: <from, to>(
-          this: Data<dictionary, (value: NoInfer<from>) => to>,
-          value: Data<dictionary, from>,
-        ) => Data<dictionary, to>;
-      }
+      ApplicativeImplementation<dictionary>
     >,
     FunctorDictionary<dictionary> {}
 
@@ -158,6 +166,13 @@ function applicative_lift<
   first: Data<dictionary, unknown>,
   ...rest: Data<dictionary, unknown>[]
 ): Data<dictionary, out> {
+  const instance = Applicative.instance_for(first);
+  const lift = instance[applicative_lift_method];
+
+  if (lift !== undefined) {
+    return call_typeclass_method(lift, first, fn, rest);
+  }
+
   const values = [first, ...rest];
 
   if (values.length === 1) {

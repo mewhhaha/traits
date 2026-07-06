@@ -8,6 +8,7 @@ import {
 import {
   Alternative,
   Applicative,
+  applicative_lift_method,
   compare_unknown,
   Eq,
   Foldable,
@@ -158,6 +159,17 @@ Applicative.instance(Maybe)({
     return just(value);
   },
 
+  [applicative_lift_method](fn, rest) {
+    const [tag, payload] = this.value();
+
+    switch (tag) {
+      case "nothing":
+        return same_context(this);
+      case "just":
+        return lift_just(fn, payload, rest);
+    }
+  },
+
   ap(value) {
     const [fn_tag, fn] = this.value();
 
@@ -240,6 +252,43 @@ function maybe_just<item>(value: item): Just<item> {
 
 function maybe_nothing<item = never>(): Maybe<item> {
   return ["nothing"];
+}
+
+function lift_just<out>(
+  fn: (...values: unknown[]) => out,
+  first: unknown,
+  rest: readonly MaybeValue<unknown>[],
+): MaybeValue<out> {
+  switch (rest.length) {
+    case 0:
+      return just(fn(first));
+    case 1: {
+      const [tag, payload] = rest[0].value();
+
+      switch (tag) {
+        case "nothing":
+          return same_context(rest[0]);
+        case "just":
+          return just(fn(first, payload));
+      }
+    }
+  }
+
+  const values = [first];
+
+  for (const current of rest) {
+    const [tag, payload] = current.value();
+
+    switch (tag) {
+      case "nothing":
+        return same_context(current);
+      case "just":
+        values.push(payload);
+        break;
+    }
+  }
+
+  return just(fn(...values));
 }
 
 function same_context<out>(value: unknown): out {

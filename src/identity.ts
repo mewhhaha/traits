@@ -7,6 +7,7 @@ import {
 } from "./typeclass.ts";
 import {
   Applicative,
+  applicative_lift_method,
   Comonad,
   compare_unknown,
   Eq,
@@ -71,6 +72,16 @@ Functor.instance(Identity)({
 Applicative.instance(Identity)({
   pure(value) {
     return identity(value);
+  },
+
+  [applicative_lift_method](fn, rest) {
+    const values = [this.value()];
+
+    for (const current of rest) {
+      values.push(current.value());
+    }
+
+    return identity(fn(...values));
   },
 
   ap(value) {

@@ -5,7 +5,13 @@ import {
   type type_data,
   type type_item,
 } from "./typeclass.ts";
-import { Applicative, Functor, Monad, Show } from "./typeclasses.ts";
+import {
+  Applicative,
+  applicative_lift_method,
+  Functor,
+  Monad,
+  Show,
+} from "./typeclasses.ts";
 
 const tvar_value = Symbol("TVar.value");
 
@@ -137,6 +143,21 @@ Functor.instance(Stm)({
 Applicative.instance(Stm)({
   pure(value) {
     return Stm(() => value);
+  },
+
+  [applicative_lift_method](fn, rest) {
+    const first = this.value();
+    const transactions = rest.map((current) => current.value());
+
+    return Stm((journal) => {
+      const values = [first(journal)];
+
+      for (const transaction of transactions) {
+        values.push(transaction(journal));
+      }
+
+      return fn(...values);
+    });
   },
 
   ap(value) {

@@ -150,7 +150,7 @@ export function call_typeclass_method<self, args extends unknown[], out>(
   self: self,
   ...args: args
 ): out {
-  return Reflect.apply(method, self, args) as out;
+  return method.call(self, ...args);
 }
 
 export function install_instance<implementation extends object>(

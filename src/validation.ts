@@ -7,6 +7,7 @@ import {
 } from "./typeclass.ts";
 import {
   Applicative,
+  applicative_lift_method,
   Eq,
   Foldable,
   Functor,
@@ -138,6 +139,18 @@ Applicative.instance(Validation)({
     return valid(value);
   },
 
+  [applicative_lift_method](fn, rest) {
+    const validation = this.value();
+    const [tag, payload, semigroup] = validation;
+
+    switch (tag) {
+      case "invalid":
+        return lift_validation_invalid(payload, semigroup, rest);
+      case "valid":
+        return lift_validation_valid(fn, payload, rest);
+    }
+  },
+
   ap(value) {
     const fn = this.value();
     const validation = value.value();
@@ -225,6 +238,77 @@ function invalid_from_error<error, item = never>(
     error,
     item
   >;
+}
+
+function lift_validation_valid<out>(
+  fn: (...values: unknown[]) => out,
+  first: unknown,
+  rest: readonly ValidationValue<unknown, unknown>[],
+): ValidationValue<unknown, out> {
+  switch (rest.length) {
+    case 0:
+      return valid(fn(first));
+    case 1: {
+      const [tag, payload, semigroup] = rest[0].value();
+
+      switch (tag) {
+        case "invalid":
+          return invalid_from_error(payload, semigroup);
+        case "valid":
+          return valid(fn(first, payload));
+      }
+    }
+  }
+
+  const values = [first];
+  let error: unknown;
+  let semigroup: ValidationSemigroup<unknown> | undefined;
+
+  for (const current of rest) {
+    const [tag, payload, current_semigroup] = current.value();
+
+    switch (tag) {
+      case "invalid":
+        if (semigroup === undefined) {
+          semigroup = current_semigroup;
+          error = payload;
+        } else {
+          error = semigroup.concat(error, payload);
+        }
+        break;
+      case "valid":
+        values.push(payload);
+        break;
+    }
+  }
+
+  if (semigroup !== undefined) {
+    return invalid_from_error(error, semigroup);
+  }
+
+  return valid(fn(...values));
+}
+
+function lift_validation_invalid<out>(
+  first: unknown,
+  semigroup: ValidationSemigroup<unknown>,
+  rest: readonly ValidationValue<unknown, unknown>[],
+): ValidationValue<unknown, out> {
+  let error = first;
+
+  for (const current of rest) {
+    const [tag, payload] = current.value();
+
+    switch (tag) {
+      case "invalid":
+        error = semigroup.concat(error, payload);
+        break;
+      case "valid":
+        break;
+    }
+  }
+
+  return invalid_from_error(error, semigroup);
 }
 
 function array_semigroup<item>(): ValidationSemigroup<readonly item[]> {

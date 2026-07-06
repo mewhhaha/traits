@@ -17,6 +17,7 @@ import {
 } from "./effects.ts";
 import {
   Applicative,
+  applicative_lift_method,
   Functor,
   Monad,
   Monoid,
@@ -172,6 +173,20 @@ Applicative.instance(Writer)({
   pure(value) {
     const [_ignored, output] = this.value();
     return writer_any(value, empty_output(output));
+  },
+
+  [applicative_lift_method](fn, rest) {
+    const [first, output] = this.value();
+    const values = [first];
+    let combined_output = output;
+
+    for (const current of rest) {
+      const [value, next_output] = current.value();
+      values.push(value);
+      combined_output = concat_output(combined_output, next_output);
+    }
+
+    return writer_any(fn(...values), combined_output);
   },
 
   ap(value) {

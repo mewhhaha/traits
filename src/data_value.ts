@@ -33,6 +33,13 @@ type DataConstructor<dictionary extends object = object> = <
   value: value,
 ) => WrappedData<dictionary, value, item>;
 
+type NewWrappedDataTarget<dictionary extends object> = {
+  prototype: object;
+  new <value, item = unknown>(
+    value: value,
+  ): WrappedDataTarget<dictionary, value, item>;
+};
+
 type DataDictionary<dictionary extends object = object> = object & {
   [data_constructor_key]?: DataConstructor<dictionary>;
   [data_prototype_key]?: object;
@@ -72,15 +79,19 @@ function create_data_constructor<dictionary extends object>(
   data_dictionary: DataDictionary<dictionary>,
 ): DataConstructor<dictionary> {
   const prototype = data_prototype(dictionary);
+  const DataValue = function DataValue(
+    this: WrappedDataTarget<dictionary, unknown, unknown>,
+    value: unknown,
+  ) {
+    this[data_value] = value;
+  } as unknown as NewWrappedDataTarget<dictionary>;
+
+  DataValue.prototype = prototype;
 
   const construct_data = function construct_data<value, item = unknown>(
     value: value,
   ): WrappedData<dictionary, value, item> {
-    const target = Object.create(
-      prototype,
-    ) as WrappedDataTarget<dictionary, value, item>;
-
-    target[data_value] = value;
+    const target = new DataValue<value, item>(value);
 
     return target as unknown as WrappedData<dictionary, value, item>;
   };

@@ -8,6 +8,7 @@ import {
 import {
   Alternative,
   Applicative,
+  applicative_lift_method,
   Functor,
   Monad,
   Monoid,
@@ -84,6 +85,30 @@ Applicative.instance(AsyncIterableT)({
     });
   },
 
+  [applicative_lift_method](fn, rest) {
+    const first = this.value();
+
+    switch (rest.length) {
+      case 0:
+        return AsyncIterableT(async function* () {
+          for await (const value of first()) {
+            yield fn(value);
+          }
+        });
+      case 1:
+        return lift_async_iterable_two(fn, first, rest[0].value());
+      case 2:
+        return lift_async_iterable_three(
+          fn,
+          first,
+          rest[0].value(),
+          rest[1].value(),
+        );
+      default:
+        return lift_async_iterable_many(fn, first, rest);
+    }
+  },
+
   ap(values) {
     const fns = this.value();
     const items = values.value();
@@ -143,3 +168,82 @@ Monad.instance(AsyncIterableT)({
     });
   },
 });
+
+function lift_async_iterable_two<out>(
+  fn: (...values: unknown[]) => out,
+  first: AsyncIterableT<unknown>,
+  second: AsyncIterableT<unknown>,
+): AsyncIterableValue<out> {
+  return AsyncIterableT(async function* () {
+    for await (const left of first()) {
+      for await (const right of second()) {
+        yield fn(left, right);
+      }
+    }
+  });
+}
+
+function lift_async_iterable_three<out>(
+  fn: (...values: unknown[]) => out,
+  first: AsyncIterableT<unknown>,
+  second: AsyncIterableT<unknown>,
+  third: AsyncIterableT<unknown>,
+): AsyncIterableValue<out> {
+  return AsyncIterableT(async function* () {
+    for await (const left of first()) {
+      for await (const middle of second()) {
+        for await (const right of third()) {
+          yield fn(left, middle, right);
+        }
+      }
+    }
+  });
+}
+
+function lift_async_iterable_many<out>(
+  fn: (...values: unknown[]) => out,
+  first: AsyncIterableT<unknown>,
+  rest: readonly AsyncIterableValue<unknown>[],
+): AsyncIterableValue<out> {
+  const sources = [
+    first,
+    ...rest.map((current) => current.value()),
+  ];
+
+  return AsyncIterableT(async function* () {
+    yield* iterate_async_iterable_product(fn, sources, 0, []);
+  });
+}
+
+async function* iterate_async_iterable_product<out>(
+  fn: (...values: unknown[]) => out,
+  sources: readonly AsyncIterableT<unknown>[],
+  index: number,
+  values: readonly unknown[],
+): AsyncGenerator<out> {
+  if (index >= sources.length) {
+    yield fn(...values);
+    return;
+  }
+
+  for await (const item of sources[index]()) {
+    yield* iterate_async_iterable_product(
+      fn,
+      sources,
+      index + 1,
+      append_item(values, item),
+    );
+  }
+}
+
+function append_item(values: readonly unknown[], item: unknown): unknown[] {
+  const next = new Array<unknown>(values.length + 1);
+
+  for (let index = 0; index < values.length; index += 1) {
+    next[index] = values[index];
+  }
+
+  next[values.length] = item;
+
+  return next;
+}

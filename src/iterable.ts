@@ -8,6 +8,7 @@ import {
 import {
   Alternative,
   Applicative,
+  applicative_lift_method,
   Eq,
   Foldable,
   Functor,
@@ -101,6 +102,30 @@ Applicative.instance(IterableT)({
     return IterableT(function* () {
       yield value;
     });
+  },
+
+  [applicative_lift_method](fn, rest) {
+    const first = this.value();
+
+    switch (rest.length) {
+      case 0:
+        return IterableT(function* () {
+          for (const value of first()) {
+            yield fn(value);
+          }
+        });
+      case 1:
+        return lift_iterable_two(fn, first, rest[0].value());
+      case 2:
+        return lift_iterable_three(
+          fn,
+          first,
+          rest[0].value(),
+          rest[1].value(),
+        );
+      default:
+        return lift_iterable_many(fn, first, rest);
+    }
   },
 
   ap(values) {
@@ -210,4 +235,83 @@ function iterable_prepend<item>(head: item) {
       yield* tail.value()();
     });
   };
+}
+
+function lift_iterable_two<out>(
+  fn: (...values: unknown[]) => out,
+  first: IterableT<unknown>,
+  second: IterableT<unknown>,
+): IterableValue<out> {
+  return IterableT(function* () {
+    for (const left of first()) {
+      for (const right of second()) {
+        yield fn(left, right);
+      }
+    }
+  });
+}
+
+function lift_iterable_three<out>(
+  fn: (...values: unknown[]) => out,
+  first: IterableT<unknown>,
+  second: IterableT<unknown>,
+  third: IterableT<unknown>,
+): IterableValue<out> {
+  return IterableT(function* () {
+    for (const left of first()) {
+      for (const middle of second()) {
+        for (const right of third()) {
+          yield fn(left, middle, right);
+        }
+      }
+    }
+  });
+}
+
+function lift_iterable_many<out>(
+  fn: (...values: unknown[]) => out,
+  first: IterableT<unknown>,
+  rest: readonly IterableValue<unknown>[],
+): IterableValue<out> {
+  const sources = [
+    first,
+    ...rest.map((current) => current.value()),
+  ];
+
+  return IterableT(function* () {
+    yield* iterate_iterable_product(fn, sources, 0, []);
+  });
+}
+
+function* iterate_iterable_product<out>(
+  fn: (...values: unknown[]) => out,
+  sources: readonly IterableT<unknown>[],
+  index: number,
+  values: readonly unknown[],
+): Generator<out> {
+  if (index >= sources.length) {
+    yield fn(...values);
+    return;
+  }
+
+  for (const item of sources[index]()) {
+    yield* iterate_iterable_product(
+      fn,
+      sources,
+      index + 1,
+      append_item(values, item),
+    );
+  }
+}
+
+function append_item(values: readonly unknown[], item: unknown): unknown[] {
+  const next = new Array<unknown>(values.length + 1);
+
+  for (let index = 0; index < values.length; index += 1) {
+    next[index] = values[index];
+  }
+
+  next[values.length] = item;
+
+  return next;
 }

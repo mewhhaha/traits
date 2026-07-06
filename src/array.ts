@@ -8,6 +8,7 @@ import {
 import {
   Alternative,
   Applicative,
+  applicative_lift_method,
   compare_unknown,
   Eq,
   Foldable,
@@ -112,6 +113,21 @@ Applicative.instance(ArrayT)({
     return ArrayT([value]);
   },
 
+  [applicative_lift_method](fn, rest) {
+    const first = this.value();
+
+    switch (rest.length) {
+      case 0:
+        return ArrayT(first.map((value) => fn(value)));
+      case 1:
+        return lift_array_two(fn, first, rest[0].value());
+      case 2:
+        return lift_array_three(fn, first, rest[0].value(), rest[1].value());
+      default:
+        return lift_array_many(fn, first, rest);
+    }
+  },
+
   ap(values) {
     const fns = this.value();
     const items = values.value();
@@ -189,4 +205,74 @@ function array_single<item>(item: item): ArrayValue<item> {
 
 function array_prepend<item>(head: item) {
   return (tail: ArrayValue<item>) => ArrayT([head, ...tail.value()]);
+}
+
+function lift_array_two<out>(
+  fn: (...values: unknown[]) => out,
+  first: readonly unknown[],
+  second: readonly unknown[],
+): ArrayValue<out> {
+  const out: out[] = [];
+
+  for (const left of first) {
+    for (const right of second) {
+      out.push(fn(left, right));
+    }
+  }
+
+  return ArrayT(out);
+}
+
+function lift_array_three<out>(
+  fn: (...values: unknown[]) => out,
+  first: readonly unknown[],
+  second: readonly unknown[],
+  third: readonly unknown[],
+): ArrayValue<out> {
+  const out: out[] = [];
+
+  for (const left of first) {
+    for (const middle of second) {
+      for (const right of third) {
+        out.push(fn(left, middle, right));
+      }
+    }
+  }
+
+  return ArrayT(out);
+}
+
+function lift_array_many<out>(
+  fn: (...values: unknown[]) => out,
+  first: readonly unknown[],
+  rest: readonly ArrayValue<unknown>[],
+): ArrayValue<out> {
+  let rows = first.map((value) => [value] as unknown[]);
+
+  for (const current of rest) {
+    const source = current.value();
+    const next: unknown[][] = [];
+
+    for (const row of rows) {
+      for (const item of source) {
+        next.push(append_item(row, item));
+      }
+    }
+
+    rows = next;
+  }
+
+  return ArrayT(rows.map((row) => fn(...row)));
+}
+
+function append_item(values: readonly unknown[], item: unknown): unknown[] {
+  const next = new Array<unknown>(values.length + 1);
+
+  for (let index = 0; index < values.length; index += 1) {
+    next[index] = values[index];
+  }
+
+  next[values.length] = item;
+
+  return next;
 }

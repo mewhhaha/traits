@@ -120,24 +120,18 @@ Ord.instance(Maybe)({
 
     switch (left_tag) {
       case "nothing":
-        switch (right_tag) {
-          case "nothing":
-            return "eq";
-          case "just":
-            return "lt";
+        if (right_tag === "nothing") {
+          return "eq";
         }
-        break;
-      case "just":
-        switch (right_tag) {
-          case "nothing":
-            return "gt";
-          case "just":
-            return compare_unknown(left_payload, right_payload);
-        }
-        break;
-    }
 
-    return "eq";
+        return "lt";
+      case "just":
+        if (right_tag === "nothing") {
+          return "gt";
+        }
+
+        return compare_unknown(left_payload, right_payload);
+    }
   },
 });
 

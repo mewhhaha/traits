@@ -100,24 +100,18 @@ Eq.instance(Validation)({
 
     switch (left_tag) {
       case "valid":
-        switch (right_tag) {
-          case "valid":
-            return Object.is(left_payload, right_payload);
-          case "invalid":
-            return false;
+        if (right_tag === "valid") {
+          return Object.is(left_payload, right_payload);
         }
-        break;
-      case "invalid":
-        switch (right_tag) {
-          case "valid":
-            return false;
-          case "invalid":
-            return errors_equal(left_payload, right_payload);
-        }
-        break;
-    }
 
-    return false;
+        return false;
+      case "invalid":
+        if (right_tag === "valid") {
+          return false;
+        }
+
+        return errors_equal(left_payload, right_payload);
+    }
   },
 });
 
@@ -160,30 +154,24 @@ Applicative.instance(Validation)({
 
     switch (fn_tag) {
       case "invalid":
-        switch (validation_tag) {
-          case "invalid":
-            return invalid_from_error(
-              concat_errors(fn, validation),
-              fn_semigroup,
-            );
-          case "valid":
-            return invalid_from_error(fn_payload, fn_semigroup);
+        if (validation_tag === "invalid") {
+          return invalid_from_error(
+            concat_errors(fn, validation),
+            fn_semigroup,
+          );
         }
-        break;
-      case "valid":
-        switch (validation_tag) {
-          case "invalid":
-            return invalid_from_error(
-              validation_payload,
-              validation_semigroup,
-            );
-          case "valid":
-            return valid(fn_payload(validation_payload));
-        }
-        break;
-    }
 
-    throw new Error("unreachable validation variant");
+        return invalid_from_error(fn_payload, fn_semigroup);
+      case "valid":
+        if (validation_tag === "invalid") {
+          return invalid_from_error(
+            validation_payload,
+            validation_semigroup,
+          );
+        }
+
+        return valid(fn_payload(validation_payload));
+    }
   },
 });
 

@@ -112,24 +112,18 @@ Eq.instance(Either)({
 
     switch (left_tag) {
       case "left":
-        switch (right_tag) {
-          case "left":
-            return Object.is(left_payload, right_payload);
-          case "right":
-            return false;
+        if (right_tag === "left") {
+          return Object.is(left_payload, right_payload);
         }
-        break;
-      case "right":
-        switch (right_tag) {
-          case "left":
-            return false;
-          case "right":
-            return Object.is(left_payload, right_payload);
-        }
-        break;
-    }
 
-    return false;
+        return false;
+      case "right":
+        if (right_tag === "left") {
+          return false;
+        }
+
+        return Object.is(left_payload, right_payload);
+    }
   },
 });
 
@@ -140,24 +134,18 @@ Ord.instance(Either)({
 
     switch (left_tag) {
       case "left":
-        switch (right_tag) {
-          case "left":
-            return compare_unknown(left_payload, right_payload);
-          case "right":
-            return "lt";
+        if (right_tag === "left") {
+          return compare_unknown(left_payload, right_payload);
         }
-        break;
-      case "right":
-        switch (right_tag) {
-          case "left":
-            return "gt";
-          case "right":
-            return compare_unknown(left_payload, right_payload);
-        }
-        break;
-    }
 
-    return "eq";
+        return "lt";
+      case "right":
+        if (right_tag === "left") {
+          return "gt";
+        }
+
+        return compare_unknown(left_payload, right_payload);
+    }
   },
 });
 

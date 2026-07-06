@@ -128,11 +128,23 @@ Applicative.instance(ArrayT)({
     }
   },
 
-  ap(values) {
+  ap<from, to>(
+    this: Data<AsArray, (value: NoInfer<from>) => to>,
+    values: Data<AsArray, from>,
+  ): Data<AsArray, to> {
     const fns = this.value();
     const items = values.value();
+    const out = new Array<to>(fns.length * items.length);
+    let index = 0;
 
-    return ArrayT(fns.flatMap((fn) => items.map(fn)));
+    for (const fn of fns) {
+      for (const item of items) {
+        out[index] = fn(item);
+        index += 1;
+      }
+    }
+
+    return ArrayT(out);
   },
 });
 
@@ -161,9 +173,31 @@ Alternative.instance(ArrayT)({
 });
 
 Monad.instance(ArrayT)({
-  bind(fn) {
+  bind<from, to>(
+    this: Data<AsArray, from>,
+    fn: (value: from) => Data<AsArray, to>,
+  ): Data<AsArray, to> {
     const array = this.value();
-    return ArrayT(array.flatMap((item) => fn(item).value()));
+    const chunks = new Array<readonly to[]>(array.length);
+    let length = 0;
+
+    for (let index = 0; index < array.length; index += 1) {
+      const chunk = fn(array[index]).value();
+      chunks[index] = chunk;
+      length += chunk.length;
+    }
+
+    const out = new Array<to>(length);
+    let out_index = 0;
+
+    for (const chunk of chunks) {
+      for (const item of chunk) {
+        out[out_index] = item;
+        out_index += 1;
+      }
+    }
+
+    return ArrayT(out);
   },
 });
 

@@ -144,9 +144,19 @@ Ord.instance(List)({
 });
 
 Functor.instance(List)({
-  map(fn) {
-    const items = to_array(this);
-    return List(list_from_array(items.map(fn)));
+  map<from, to>(
+    this: Data<AsList, from>,
+    fn: (value: from) => to,
+  ): Data<AsList, to> {
+    let source = this.value();
+    let reversed = list_nil<to>();
+
+    while (source.tag === "cons") {
+      reversed = list_cons(fn(source.head), reversed);
+      source = source.tail;
+    }
+
+    return List(list_reverse(reversed));
   },
 });
 
@@ -202,9 +212,25 @@ Alternative.instance(List)({
 });
 
 Monad.instance(List)({
-  bind(fn) {
-    const out = to_array(this).flatMap((item) => to_array(fn(item)));
-    return List(list_from_array(out));
+  bind<from, to>(
+    this: Data<AsList, from>,
+    fn: (value: from) => Data<AsList, to>,
+  ): Data<AsList, to> {
+    let source = this.value();
+    let reversed = list_nil<to>();
+
+    while (source.tag === "cons") {
+      let bound = fn(source.head).value();
+
+      while (bound.tag === "cons") {
+        reversed = list_cons(bound.head, reversed);
+        bound = bound.tail;
+      }
+
+      source = source.tail;
+    }
+
+    return List(list_reverse(reversed));
   },
 });
 
@@ -245,6 +271,18 @@ function list_nil<item>(): List<item> {
 
 function list_cons<item>(head: item, tail: List<item>): List<item> {
   return { tag: "cons", head, tail };
+}
+
+function list_reverse<item>(items: List<item>): List<item> {
+  let source = items;
+  let reversed = list_nil<item>();
+
+  while (source.tag === "cons") {
+    reversed = list_cons(source.head, reversed);
+    source = source.tail;
+  }
+
+  return reversed;
 }
 
 function list_single<item>(item: item): ListValue<item> {

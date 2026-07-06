@@ -1,6 +1,5 @@
 import {
   type As,
-  as_data_cached,
   type Data,
   data,
   type type_data,
@@ -37,7 +36,6 @@ export const SetT: AsSet = data<AsSet>(
     return this.data(new Set(set));
   },
 );
-const set_data = as_data_cached(SetT);
 
 export function from_set<item>(set: ReadonlySet<item>): SetValue<item> {
   return SetT(set);
@@ -46,7 +44,7 @@ export function from_set<item>(set: ReadonlySet<item>): SetValue<item> {
 export function from_iterable<item>(
   items: Iterable<item>,
 ): SetValue<item> {
-  return set_data(new Set(items));
+  return SetT(new Set(items));
 }
 
 export function to_set<item>(set: SetValue<item>): Set<item> {
@@ -86,7 +84,7 @@ Functor.instance(SetT)({
       out.add(fn(item));
     }
 
-    return set_data(out);
+    return SetT(out);
   },
 });
 
@@ -98,13 +96,13 @@ Semigroup.instance(SetT)({
       out.add(item);
     }
 
-    return set_data(out);
+    return SetT(out);
   },
 });
 
 Monoid.instance(SetT)({
   empty() {
-    return set_data(new Set());
+    return SetT(new Set());
   },
 });
 

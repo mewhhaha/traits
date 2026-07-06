@@ -1,6 +1,5 @@
 import {
   type As,
-  as_data_cached,
   type Data,
   data,
   type type_data,
@@ -40,12 +39,11 @@ export const RecordT: AsRecord = data<AsRecord>(
     return this.data({ ...record });
   },
 );
-const record_data = as_data_cached(RecordT);
 
 export function from_entries<item>(
   entries: Iterable<readonly [string, item]>,
 ): RecordValue<item> {
-  return record_data(Object.fromEntries(entries));
+  return RecordT(Object.fromEntries(entries));
 }
 
 export function to_record<item>(
@@ -95,20 +93,20 @@ Functor.instance(RecordT)({
       out[key] = fn(value);
     }
 
-    return record_data(out);
+    return RecordT(out);
   },
 });
 
 Semigroup.instance(RecordT)({
   concat(right) {
     const left = this.value();
-    return record_data({ ...left, ...right.value() });
+    return RecordT({ ...left, ...right.value() });
   },
 });
 
 Monoid.instance(RecordT)({
   empty() {
-    return record_data({});
+    return RecordT({});
   },
 });
 
@@ -131,7 +129,7 @@ Traversable.instance(RecordT)({
     const entries = Object.entries(record);
 
     if (entries.length === 0) {
-      return Applicative.pure(applicative, record_data({}));
+      return Applicative.pure(applicative, RecordT({}));
     }
 
     let index = entries.length - 1;
@@ -148,13 +146,13 @@ Traversable.instance(RecordT)({
 });
 
 function record_single<item>(key: string) {
-  return (value: item): RecordValue<item> => record_data({ [key]: value });
+  return (value: item): RecordValue<item> => RecordT({ [key]: value });
 }
 
 function record_prepend<item>(key: string) {
   return (value: item) => {
     return (tail: RecordValue<item>) => {
-      return record_data({ [key]: value, ...tail.value() });
+      return RecordT({ [key]: value, ...tail.value() });
     };
   };
 }

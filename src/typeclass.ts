@@ -2,6 +2,7 @@ export { is_data } from "./data_value.ts";
 export type { WrappedData } from "./data_value.ts";
 import {
   data_constructor as raw_as_data_cached,
+  data_dictionary as raw_data_dictionary,
   wrap_data as raw_as_data,
 } from "./data_value.ts";
 import type { WrappedData } from "./data_value.ts";
@@ -104,14 +105,8 @@ export function data<dictionary extends Dictionary>(
   const construct_dictionary = construct;
 
   if (construct_dictionary === undefined) {
-    const target = function <item>(
-      value: ContextData<dictionary, item>,
-    ): Data<dictionary, item> {
-      return wrap_data(value);
-    } as unknown as dictionary;
-
+    const target = raw_data_dictionary<dictionary>();
     target[kind] = runtime_kind;
-    const wrap_data = as_data_cached(target);
 
     return target;
   }

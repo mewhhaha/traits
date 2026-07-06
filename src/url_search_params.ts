@@ -1,6 +1,5 @@
 import {
   type As,
-  as_data_cached,
   type Data,
   data,
   type type_data,
@@ -33,7 +32,6 @@ export const URLSearchParamsT: AsURLSearchParams = data<AsURLSearchParams>(
     return this.data(new URLSearchParams(params));
   },
 );
-const url_search_params_data = as_data_cached(URLSearchParamsT);
 
 export function from_entries(
   entries: Iterable<URLSearchParamsEntry>,
@@ -44,7 +42,7 @@ export function from_entries(
     params.append(name, value);
   }
 
-  return url_search_params_data(params) as URLSearchParamsValue;
+  return URLSearchParamsT(params) as URLSearchParamsValue;
 }
 
 export function to_entries(
@@ -89,13 +87,13 @@ Semigroup.instance(URLSearchParamsT)({
       out.append(name, value);
     }
 
-    return url_search_params_data(out);
+    return URLSearchParamsT(out);
   },
 });
 
 Monoid.instance(URLSearchParamsT)({
   empty() {
-    return url_search_params_data(new URLSearchParams());
+    return URLSearchParamsT(new URLSearchParams());
   },
 });
 

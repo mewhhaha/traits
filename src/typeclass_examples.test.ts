@@ -144,7 +144,12 @@ import {
   Show,
   Traversable,
 } from "./typeclasses.ts";
-import { as_data, TypeclassDefinition, type WrappedData } from "./typeclass.ts";
+import {
+  as_data,
+  as_data_cached,
+  TypeclassDefinition,
+  type WrappedData,
+} from "./typeclass.ts";
 
 Deno.test("Typeclass definitions inherit shared prototype helpers", () => {
   assert_equals(Object.getPrototypeOf(Show), TypeclassDefinition);
@@ -609,6 +614,15 @@ Deno.test("Data values inherit methods added after construction", () => {
   }
 
   assert_equals(value.inc(), 42);
+});
+
+Deno.test("Default data dictionaries are cached constructors", () => {
+  assert_true(
+    Object.is(as_data_cached(Maybe), Maybe),
+    "default dictionary should be its cached constructor",
+  );
+
+  assert_equals(Maybe(["just", 42]).value(), maybe_just(42).value());
 });
 
 Deno.test("Either callable wrapper derives fluent methods from its dictionary", () => {

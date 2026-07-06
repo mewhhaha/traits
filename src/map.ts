@@ -1,6 +1,5 @@
 import {
   type As,
-  as_data_cached,
   type Data,
   data,
   type type_data,
@@ -40,12 +39,11 @@ export const MapT: AsMap = data<AsMap>(
     return this.data(new Map(map));
   },
 );
-const map_data = as_data_cached(MapT);
 
 export function from_entries<item>(
   entries: Iterable<readonly [string, item]>,
 ): MapValue<item> {
-  return map_data(new Map(entries));
+  return MapT(new Map(entries));
 }
 
 export function from_record<item>(
@@ -99,7 +97,7 @@ Functor.instance(MapT)({
       out.set(key, fn(value));
     }
 
-    return map_data(out);
+    return MapT(out);
   },
 });
 
@@ -112,13 +110,13 @@ Semigroup.instance(MapT)({
       out.set(key, value);
     }
 
-    return map_data(out);
+    return MapT(out);
   },
 });
 
 Monoid.instance(MapT)({
   empty() {
-    return map_data(new Map());
+    return MapT(new Map());
   },
 });
 
@@ -141,7 +139,7 @@ Traversable.instance(MapT)({
     const entries = [...map.entries()];
 
     if (entries.length === 0) {
-      return Applicative.pure(applicative, map_data(new Map()));
+      return Applicative.pure(applicative, MapT(new Map()));
     }
 
     let index = entries.length - 1;
@@ -158,13 +156,13 @@ Traversable.instance(MapT)({
 });
 
 function map_single<item>(key: string) {
-  return (value: item): MapValue<item> => map_data(new Map([[key, value]]));
+  return (value: item): MapValue<item> => MapT(new Map([[key, value]]));
 }
 
 function map_prepend<item>(key: string) {
   return (value: item) => {
     return (tail: MapValue<item>) => {
-      return map_data(new Map([[key, value], ...tail.value()]));
+      return MapT(new Map([[key, value], ...tail.value()]));
     };
   };
 }

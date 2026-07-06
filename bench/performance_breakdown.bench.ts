@@ -1,3 +1,4 @@
+import { type EitherValue, right } from "../src/either.ts";
 import { type AsMaybe, just, Maybe, nothing } from "../src/maybe.ts";
 import type { Data } from "../src/typeclass.ts";
 import { Do, Functor, Monad } from "../src/typeclasses.ts";
@@ -11,6 +12,7 @@ type RawMaybe<item> = readonly ["just", item] | readonly ["nothing"];
 
 const add_one = (value: number) => value + 1;
 const typeclasses_next = (value: number) => just(add_one(value));
+const typeclasses_either_next = (value: number) => right(add_one(value));
 
 const maybe_functor = Functor.instance_for(just(0));
 const maybe_monad = Monad.instance_for(just(0));
@@ -249,8 +251,97 @@ Deno.bench("breakdown typeclasses Do generator", () => {
   _sink = checksum;
 });
 
+Deno.bench("breakdown monomorphic Maybe bind call site", () => {
+  let checksum = 0;
+
+  for (let index = 0; index < iterations; index += 1) {
+    let value = just(index);
+
+    for (let step = 0; step < chain_length; step += 1) {
+      value = bind_maybe_call_site(value);
+    }
+
+    checksum += consume_typeclasses(value);
+  }
+
+  _sink = checksum;
+});
+
+Deno.bench("breakdown monomorphic Either bind call site", () => {
+  let checksum = 0;
+
+  for (let index = 0; index < iterations; index += 1) {
+    let value = right(index);
+
+    for (let step = 0; step < chain_length; step += 1) {
+      value = bind_either_call_site(value);
+    }
+
+    checksum += consume_either(value);
+  }
+
+  _sink = checksum;
+});
+
+Deno.bench("breakdown mixed Maybe/Either bind call site", () => {
+  let checksum = 0;
+
+  for (let index = 0; index < iterations; index += 1) {
+    let value: MixedBindable;
+    let next: (value: number) => MixedBindable;
+
+    if (index % 2 === 0) {
+      value = just(index) as MixedBindable;
+      next = mixed_maybe_next;
+    } else {
+      value = right(index) as MixedBindable;
+      next = mixed_either_next;
+    }
+
+    for (let step = 0; step < chain_length; step += 1) {
+      value = bind_mixed_call_site(value, next);
+    }
+
+    checksum += consume_mixed(value);
+  }
+
+  _sink = checksum;
+});
+
 function raw_just<item>(item: item): RawMaybe<item> {
   return ["just", item];
+}
+
+type MixedBindable = {
+  bind(fn: (value: number) => MixedBindable): MixedBindable;
+  value(): readonly [string, unknown];
+};
+
+function bind_maybe_call_site(
+  value: Data<AsMaybe, number>,
+): Data<AsMaybe, number> {
+  return value.bind(typeclasses_next);
+}
+
+function bind_either_call_site(
+  value: EitherValue<never, number>,
+): EitherValue<never, number> {
+  return value.bind(typeclasses_either_next) as EitherValue<never, number>;
+}
+
+function bind_mixed_call_site(
+  value: MixedBindable,
+  next: (value: number) => MixedBindable,
+): MixedBindable {
+  return value.bind(next);
+}
+
+function mixed_maybe_next(value: number): MixedBindable {
+  return just(add_one(value)) as MixedBindable;
+}
+
+function mixed_either_next(value: number): MixedBindable {
+  return right(add_one(value)) as MixedBindable;
 }
 
 function raw_map<from, to>(
@@ -303,6 +394,32 @@ function consume_typeclasses(value: Data<AsMaybe, number>): number {
     case "just":
       return payload;
     case "nothing":
+      return 0;
+  }
+}
+
+function consume_either(value: EitherValue<never, number>): number {
+  const [tag, payload] = value.value();
+
+  switch (tag) {
+    case "right":
+      return payload;
+    case "left":
+      return 0;
+  }
+}
+
+function consume_mixed(value: MixedBindable): number {
+  const [tag, payload] = value.value();
+
+  switch (tag) {
+    case "just":
+    case "right":
+      return payload as number;
+    case "nothing":
+    case "left":
+      return 0;
+    default:
       return 0;
   }
 }

@@ -1,6 +1,5 @@
 import {
   type As,
-  as_data_cached,
   type Data,
   data,
   type type_data,
@@ -29,10 +28,9 @@ export const DataViewT: AsDataView = data<AsDataView>(
     return this.data(clone_data_view(view));
   },
 );
-const data_view_data = as_data_cached(DataViewT);
 
 export function from_bytes(bytes: ArrayLike<number>): DataViewValue {
-  return data_view_data(new DataView(Uint8Array.from(bytes).buffer));
+  return DataViewT(new DataView(Uint8Array.from(bytes).buffer));
 }
 
 export function to_bytes(view: DataViewValue): Uint8Array {
@@ -63,13 +61,13 @@ Semigroup.instance(DataViewT)({
     out.set(left, 0);
     out.set(right_value, left.length);
 
-    return data_view_data(new DataView(out.buffer));
+    return DataViewT(new DataView(out.buffer));
   },
 });
 
 Monoid.instance(DataViewT)({
   empty() {
-    return data_view_data(new DataView(new ArrayBuffer(0)));
+    return DataViewT(new DataView(new ArrayBuffer(0)));
   },
 });
 

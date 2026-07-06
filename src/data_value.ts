@@ -74,6 +74,35 @@ export function data_constructor<dictionary extends object>(
   return create_data_constructor(dictionary, data_dictionary);
 }
 
+export function data_dictionary<dictionary extends object>(): dictionary {
+  const NewDataValue = DataValue as unknown as NewWrappedDataTarget<dictionary>;
+
+  const construct_data = function construct_data<value, item = unknown>(
+    value: value,
+  ): WrappedData<dictionary, value, item> {
+    const target = new NewDataValue<value, item>(value);
+
+    return target as unknown as WrappedData<dictionary, value, item>;
+  } as unknown as DataConstructor<dictionary> & DataDictionary<dictionary>;
+
+  const prototype = data_prototype(construct_data);
+
+  function DataValue(
+    this: WrappedDataTarget<dictionary, unknown, unknown>,
+    value: unknown,
+  ) {
+    this[data_value] = value;
+  }
+
+  NewDataValue.prototype = prototype;
+
+  Object.defineProperty(construct_data, data_constructor_key, {
+    value: construct_data,
+  });
+
+  return construct_data as unknown as dictionary;
+}
+
 function create_data_constructor<dictionary extends object>(
   dictionary: dictionary,
   data_dictionary: DataDictionary<dictionary>,

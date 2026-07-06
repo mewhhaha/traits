@@ -1313,6 +1313,13 @@ benchmark iteration performs 10,000 inner-loop constructions or read cycles:
 - prototype-backed symbol object construction
 - `value()` or direct payload reads for the current, tuple, and prototype shapes
 
+`bench/performance_breakdown.bench.ts` isolates hot-path costs for `Maybe`:
+construction, `value()` reads, fluent `map`/`bind`, generic typeclass helpers,
+runtime `Do`, and monomorphic versus mixed `.bind` call sites. For hot loops,
+prefer call sites that mostly see one data type shape; a single helper that
+alternates `Maybe`, `Either`, `List`, and other wrappers gives the JIT less
+stable receiver information.
+
 `bench/library_comparison.bench.ts` compares this repository's `Maybe` and
 `Either` wrappers with similar data types from `fp-ts`, `effect`, `purify-ts`,
 and `true-myth`:

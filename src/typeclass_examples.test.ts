@@ -344,9 +344,36 @@ Deno.test("Tuple tagged values can be matched by tag", () => {
       return message;
     },
   });
+  const wrapped_option = match(maybe_just(42), {
+    just(value) {
+      return value + 1;
+    },
+    nothing() {
+      return 0;
+    },
+  });
+  const wrapped_nothing = match(maybe_nothing<number>(), {
+    just(value) {
+      return value + 1;
+    },
+    nothing() {
+      return 0;
+    },
+  });
+  const wrapped_result = match(either_left<string, number>("missing"), {
+    right(value) {
+      return value.toString();
+    },
+    left(message) {
+      return message;
+    },
+  });
 
   assert_equals(option, 43);
   assert_equals(result, "missing");
+  assert_equals(wrapped_option, 43);
+  assert_equals(wrapped_nothing, 0);
+  assert_equals(wrapped_result, "missing");
 });
 
 Deno.test("Tuple tagged guards narrow Maybe and Either payloads", () => {

@@ -1,7 +1,8 @@
-# Traits
+# Typeclasses
 
-Traits is a Deno and TypeScript library for Haskell-style typeclasses with
-runtime dictionaries and fluent wrapped values.
+Typeclasses is a Deno and TypeScript library for Haskell-style typeclasses with
+runtime dictionaries and fluent wrapped values. It is published as
+`@mewhhaha/typeclasses`.
 
 It provides reusable typeclass definitions, data types, effect programs,
 examples, case studies, benchmarks, and a source transformer:
@@ -34,6 +35,29 @@ deno task bench
 The comparison benchmarks use pinned npm packages through `deno.json` imports,
 so the first run may download `fp-ts`, `effect`, `purify-ts`, and `true-myth`.
 
+Use the package from JSR with explicit imports:
+
+```ts
+import { Do, just, nothing, Show } from "jsr:@mewhhaha/typeclasses";
+```
+
+The published package exposes two entrypoints:
+
+- `jsr:@mewhhaha/typeclasses` for the library.
+- `jsr:@mewhhaha/typeclasses/transform` for the source transformer.
+
+Before publishing, run the dry-run task:
+
+```sh
+deno task publish:dry-run
+```
+
+The publish tasks intentionally do not use `--allow-slow-types`. Public exports
+carry explicit types so Deno can generate package docs and Node declaration
+files.
+
+The package is MIT licensed.
+
 ## Shape
 
 The core wrapper and typeclass-definition machinery lives in `src/typeclass.ts`
@@ -57,7 +81,13 @@ unique symbol, so two typeclasses can both have a method named `show` without
 sharing a runtime property.
 
 ```ts
-import { type As, data, type type_data, type type_item } from "./typeclass.ts";
+import {
+  type As,
+  type Data,
+  data,
+  type type_data,
+  type type_item,
+} from "./typeclass.ts";
 import { Monad, Show } from "./typeclasses.ts";
 
 export type Maybe<item> =
@@ -69,15 +99,15 @@ export interface AsMaybe extends As<AsMaybe>, Show<AsMaybe>, Monad<AsMaybe> {
   readonly [type_data]: Maybe<this[typeof type_item]>;
 }
 
-export const Maybe = data<AsMaybe>();
+export const Maybe: AsMaybe = data<AsMaybe>();
 
 export function just<item>(
   value: item,
-) {
+): Data<AsMaybe, item> {
   return Maybe(["just", value]);
 }
 
-export function nothing<item = never>() {
+export function nothing<item = never>(): Data<AsMaybe, item> {
   return Maybe(["nothing"]);
 }
 
@@ -258,7 +288,7 @@ For expression-style branching, use the `match` helper. The handler record must
 cover every tag in the value:
 
 ```ts
-const label = match(just(42).value(), {
+const label = match(just(42), {
   nothing: () => "missing",
   just: (value) => "value:" + value.toString(),
 });
@@ -1218,7 +1248,7 @@ aliases onto the dictionary.
 
 ## Examples
 
-Focused examples live in `examples/`:
+Focused repository examples live in `examples/`:
 
 - `examples/basics.ts` covers `Maybe`, `Either`, `Applicative`, validation,
   pattern guards, and `match`.
@@ -1234,9 +1264,10 @@ Focused examples live in `examples/`:
 `examples/main.ts` is only a runner for those focused files.
 
 `learn_you_a_traits_for_greater_good/` is a longer Haskell-inspired tutorial
-made of executable lessons. Run it with `deno task learn`.
+made of executable lessons. It is included in the published package. Run it from
+the repository with `deno task learn`.
 
-Larger application-shaped demos live in `case_studies/`:
+Larger repository-only application-shaped demos live in `case_studies/`:
 
 - `case_studies/http_router/` builds a small typed HTTP router on `URLPattern`.
   `router.ts` contains the `UrlPatternList` data type and route composition,

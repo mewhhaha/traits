@@ -9,6 +9,7 @@
   },
   "publish": {
     "include": [
+      "LICENSE",
       "README.md",
       "deno.json",
       "deno.lock",
@@ -20,13 +21,6 @@
     "exclude": [
       "src/*.test.ts"
     ]
-  },
-  "lint": {
-    "rules": {
-      "exclude": [
-        "no-slow-types"
-      ]
-    }
   },
   "imports": {
     "effect": "npm:effect@3.21.4",

@@ -126,6 +126,13 @@ export function transform_do_program_source(
           const visited = ts.visitEachChild(node, visit, context);
 
           if (ts.isCallExpression(visited)) {
+            const interpreted = transform_interpreter_call(visited, factory);
+
+            if (interpreted !== undefined) {
+              transformed += 1;
+              return interpreted;
+            }
+
             const handled = transform_handle_with_call(visited, factory);
 
             if (handled !== undefined) {
@@ -959,17 +966,14 @@ function create_bind(
     }
   }
 
-  const value = state.kind === "program"
-    ? create_effect_from(expression, factory)
-    : expression;
   const continuation = create_arrow(parameters, body, factory);
 
   return factory.createCallExpression(
     state.kind === "program"
-      ? property(factory, "Effect", "bind")
+      ? property(factory, "Effect", "bind_from")
       : factory.createPropertyAccessExpression(expression, "bind"),
     undefined,
-    state.kind === "program" ? [value, continuation] : [continuation],
+    state.kind === "program" ? [expression, continuation] : [continuation],
   );
 }
 
@@ -1072,10 +1076,10 @@ function create_final_effect_map(
   ], true);
 
   return factory.createCallExpression(
-    property(factory, "Effect", "map"),
+    property(factory, "Effect", "map_from"),
     undefined,
     [
-      create_effect_from(expression, factory),
+      expression,
       create_arrow(parameters, map_body, factory),
     ],
   );
@@ -1878,6 +1882,87 @@ function transform_handle_with_call(
   return expression;
 }
 
+function transform_interpreter_call(
+  node: ts.CallExpression,
+  factory: ts.NodeFactory,
+): ts.Expression | undefined {
+  if (!ts.isPropertyAccessExpression(node.expression)) {
+    return undefined;
+  }
+
+  const effect = read_interpreter_effect(node.expression.expression, factory);
+
+  if (effect === undefined) {
+    return undefined;
+  }
+
+  switch (node.expression.name.text) {
+    case "run": {
+      const [runner] = node.arguments;
+
+      if (runner === undefined || node.arguments.length !== 1) {
+        return undefined;
+      }
+
+      if (!is_static_effect_handler(runner)) {
+        return undefined;
+      }
+
+      return apply_static_effect_handler(runner, effect, factory);
+    }
+
+    case "value":
+      if (node.arguments.length !== 0) {
+        return undefined;
+      }
+
+      return effect;
+  }
+
+  return undefined;
+}
+
+function read_interpreter_effect(
+  expression: ts.Expression,
+  factory: ts.NodeFactory,
+): ts.Expression | undefined {
+  if (!ts.isCallExpression(expression)) {
+    return undefined;
+  }
+
+  if (is_effect_interpret(expression.expression)) {
+    return expression.arguments[0];
+  }
+
+  if (!ts.isPropertyAccessExpression(expression.expression)) {
+    return undefined;
+  }
+
+  if (expression.expression.name.text !== "handle") {
+    return undefined;
+  }
+
+  const [handler] = expression.arguments;
+
+  if (
+    handler === undefined || expression.arguments.length !== 1 ||
+    !is_static_effect_handler(handler)
+  ) {
+    return undefined;
+  }
+
+  const effect = read_interpreter_effect(
+    expression.expression.expression,
+    factory,
+  );
+
+  if (effect === undefined) {
+    return undefined;
+  }
+
+  return apply_static_effect_handler(handler, effect, factory);
+}
+
 function is_effect_handle_with(expression: ts.Expression): boolean {
   if (!ts.isPropertyAccessExpression(expression)) {
     return false;
@@ -1889,6 +1974,19 @@ function is_effect_handle_with(expression: ts.Expression): boolean {
 
   return expression.expression.text === "Effect" &&
     expression.name.text === "handle_with";
+}
+
+function is_effect_interpret(expression: ts.Expression): boolean {
+  if (!ts.isPropertyAccessExpression(expression)) {
+    return false;
+  }
+
+  if (!ts.isIdentifier(expression.expression)) {
+    return false;
+  }
+
+  return expression.expression.text === "Effect" &&
+    expression.name.text === "interpret";
 }
 
 function is_static_effect_handler(expression: ts.Expression): boolean {
@@ -2082,7 +2180,9 @@ function add_import_specifiers(
   }
 
   const existing = new Set(
-    bindings.elements.map((element) => element.name.text),
+    bindings.elements
+      .filter((element) => !element.isTypeOnly)
+      .map((element) => element.name.text),
   );
   const added = names
     .filter((name) => !existing.has(name))

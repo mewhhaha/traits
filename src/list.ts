@@ -89,7 +89,7 @@ Eq.instance(List)({
     let left_rest = this.value();
     let right_rest = right.value();
 
-    while (List.is_Cons(left_rest) && List.is_Cons(right_rest)) {
+    while (Cons.is(left_rest) && Cons.is(right_rest)) {
       const [, left_head, left_tail] = left_rest;
       const [, right_head, right_tail] = right_rest;
 
@@ -101,7 +101,7 @@ Eq.instance(List)({
       right_rest = right_tail;
     }
 
-    return List.is_Nil(left_rest) && List.is_Nil(right_rest);
+    return Nil.is(left_rest) && Nil.is(right_rest);
   },
 });
 
@@ -110,7 +110,7 @@ Ord.instance(List)({
     let left_rest = this.value();
     let right_rest = right.value();
 
-    while (List.is_Cons(left_rest) && List.is_Cons(right_rest)) {
+    while (Cons.is(left_rest) && Cons.is(right_rest)) {
       const [, left_head, left_tail] = left_rest;
       const [, right_head, right_tail] = right_rest;
       const order = compare_unknown(left_head, right_head);
@@ -151,7 +151,7 @@ Functor.instance(List)({
     let source = this.value();
     let reversed = list_nil<to>();
 
-    while (List.is_Cons(source)) {
+    while (Cons.is(source)) {
       const [, head, tail] = source;
       reversed = list_cons(fn(head), reversed);
       source = tail;
@@ -189,11 +189,11 @@ Applicative.instance(List)({
     let fns = this.value();
     let reversed = list_nil<to>();
 
-    while (List.is_Cons(fns)) {
+    while (Cons.is(fns)) {
       const [, fn, fn_tail] = fns;
       let rest = items;
 
-      while (List.is_Cons(rest)) {
+      while (Cons.is(rest)) {
         const [, item, item_tail] = rest;
         reversed = list_cons(fn(item), reversed);
         rest = item_tail;
@@ -236,11 +236,11 @@ Monad.instance(List)({
     let source = this.value();
     let reversed = list_nil<to>();
 
-    while (List.is_Cons(source)) {
+    while (Cons.is(source)) {
       const [, head, tail] = source;
       let bound = fn(head).value();
 
-      while (List.is_Cons(bound)) {
+      while (Cons.is(bound)) {
         const [, bound_head, bound_tail] = bound;
         reversed = list_cons(bound_head, reversed);
         bound = bound_tail;
@@ -258,7 +258,7 @@ Foldable.instance(List)({
     let state = initial;
     let rest = this.value();
 
-    while (List.is_Cons(rest)) {
+    while (Cons.is(rest)) {
       const [, head, tail] = rest;
       state = fn(state, head);
       rest = tail;
@@ -299,7 +299,7 @@ function list_reverse<item>(items: List<item>): List<item> {
   let source = items;
   let reversed = list_nil<item>();
 
-  while (List.is_Cons(source)) {
+  while (Cons.is(source)) {
     const [, head, tail] = source;
     reversed = list_cons(head, reversed);
     source = tail;
@@ -312,7 +312,7 @@ function list_append<item>(left: List<item>, right: List<item>): List<item> {
   let source = list_reverse(left);
   let out = right;
 
-  while (List.is_Cons(source)) {
+  while (Cons.is(source)) {
     const [, head, tail] = source;
     out = list_cons(head, out);
     source = tail;
@@ -336,7 +336,7 @@ function lift_list_one<out>(
   let source = first;
   let reversed = list_nil<out>();
 
-  while (List.is_Cons(source)) {
+  while (Cons.is(source)) {
     const [, head, tail] = source;
     reversed = list_cons(fn(head), reversed);
     source = tail;
@@ -353,11 +353,11 @@ function lift_list_two<out>(
   let left = first;
   let reversed = list_nil<out>();
 
-  while (List.is_Cons(left)) {
+  while (Cons.is(left)) {
     const [, left_head, left_tail] = left;
     let right = second;
 
-    while (List.is_Cons(right)) {
+    while (Cons.is(right)) {
       const [, right_head, right_tail] = right;
       reversed = list_cons(fn(left_head, right_head), reversed);
       right = right_tail;
@@ -378,15 +378,15 @@ function lift_list_three<out>(
   let left = first;
   let reversed = list_nil<out>();
 
-  while (List.is_Cons(left)) {
+  while (Cons.is(left)) {
     const [, left_head, left_tail] = left;
     let middle = second;
 
-    while (List.is_Cons(middle)) {
+    while (Cons.is(middle)) {
       const [, middle_head, middle_tail] = middle;
       let right = third;
 
-      while (List.is_Cons(right)) {
+      while (Cons.is(right)) {
         const [, right_head, right_tail] = right;
         reversed = list_cons(fn(left_head, middle_head, right_head), reversed);
         right = right_tail;
@@ -428,7 +428,7 @@ function list_to_array<item>(list: List<item>): item[] {
   const items: item[] = [];
   let rest = list;
 
-  while (List.is_Cons(rest)) {
+  while (Cons.is(rest)) {
     const [, head, tail] = rest;
     items.push(head);
     rest = tail;

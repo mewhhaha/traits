@@ -47,7 +47,7 @@ Deno.bench("Reader Program construct+run", () => {
 
   for (let index = 0; index < iterations; index += 1) {
     checksum += consume_reader(
-      Effect.interpret(run_reader(make_reader_program(), config)).run(run),
+      run(run_reader(make_reader_program(), config)),
     );
   }
 
@@ -59,9 +59,7 @@ Deno.bench("Reader transformed Program construct+run", () => {
 
   for (let index = 0; index < iterations; index += 1) {
     checksum += consume_reader(
-      Effect.interpret(
-        run_reader(make_reader_program_transformed(), config),
-      ).run(run),
+      run(run_reader(make_reader_program_transformed(), config)),
     );
   }
 
@@ -96,7 +94,7 @@ Deno.bench("Reader Program reuse+run", () => {
 
   for (let index = 0; index < iterations; index += 1) {
     checksum += consume_reader(
-      Effect.interpret(run_reader(program, config)).run(run),
+      run(run_reader(program, config)),
     );
   }
 
@@ -109,7 +107,7 @@ Deno.bench("Reader transformed Program reuse+run", () => {
 
   for (let index = 0; index < iterations; index += 1) {
     checksum += consume_reader(
-      Effect.interpret(run_reader(program, config)).run(run),
+      run(run_reader(program, config)),
     );
   }
 
@@ -141,7 +139,7 @@ Deno.bench("State Program construct+run", () => {
 
   for (let index = 0; index < iterations; index += 1) {
     checksum += consume_state(
-      Effect.interpret(run_state(make_state_program(), 40)).run(run),
+      run(run_state(make_state_program(), 40)),
     );
   }
 
@@ -153,9 +151,7 @@ Deno.bench("State transformed Program construct+run", () => {
 
   for (let index = 0; index < iterations; index += 1) {
     checksum += consume_state(
-      Effect.interpret(run_state(make_state_program_transformed(), 40)).run(
-        run,
-      ),
+      run(run_state(make_state_program_transformed(), 40)),
     );
   }
 
@@ -190,7 +186,7 @@ Deno.bench("State Program reuse+run", () => {
 
   for (let index = 0; index < iterations; index += 1) {
     checksum += consume_state(
-      Effect.interpret(run_state(program, 40)).run(run),
+      run(run_state(program, 40)),
     );
   }
 
@@ -203,7 +199,7 @@ Deno.bench("State transformed Program reuse+run", () => {
 
   for (let index = 0; index < iterations; index += 1) {
     checksum += consume_state(
-      Effect.interpret(run_state(program, 40)).run(run),
+      run(run_state(program, 40)),
     );
   }
 
@@ -235,9 +231,7 @@ Deno.bench("Writer Program construct+run", () => {
 
   for (let index = 0; index < iterations; index += 1) {
     checksum += consume_writer(
-      Effect.interpret(
-        run_writer(make_writer_program(), array_from_array<string>([])),
-      ).run(run),
+      run(run_writer(make_writer_program(), array_from_array<string>([]))),
     );
   }
 
@@ -249,12 +243,12 @@ Deno.bench("Writer transformed Program construct+run", () => {
 
   for (let index = 0; index < iterations; index += 1) {
     checksum += consume_writer(
-      Effect.interpret(
+      run(
         run_writer(
           make_writer_program_transformed(),
           array_from_array<string>([]),
         ),
-      ).run(run),
+      ),
     );
   }
 
@@ -289,9 +283,7 @@ Deno.bench("Writer Program reuse+run", () => {
 
   for (let index = 0; index < iterations; index += 1) {
     checksum += consume_writer(
-      Effect.interpret(run_writer(program, array_from_array<string>([]))).run(
-        run,
-      ),
+      run(run_writer(program, array_from_array<string>([]))),
     );
   }
 
@@ -304,9 +296,7 @@ Deno.bench("Writer transformed Program reuse+run", () => {
 
   for (let index = 0; index < iterations; index += 1) {
     checksum += consume_writer(
-      Effect.interpret(run_writer(program, array_from_array<string>([]))).run(
-        run,
-      ),
+      run(run_writer(program, array_from_array<string>([]))),
     );
   }
 
@@ -424,9 +414,9 @@ function make_reader_program() {
 }
 
 function make_reader_program_transformed() {
-  return Effect.bind(Effect.from(ask<Config>()), (config) => {
-    return Effect.map(
-      Effect.from(asks<Config, string>((config) => config.label)),
+  return Effect.bind_from(ask<Config>(), (config) => {
+    return Effect.map_from(
+      asks<Config, string>((config) => config.label),
       (label) => {
         return label.length + config.increment;
       },
@@ -469,11 +459,11 @@ function make_state_program() {
 }
 
 function make_state_program_transformed() {
-  return Effect.bind(Effect.from(get<number>()), (before) => {
-    return Effect.bind(
-      Effect.from(modify((value: number) => value + 2)),
+  return Effect.bind_from(get<number>(), (before) => {
+    return Effect.bind_from(
+      modify((value: number) => value + 2),
       () => {
-        return Effect.map(Effect.from(get<number>()), (after) => {
+        return Effect.map_from(get<number>(), (after) => {
           return { before, after };
         });
       },
@@ -512,12 +502,12 @@ function make_writer_program() {
 }
 
 function make_writer_program_transformed() {
-  return Effect.bind(Effect.from(tell(array_from_array(["start"]))), () => {
-    return Effect.bind(
-      Effect.from(writer(40, array_from_array(["value"]))),
+  return Effect.bind_from(tell(array_from_array(["start"])), () => {
+    return Effect.bind_from(
+      writer(40, array_from_array(["value"])),
       (value) => {
-        return Effect.map(
-          Effect.from(tell(array_from_array(["end"]))),
+        return Effect.map_from(
+          tell(array_from_array(["end"])),
           () => {
             return value + 2;
           },
@@ -554,11 +544,11 @@ function make_task_program() {
 }
 
 function make_task_program_transformed() {
-  return Effect.bind(
-    Effect.from(from_fn(() => Promise.resolve(40))),
+  return Effect.bind_from(
+    from_fn(() => Promise.resolve(40)),
     (left) => {
-      return Effect.map(
-        Effect.from(from_fn(() => Promise.resolve(2))),
+      return Effect.map_from(
+        from_fn(() => Promise.resolve(2)),
         (right) => {
           return left + right;
         },

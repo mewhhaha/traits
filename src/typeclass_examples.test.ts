@@ -378,8 +378,8 @@ Deno.test("Tuple tagged guards narrow Maybe and Either payloads", () => {
   const option = Just(42).value();
   const result = either_left<string, number>("missing").value();
 
-  assert_true(Maybe.is_Just(option), "option is just");
-  assert_true(!Maybe.is_Nothing(option), "option is not nothing");
+  assert_true(Just.is(option), "option is just");
+  assert_true(!Nothing.is(option), "option is not nothing");
   assert_true(either_is_left(result), "result is left");
   assert_true(!either_is_right(result), "result is not right");
 

@@ -165,7 +165,9 @@ export const Effect = {
   send,
   suspend,
   map,
+  map_from,
   bind,
+  bind_from,
   handle_with,
   interpret,
 };
@@ -229,6 +231,28 @@ export function map<requirements, from, to>(
   });
 }
 
+export function map_from<requirements, from, to>(
+  value: Effect<requirements, from>,
+  fn: (value: from) => to,
+): Effect<requirements, to>;
+export function map_from<dictionary extends Dictionary, from, to>(
+  value: Data<dictionary, from>,
+  fn: (value: from) => to,
+): Effect<Lift<dictionary, from>, to>;
+export function map_from<from, to>(
+  value: unknown,
+  fn: (value: from) => to,
+): Effect<unknown, to> {
+  if (is_data(value)) {
+    return suspend(
+      ["lift", value] as unknown as Lift<Dictionary, from>,
+      (item) => pure(fn(item as from)),
+    ) as Effect<unknown, to>;
+  }
+
+  return map(as_effect(value), fn as (value: unknown) => to);
+}
+
 export function bind<left, from, right, to>(
   effect: Effect<left, from>,
   fn: (value: from) => Effect<right, to>,
@@ -240,6 +264,31 @@ export function bind<left, from, right, to>(
   return suspend(effect[1], (value) => {
     return bind(effect[2](value), fn);
   });
+}
+
+export function bind_from<left, from, right, to>(
+  value: Effect<left, from>,
+  fn: (value: from) => Effect<right, to>,
+): Effect<left | right, to>;
+export function bind_from<dictionary extends Dictionary, from, right, to>(
+  value: Data<dictionary, from>,
+  fn: (value: from) => Effect<right, to>,
+): Effect<Lift<dictionary, from> | right, to>;
+export function bind_from<from, right, to>(
+  value: unknown,
+  fn: (value: from) => Effect<right, to>,
+): Effect<unknown | right, to> {
+  if (is_data(value)) {
+    return suspend(
+      ["lift", value] as unknown,
+      fn as unknown as (value: unknown) => Effect<unknown | right, to>,
+    ) as Effect<unknown | right, to>;
+  }
+
+  return bind(
+    as_effect(value),
+    fn as (value: unknown) => Effect<right, to>,
+  ) as Effect<unknown | right, to>;
 }
 
 export function handle_with<requirements, item>(

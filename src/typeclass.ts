@@ -251,9 +251,6 @@ type TaggedConstructorName<tag extends PropertyKey> = tag extends string
   ? Capitalize<tag>
   : tag;
 
-type TaggedGuardName<tag extends PropertyKey> = tag extends string ? `is_${tag}`
-  : never;
-
 type TaggedTag<dictionary extends Dictionary> = ContextData<
   dictionary,
   unknown
@@ -295,15 +292,6 @@ type TaggedDataOptions<dictionary extends Dictionary> = {
   readonly variants?: TaggedVariants<dictionary>;
 };
 
-type TaggedVariant<
-  dictionary extends Dictionary,
-  tag extends PropertyKey,
-> = TaggedPayload<ContextData<dictionary, never>, tag> extends []
-  ? <item = never>() => Data<dictionary, item>
-  : <item = unknown>(
-    ...payloads: TaggedPayload<ContextData<dictionary, item>, tag>
-  ) => Data<dictionary, item>;
-
 type TaggedMember<
   dictionary extends Dictionary,
   tag extends PropertyKey,
@@ -325,22 +313,28 @@ type TaggedGuard<
   (value: unknown): value is TaggedMember<dictionary, tag, unknown>;
 };
 
+type TaggedVariant<
+  dictionary extends Dictionary,
+  tag extends PropertyKey,
+> =
+  & (TaggedPayload<ContextData<dictionary, never>, tag> extends []
+    ? <item = never>() => Data<dictionary, item>
+    : <item = unknown>(
+      ...payloads: TaggedPayload<ContextData<dictionary, item>, tag>
+    ) => Data<dictionary, item>)
+  & {
+    readonly is: TaggedGuard<dictionary, tag>;
+  };
+
 type TaggedDictionary<
   dictionary extends Dictionary,
   tags extends PropertyKey,
-> =
-  & {
-    readonly [tag in tags as TaggedConstructorName<tag>]: TaggedVariant<
-      dictionary,
-      tag
-    >;
-  }
-  & {
-    readonly [tag in tags as TaggedGuardName<tag>]: TaggedGuard<
-      dictionary,
-      tag
-    >;
-  };
+> = {
+  readonly [tag in tags as TaggedConstructorName<tag>]: TaggedVariant<
+    dictionary,
+    tag
+  >;
+};
 
 function tagged_data<dictionary extends Dictionary>(
   options: TaggedDataOptions<dictionary> = {},
@@ -470,7 +464,7 @@ function tagged_variant<
   const is_singleton = singleton_tags !== undefined && singleton_tags.has(tag);
   let singleton = singletons?.get(tag);
 
-  return function construct_tagged_variant<item = unknown>(): Data<
+  const construct = function construct_tagged_variant<item = unknown>(): Data<
     dictionary,
     item
   > {
@@ -504,6 +498,12 @@ function tagged_variant<
         >;
     }
   } as TaggedVariant<dictionary, tag>;
+
+  Object.defineProperty(construct, "is", {
+    value: tagged_guard(tag),
+  });
+
+  return construct;
 }
 
 function tagged_singleton_tags<dictionary extends Dictionary>(
@@ -536,12 +536,6 @@ function install_tagged_variants<dictionary extends Dictionary>(
     Object.defineProperty(dictionary, tagged_constructor_name(tag), {
       value: tagged_variant(dictionary, tag),
     });
-
-    if (typeof tag === "string") {
-      Object.defineProperty(dictionary, tagged_guard_name(tag), {
-        value: tagged_guard(tag),
-      });
-    }
   }
 }
 
@@ -553,10 +547,6 @@ function tagged_constructor_name(tag: PropertyKey): PropertyKey {
   const [first = "", ...rest] = tag;
 
   return first.toUpperCase() + rest.join("");
-}
-
-function tagged_guard_name(tag: string): string {
-  return "is_" + tag;
 }
 
 function tagged_guard(tag: PropertyKey): (value: unknown) => boolean {

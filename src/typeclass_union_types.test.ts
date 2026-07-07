@@ -26,11 +26,11 @@ Deno.test("union definitions use the tagged tuple shape", () => {
   assert_equals(Object.is(Tiny.None(), Tiny.None()), true);
   assert_equals(Object.is(Tiny.None().value(), Tiny.None().value()), true);
 
-  if (Tiny.is_One(value)) {
+  if (Tiny.One.is(value)) {
     assert_equals(value[1], 1);
   }
 
-  assert_equals(Tiny.is_None(["None"]), true);
+  assert_equals(Tiny.None.is(["None"]), true);
 });
 
 function check_union_definition_types(): void {

@@ -58,8 +58,8 @@ const program = Program(function* () {
     assert_equals(result.transformed, 1);
     assert_equals(result.diagnostics, []);
     assert_includes(result.code, "import { Program, Effect }");
-    assert_includes(result.code, "Effect.bind(Effect.from(ask<Config>())");
-    assert_includes(result.code, "Effect.map(Effect.from(from_fn(");
+    assert_includes(result.code, "Effect.bind_from(ask<Config>()");
+    assert_includes(result.code, "Effect.map_from(from_fn(");
     assert_includes(result.code, "return config.label + suffix;");
   },
 });
@@ -86,9 +86,100 @@ const program = App(function* () {
     assert_equals(result.transformed, 1);
     assert_equals(result.diagnostics, []);
     assert_includes(result.code, "const App = Program.scope<App>()");
-    assert_includes(result.code, "Effect.map(Effect.from(ask<Config>())");
+    assert_includes(result.code, "Effect.map_from(ask<Config>()");
     assert_includes(result.code, "const label = config.label;");
     assert_includes(result.code, "return label;");
+  },
+});
+
+Deno.test({
+  name: "transformer adds runtime Effect import next to type Effect imports",
+  permissions: { env: true },
+  async fn() {
+    const result = await transform(`
+import { type Effect, Program, type Uses } from "../src/effects.ts";
+
+export const page: Effect<Uses<AsPage>, number> = Program(function* () {
+  yield* start();
+
+  return 1;
+});
+`);
+
+    assert_equals(result.transformed, 1);
+    assert_equals(result.diagnostics, []);
+    assert_includes(
+      result.code,
+      'import { type Effect, Program, type Uses, Effect } from "../src/effects.ts";',
+    );
+    assert_includes(result.code, "Effect.map_from(start()");
+  },
+});
+
+Deno.test({
+  name: "transformer inlines immediate Effect interpreter run calls",
+  permissions: { env: true },
+  async fn() {
+    const result = await transform(`
+import { Effect, run } from "../src/effects.ts";
+
+const value = Effect.interpret(effect).run(run);
+`);
+
+    assert_equals(result.transformed, 1);
+    assert_equals(result.diagnostics, []);
+    assert_includes(result.code, "const value = run(effect);");
+    assert_true(
+      !result.code.includes("Effect.interpret"),
+      "expected immediate interpreter run to be removed\n\n" + result.code,
+    );
+  },
+});
+
+Deno.test({
+  name: "transformer inlines immediate Effect interpreter value calls",
+  permissions: { env: true },
+  async fn() {
+    const result = await transform(`
+import { Effect } from "../src/effects.ts";
+
+const value = Effect.interpret(effect).value();
+`);
+
+    assert_equals(result.transformed, 1);
+    assert_equals(result.diagnostics, []);
+    assert_includes(result.code, "const value = effect;");
+    assert_true(
+      !result.code.includes("Effect.interpret"),
+      "expected immediate interpreter value to be removed\n\n" + result.code,
+    );
+  },
+});
+
+Deno.test({
+  name: "transformer inlines immediate Effect interpreter handle chains",
+  permissions: { env: true },
+  async fn() {
+    const result = await transform(`
+import { Effect, run } from "../src/effects.ts";
+
+const value = Effect.interpret(effect)
+  .handle((effect) => run_reader(effect, config))
+  .handle((effect) => run_state(effect, 0))
+  .run(run);
+`);
+
+    assert_equals(result.transformed, 1);
+    assert_equals(result.diagnostics, []);
+    assert_includes(
+      result.code,
+      "const value = run(run_state(run_reader(effect, config), 0));",
+    );
+    assert_true(
+      !result.code.includes("Effect.interpret"),
+      "expected immediate interpreter handle chain to be removed\n\n" +
+        result.code,
+    );
   },
 });
 
@@ -164,12 +255,12 @@ const program = App(function* () {
     assert_includes(result.code, "switch (tag)");
     assert_includes(
       result.code,
-      "Effect.map(Effect.from(stdout(payload.text))",
+      "Effect.map_from(stdout(payload.text)",
     );
     assert_includes(result.code, "switch (result_tag)");
     assert_includes(
       result.code,
-      "Effect.map(Effect.from(stdout(result_payload))",
+      "Effect.map_from(stdout(result_payload)",
     );
     assert_includes(result.code, "return Effect.pure(exit_code);");
   },
@@ -320,8 +411,8 @@ const program = App(function* () {
     assert_includes(result.code, "function loop");
     assert_includes(result.code, "if (turn <= max_turns)");
     assert_includes(result.code, "return loop");
-    assert_includes(result.code, "Effect.bind(Effect.from(next_action(turn))");
-    assert_includes(result.code, 'Effect.map(Effect.from(log("stopped"))');
+    assert_includes(result.code, "Effect.bind_from(next_action(turn)");
+    assert_includes(result.code, 'Effect.map_from(log("stopped")');
   },
 });
 
@@ -351,7 +442,7 @@ const output = Effect.handle_with(program, [
     );
     assert_includes(result.code, "run_task");
     assert_includes(result.code, "run_task(run_reader(program, input))");
-    assert_includes(result.code, "Effect.map(Effect.from(task)");
+    assert_includes(result.code, "Effect.map_from(task");
   },
 });
 

@@ -1,6 +1,6 @@
 import { assert_equals } from "../src/assert.ts";
 import { type Either, is_left, is_right, left, right } from "../src/either.ts";
-import { Just, Maybe, Nothing } from "../src/maybe.ts";
+import { Just, type Maybe, Nothing } from "../src/maybe.ts";
 import { match } from "../src/tagged.ts";
 
 export function lesson_03_patterns_and_guards() {
@@ -41,11 +41,11 @@ function parse_user_id(text: string) {
 }
 
 function describe_maybe(value: Maybe<number>): string {
-  if (Maybe.is_Just(value)) {
+  if (Just.is(value)) {
     return "value " + value[1].toString();
   }
 
-  if (Maybe.is_Nothing(value)) {
+  if (Nothing.is(value)) {
     return "missing";
   }
 

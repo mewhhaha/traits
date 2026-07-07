@@ -68,8 +68,8 @@ and `src/data_value.ts`. Application-level typeclass definitions live in
 Each data type exports a type and a same-named function. The function wraps an
 existing contextual value as a fluent `WrappedData<dictionary, value, item>` and
 also acts as the data dictionary. Tuple-tagged data can use `data(union(...))`
-to generate constructors like `Just(...)` and guards like `Maybe.is_Just(...)`
-from the raw value shape.
+to generate constructors like `Just(...)` and guards like `Just.is(...)` from
+the raw value shape.
 
 Each data type declares its raw value shape directly on its dictionary interface
 with type-only phantom symbols. That maps the contextual `item` to the raw value
@@ -137,7 +137,7 @@ Monad.instance(Maybe)({
 
 const raw = Just(42).value();
 
-if (Maybe.is_Just(raw)) {
+if (Just.is(raw)) {
   raw[1]; // number
 }
 ```
@@ -456,6 +456,13 @@ that shape and forces them to arrays before recording the result.
 `bench/iterable_pipeline.bench.ts` focuses on one lazy pipeline and compares
 `IterableT` against materializing every `Array.map` step, native generator maps,
 and a manual fused loop baseline.
+
+`bench/do_vs_program.bench.ts` compares runtime generator interpretation with
+the source transformer. The transformer lowers `Do(function* () { ... })` into
+direct fluent `bind`/`map` chains and lowers `Program(function* () { ... })`
+into optimized `Effect.bind_from`/`Effect.map_from` chains. It also removes
+immediate `Effect.interpret(effect).handle(...).run(...)` wrappers when the
+handlers are statically visible.
 
 ## Haskell Comparisons
 

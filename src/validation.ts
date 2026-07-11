@@ -84,6 +84,8 @@ type ValidationConstructor =
     <error, item>(
       value: Validation<error, item>,
     ): ValidationValue<error, item>;
+    with_error<error>(): ValidationDictionary<error>;
+    /** @deprecated Use with_error. */
     withError<error>(): ValidationDictionary<error>;
   }
   & {
@@ -117,6 +119,10 @@ export type InvalidConstructor = {
 export const Validation = data<AsValidation<unknown>>(
   union(["valid", $slot], ["invalid", $slot, $slot]),
 ) as ValidationConstructor;
+
+Object.defineProperty(Validation, "with_error", {
+  value: validation_with_error,
+});
 
 Object.defineProperty(Validation, "withError", {
   value: validation_with_error,
@@ -257,12 +263,12 @@ Bifunctor.instance(Validation)({
 
     switch (tag) {
       case "invalid":
-        return Validation.withError<next_error>().Invalid<next_right>(
+        return Validation.with_error<next_error>().Invalid<next_right>(
           map_error(payload),
           first_semigroup<next_error>(),
         );
       case "valid":
-        return Validation.withError<next_error>().Valid(map_right(payload));
+        return Validation.with_error<next_error>().Valid(map_right(payload));
     }
   },
 });

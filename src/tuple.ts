@@ -79,7 +79,13 @@ export type TupleDictionary<left> = AsTuple<left>;
 type TupleConstructor =
   & {
     <left, right>(value: Tuple<left, right>): TupleValue<left, right>;
+    with_left<left>(): TupleDictionary<left>;
+    with_monoid<output extends MonoidDictionary<output>, left>(
+      empty: Data<output, left>,
+    ): TupleMonoidDictionary<output, left>;
+    /** @deprecated Use with_left. */
     withLeft<left>(): TupleDictionary<left>;
+    /** @deprecated Use with_monoid. */
     withMonoid<output extends MonoidDictionary<output>, left>(
       empty: Data<output, left>,
     ): TupleMonoidDictionary<output, left>;
@@ -90,13 +96,16 @@ type TupleConstructor =
 
 export const Tuple = data<AsTuple<unknown>>() as unknown as TupleConstructor;
 
-Object.defineProperty(Tuple, "withLeft", {
+Object.defineProperty(Tuple, "with_left", {
   value: tuple_with_left,
 });
 
-Object.defineProperty(Tuple, "withMonoid", {
+Object.defineProperty(Tuple, "with_monoid", {
   value: tuple_with_monoid,
 });
+
+Object.defineProperty(Tuple, "withLeft", { value: tuple_with_left });
+Object.defineProperty(Tuple, "withMonoid", { value: tuple_with_monoid });
 
 function tuple_with_left<left>(): TupleDictionary<left> {
   return Tuple as unknown as TupleDictionary<left>;

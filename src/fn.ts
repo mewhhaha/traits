@@ -41,6 +41,8 @@ export type FnValue<input, item> = Data<AsFn<input>, item>;
 type FnConstructor =
   & {
     <input, item>(value: Fn<input, item>): FnValue<input, item>;
+    with_input<input>(): AsFn<input>;
+    /** @deprecated Use with_input. */
     withInput<input>(): AsFn<input>;
   }
   & {
@@ -48,6 +50,10 @@ type FnConstructor =
   };
 
 export const Fn = data<AsFn<unknown>>() as FnConstructor;
+
+Object.defineProperty(Fn, "with_input", {
+  value: fn_with_input,
+});
 
 Object.defineProperty(Fn, "withInput", {
   value: fn_with_input,
@@ -73,7 +79,7 @@ Show.instance(Fn)({
   },
 });
 
-Monad.derive(Fn.withInput<unknown>())({
+Monad.derive(Fn.with_input<unknown>())({
   pure(value) {
     return Fn((_input: unknown) => value);
   },

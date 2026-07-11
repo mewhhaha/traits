@@ -23,9 +23,9 @@ import {
 import {
   alt,
   ap,
-  apFirst,
+  ap_first,
+  ap_second,
   append,
-  apSecond,
   bind,
   compare,
   concat,
@@ -33,18 +33,18 @@ import {
   empty,
   eq,
   fmap,
+  fold_map,
   foldl,
-  foldMap,
   gt,
   gte,
   guard,
   join,
   length,
-  liftA,
-  liftA2,
-  liftA3,
-  liftA4,
-  liftA5,
+  lift_A,
+  lift_A2,
+  lift_A3,
+  lift_A4,
+  lift_A5,
   lt,
   lte,
   max,
@@ -57,8 +57,8 @@ import {
   show,
   sum,
   then,
-  throwError,
-  toArray,
+  throw_error,
+  to_array,
   traverse,
   traverse_,
   unless,
@@ -88,22 +88,22 @@ Deno.test("prelude maps, applies, and binds with contextual inference", () => {
 });
 
 Deno.test("prelude lifts functions and folds values", () => {
-  const one: MaybeValue<number> = liftA((a) => a + 1, Just(1));
-  const two: MaybeValue<number> = liftA2((a, b) => a + b, Just(1), Just(2));
-  const three: MaybeValue<number> = liftA3(
+  const one: MaybeValue<number> = lift_A((a) => a + 1, Just(1));
+  const two: MaybeValue<number> = lift_A2((a, b) => a + b, Just(1), Just(2));
+  const three: MaybeValue<number> = lift_A3(
     (a, b, c) => a + b + c,
     Just(1),
     Just(2),
     Just(3),
   );
-  const four: MaybeValue<number> = liftA4(
+  const four: MaybeValue<number> = lift_A4(
     (a, b, c, d) => a + b + c + d,
     Just(1),
     Just(2),
     Just(3),
     Just(4),
   );
-  const five: MaybeValue<number> = liftA5(
+  const five: MaybeValue<number> = lift_A5(
     (a, b, c, d, e) => a + b + c + d + e,
     Just(1),
     Just(2),
@@ -156,7 +156,7 @@ Deno.test("prelude exposes utility, ordering, and choice functions", () => {
   assert_equals(mempty(ArrayT).value(), []);
   assert_equals(empty(Maybe).value(), ["Nothing"] as const);
   assert_equals(
-    throwError(Either, "missing").value(),
+    throw_error(Either, "missing").value(),
     [
       "Left",
       "missing",
@@ -197,17 +197,22 @@ Deno.test("prelude sequences linear and multi-shot contexts", () => {
   assert_equals(guard(Maybe, true).value(), ["Just", undefined] as const);
   assert_equals(guard(ArrayT, false).value(), []);
   assert_equals(guard(ArrayT, true).value(), [undefined]);
-  assert_equals(apFirst(Just(1), Just(2)).value(), ["Just", 1] as const);
-  assert_equals(apFirst(ArrayT([1, 2]), ArrayT([3, 4])).value(), [1, 1, 2, 2]);
-  assert_equals(apSecond(Just(1), Just(2)).value(), ["Just", 2] as const);
-  assert_equals(apSecond(ArrayT([1, 2]), ArrayT([3, 4])).value(), [3, 4, 3, 4]);
+  assert_equals(ap_first(Just(1), Just(2)).value(), ["Just", 1] as const);
+  assert_equals(ap_first(ArrayT([1, 2]), ArrayT([3, 4])).value(), [1, 1, 2, 2]);
+  assert_equals(ap_second(Just(1), Just(2)).value(), ["Just", 2] as const);
+  assert_equals(ap_second(ArrayT([1, 2]), ArrayT([3, 4])).value(), [
+    3,
+    4,
+    3,
+    4,
+  ]);
   assert_equals(then(Just(1), Just(2)).value(), ["Just", 2] as const);
   assert_equals(then(ArrayT([1, 2]), ArrayT([3, 4])).value(), [3, 4, 3, 4]);
 });
 
 Deno.test("prelude folds and traverses linear and multi-shot contexts", () => {
-  assert_equals(toArray(Just(2)), [2]);
-  assert_equals(toArray(ArrayT([1, 2, 3])), [1, 2, 3]);
+  assert_equals(to_array(Just(2)), [2]);
+  assert_equals(to_array(ArrayT([1, 2, 3])), [1, 2, 3]);
   assert_equals(length(Just(2)), 1);
   assert_equals(length(ArrayT([1, 2, 3])), 3);
   assert_equals(sum(ArrayT([1, 2, 3])), 6);
@@ -221,11 +226,12 @@ Deno.test("prelude folds and traverses linear and multi-shot contexts", () => {
     "uses an explicit Eq dictionary",
   );
   assert_equals(
-    foldMap(ArrayT, (value: number) => ArrayT([value, value]), Just(2)).value(),
+    fold_map(ArrayT, (value: number) => ArrayT([value, value]), Just(2))
+      .value(),
     [2, 2],
   );
   assert_equals(
-    foldMap(ArrayT, (value: number) => ArrayT([value, value]), ArrayT([1, 2]))
+    fold_map(ArrayT, (value: number) => ArrayT([value, value]), ArrayT([1, 2]))
       .value(),
     [1, 1, 2, 2],
   );

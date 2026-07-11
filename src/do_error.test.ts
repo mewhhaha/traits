@@ -4,7 +4,7 @@ import { Task } from "./task.ts";
 import { Do, MonadError } from "./typeclasses.ts";
 
 Deno.test("runtime Do routes MonadError failures through generator catch", () => {
-  const Strings = Either.withLeft<string>();
+  const Strings = Either.with_left<string>();
   const recovered = Do(Strings, function* () {
     try {
       yield* Left<string, number>("missing");

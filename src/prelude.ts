@@ -57,7 +57,7 @@ export function mempty<
 }
 
 /** Construct a failed value using an explicit MonadError dictionary. */
-export function throwError<
+export function throw_error<
   dictionary extends MonadErrorDictionary<dictionary>,
   item,
 >(
@@ -95,7 +95,7 @@ export function ap<
 }
 
 /** Lift a unary function into an applicative. */
-export function liftA<
+export function lift_A<
   dictionary extends ApplicativeDictionary<dictionary>,
   first,
   out,
@@ -107,7 +107,7 @@ export function liftA<
 }
 
 /** Lift a binary function into an applicative. */
-export function liftA2<
+export function lift_A2<
   dictionary extends ApplicativeDictionary<dictionary>,
   first,
   second,
@@ -121,7 +121,7 @@ export function liftA2<
 }
 
 /** Lift a ternary function into an applicative. */
-export function liftA3<
+export function lift_A3<
   dictionary extends ApplicativeDictionary<dictionary>,
   first,
   second,
@@ -137,7 +137,7 @@ export function liftA3<
 }
 
 /** Lift a four-argument function into an applicative. */
-export function liftA4<
+export function lift_A4<
   dictionary extends ApplicativeDictionary<dictionary>,
   first,
   second,
@@ -155,7 +155,7 @@ export function liftA4<
 }
 
 /** Lift a five-argument function into an applicative. */
-export function liftA5<
+export function lift_A5<
   dictionary extends ApplicativeDictionary<dictionary>,
   first,
   second,
@@ -247,7 +247,7 @@ export function guard<dictionary extends AlternativeDictionary<dictionary>>(
 }
 
 /** Haskell `<*`: sequence two effects and keep the value on the left. */
-export function apFirst<
+export function ap_first<
   dictionary extends ApplicativeDictionary<dictionary>,
   first,
   second,
@@ -259,7 +259,7 @@ export function apFirst<
 }
 
 /** Haskell `*>`: sequence two effects and keep the value on the right. */
-export function apSecond<
+export function ap_second<
   dictionary extends ApplicativeDictionary<dictionary>,
   first,
   second,
@@ -296,7 +296,7 @@ export function foldl<
 }
 
 /** Haskell `foldMap :: Monoid m => (a -> m) -> t a -> m`. */
-export function foldMap<
+export function fold_map<
   dictionary extends FoldableDictionary<dictionary>,
   monoid extends MonoidDictionary<monoid>,
   item,
@@ -322,11 +322,11 @@ export function mconcat<
   monoid: MonoidDictionary<monoid>,
   values: Data<dictionary, Data<monoid, item>>,
 ): Data<monoid, item> {
-  return foldMap(monoid, (value) => value, values);
+  return fold_map(monoid, (value) => value, values);
 }
 
 /** Haskell `toList :: Foldable t => t a -> [a]`. */
-export function toArray<
+export function to_array<
   dictionary extends FoldableDictionary<dictionary>,
   item,
 >(
@@ -437,7 +437,7 @@ export function traverse_<
       applicative as applicative,
       undefined,
     ),
-    (state, item) => apSecond(state, Functor.map(fn(item), () => undefined)),
+    (state, item) => ap_second(state, Functor.map(fn(item), () => undefined)),
   );
 }
 
@@ -553,3 +553,33 @@ export function alt<
 ): Data<dictionary, item> {
   return Alternative.alt(left, right);
 }
+
+/** @deprecated Use {@link throw_error}. */
+export const throwError: typeof throw_error = throw_error;
+
+/** @deprecated Use {@link lift_A}. */
+export const liftA: typeof lift_A = lift_A;
+
+/** @deprecated Use {@link lift_A2}. */
+export const liftA2: typeof lift_A2 = lift_A2;
+
+/** @deprecated Use {@link lift_A3}. */
+export const liftA3: typeof lift_A3 = lift_A3;
+
+/** @deprecated Use {@link lift_A4}. */
+export const liftA4: typeof lift_A4 = lift_A4;
+
+/** @deprecated Use {@link lift_A5}. */
+export const liftA5: typeof lift_A5 = lift_A5;
+
+/** @deprecated Use {@link ap_first}. */
+export const apFirst: typeof ap_first = ap_first;
+
+/** @deprecated Use {@link ap_second}. */
+export const apSecond: typeof ap_second = ap_second;
+
+/** @deprecated Use {@link fold_map}. */
+export const foldMap: typeof fold_map = fold_map;
+
+/** @deprecated Use {@link to_array}. */
+export const toArray: typeof to_array = to_array;

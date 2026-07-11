@@ -24,15 +24,15 @@ examples, case studies, benchmarks, and a source transformer:
 
 Core instance coverage is intentionally visible:
 
-| Data dictionary              | Principal instances                                                               |
-| ---------------------------- | --------------------------------------------------------------------------------- |
-| `Maybe`                      | `Monad`, `Alternative`, `Traversable`, `Ord`, first-biased `Monoid`               |
-| `Either`                     | `MonadError`, `Traversable`, `Bifunctor`, `Ord`                                   |
-| `Validation`                 | accumulating `Applicative`, `Traversable`, `Bifunctor`, `Ord`                     |
-| `Task`                       | parallel `Applicative`, sequential `Monad`, `MonadError`                          |
-| `Fn`                         | Reader-style `Monad`, `Profunctor`, `Category`, `Arrow`, `Parse`                  |
-| `Tuple`                      | `Bifunctor`, `Traversable`, `Comonad`, `Ord`; writer `Monad` through `withMonoid` |
-| `Identity`, `List`, `ArrayT` | the expected identity and list-like instances                                     |
+| Data dictionary              | Principal instances                                                                |
+| ---------------------------- | ---------------------------------------------------------------------------------- |
+| `Maybe`                      | `Monad`, `Alternative`, `Traversable`, `Ord`, first-biased `Monoid`                |
+| `Either`                     | `MonadError`, `Traversable`, `Bifunctor`, `Ord`                                    |
+| `Validation`                 | accumulating `Applicative`, `Traversable`, `Bifunctor`, `Ord`                      |
+| `Task`                       | parallel `Applicative`, sequential `Monad`, `MonadError`                           |
+| `Fn`                         | Reader-style `Monad`, `Profunctor`, `Category`, `Arrow`, `Parse`                   |
+| `Tuple`                      | `Bifunctor`, `Traversable`, `Comonad`, `Ord`; writer `Monad` through `with_monoid` |
+| `Identity`, `List`, `ArrayT` | the expected identity and list-like instances                                      |
 
 ## Run
 
@@ -356,7 +356,7 @@ const checked: Data<AsValidation<readonly string[]>, number> = Invalid<
   concat: (left, right) => [...left, ...right],
 });
 
-const StringResult = Either.withLeft<string>();
+const StringResult = Either.with_left<string>();
 const returned: Data<AsEither<string>, number> = Do(
   StringResult,
   function* () {
@@ -374,9 +374,9 @@ const named: Data<AsFn<{ readonly name: string }>, string> = fn(
 named.run({ name: "Ada" });
 ```
 
-`Tuple.withLeft<left>()` and `Validation.withError<error>()` provide the same
+`Tuple.with_left<left>()` and `Validation.with_error<error>()` provide the same
 typed dictionary view when a context-free operation needs the fixed parameter;
-`Fn.withInput<input>()` provides one for function dictionaries. `Bifunctor`,
+`Fn.with_input<input>()` provides one for function dictionaries. `Bifunctor`,
 `Profunctor`, `Category`, and `Arrow` carry a small associated context mapping
 so operations that change a fixed parameter return the corresponding new
 dictionary type.
@@ -389,13 +389,13 @@ values; this is an additional surface, not a second implementation:
 
 ```ts
 import {
-  apFirst,
-  apSecond,
+  ap_first,
+  ap_second,
   bind,
   empty,
   fmap,
+  fold_map,
   foldl,
-  foldMap,
   from_maybe,
   guard,
   join,
@@ -420,15 +420,20 @@ mempty(ArrayT); // []
 
 The prelude keeps familiar Haskell vocabulary where JavaScript syntax allows it:
 
-| Area                          | Functions                                                                                                                  |
-| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Functor / applicative / monad | `fmap`, `pure`, `ap`, `liftA`–`liftA5`, `join`, `voided`, `when`, `unless`, `guard`, `apFirst`, `apSecond`, `then`, `bind` |
-| Folding / traversal           | `foldl`, `foldMap`, `mconcat`, `toArray`, `length`, `sum`, `product`, `elem`, `traverse`, `traverse_`, `sequence`          |
-| Maybe / Either elimination    | `from_maybe`, `maybe`, `to_nullable`, `to_either`, `either`, `from_left`, `from_right`, `hush`, `note`                     |
-| Utility typeclasses           | `show`, `eq`, ordering helpers, `append`, `concat`, `mempty`, `alt`, `empty`, `throwError`                                 |
+| Area                          | Functions                                                                                                                      |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| Functor / applicative / monad | `fmap`, `pure`, `ap`, `lift_A`–`lift_A5`, `join`, `voided`, `when`, `unless`, `guard`, `ap_first`, `ap_second`, `then`, `bind` |
+| Folding / traversal           | `foldl`, `fold_map`, `mconcat`, `to_array`, `length`, `sum`, `product`, `elem`, `traverse`, `traverse_`, `sequence`            |
+| Maybe / Either elimination    | `from_maybe`, `maybe`, `to_nullable`, `to_either`, `either`, `from_left`, `from_right`, `hush`, `note`                         |
+| Utility typeclasses           | `show`, `eq`, ordering helpers, `append`, `concat`, `mempty`, `alt`, `empty`, `throw_error`                                    |
 
 `voided` is the spelling of Haskell's `void` because `void` is a JavaScript
-operator. `apFirst` and `apSecond` correspond to `<*` and `*>`.
+operator. `ap_first` and `ap_second` correspond to `<*` and `*>`.
+
+The earlier camel-case spellings remain deprecated aliases for compatibility,
+but new code should use the snake-case names shown above. The same applies to
+the configured dictionary factories such as `Either.with_left` and
+`Tuple.with_monoid`.
 
 ## Tagged Values
 
@@ -898,7 +903,7 @@ fst(value); // "count"
 snd(value); // 41
 swap(value).value(); // [41, "count"]
 
-const Logged = Tuple.withMonoid(ArrayT<string>([]));
+const Logged = Tuple.with_monoid(ArrayT<string>([]));
 const logged = Logged([ArrayT(["start"]), 20] as const)
   .bind((item) => Logged([ArrayT(["finish"]), item + 22] as const));
 
@@ -909,7 +914,7 @@ logged.value()[1]; // 42
 `Tuple<left, right>` stores a plain pair as `readonly [left, right]`. Its normal
 `item` slot is the right side, so `Functor`, `Foldable`, `Traversable`, and
 `Comonad` work over the second value just like Haskell's `(,) left`. `Bifunctor`
-maps both slots. `Tuple.withMonoid(empty)` creates the classic writer-monad
+maps both slots. `Tuple.with_monoid(empty)` creates the classic writer-monad
 dictionary, accumulating wrapped values in the left slot.
 
 ### Contravariant
@@ -1031,7 +1036,7 @@ Foldable.fold(
 ```
 
 `Foldable` stays the minimal core operation. The function prelude builds
-`foldMap`, `mconcat`, `toArray`, `length`, `sum`, `product`, `elem`, and
+`fold_map`, `mconcat`, `to_array`, `length`, `sum`, `product`, `elem`, and
 `traverse_` on top of it.
 
 ### Traversable

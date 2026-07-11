@@ -78,7 +78,7 @@ Deno.test("Validation Bifunctor maps both branches", () => {
 });
 
 Deno.test("Validation Ord orders Invalid before Valid and compares payloads", () => {
-  const strings = Validation.withError<string>();
+  const strings = Validation.with_error<string>();
 
   assert_equals(
     Ord.compare(
@@ -113,7 +113,7 @@ Deno.test("Task MonadError rejects, recovers, and preserves successes", async ()
 });
 
 Deno.test("Fn provides the Reader Applicative and Monad", () => {
-  const StringFn = Fn.withInput<string>();
+  const StringFn = Fn.with_input<string>();
   const length = fn((input: string) => input.length);
   const applied = StringFn.pure((value: number) => value * 2).ap(length);
   const bound = length.bind((value) => {
@@ -141,8 +141,8 @@ Deno.test("Fn provides the Reader Applicative and Monad", () => {
   );
 });
 
-Deno.test("Tuple.withMonoid provides the writer tuple Monad", () => {
-  const Pair = Tuple.withMonoid(ArrayT<string>([]));
+Deno.test("Tuple.with_monoid provides the writer tuple Monad", () => {
+  const Pair = Tuple.with_monoid(ArrayT<string>([]));
   const first = Pair([ArrayT(["first"]), 20] as const);
   const chained = first.bind((value) => {
     return Pair([ArrayT(["second"]), value + 22] as const);

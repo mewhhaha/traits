@@ -69,6 +69,8 @@ export type EitherConstructor =
       value: value,
     ): EitherValue<EitherLeft<value>, EitherRight<value>>;
     <left, right>(value: Either<left, right>): EitherValue<left, right>;
+    with_left<left>(): EitherDictionary<left>;
+    /** @deprecated Use with_left. */
     withLeft<left>(): EitherDictionary<left>;
   }
   & {
@@ -101,6 +103,10 @@ export type RightConstructor = {
 export const Either = data<AsEither<unknown>>(
   union(["Left", $slot], ["Right", $slot]),
 ) as EitherConstructor;
+
+Object.defineProperty(Either, "with_left", {
+  value: either_with_left,
+});
 
 Object.defineProperty(Either, "withLeft", {
   value: either_with_left,
@@ -300,11 +306,11 @@ Bifunctor.instance(Either)({
 
     switch (tag) {
       case "Left":
-        return Either.withLeft<next_left>().Left<next_right>(
+        return Either.with_left<next_left>().Left<next_right>(
           map_left(payload),
         );
       case "Right":
-        return Either.withLeft<next_left>().Right(
+        return Either.with_left<next_left>().Right(
           map_right(payload),
         );
     }

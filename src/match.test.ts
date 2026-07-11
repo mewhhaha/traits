@@ -39,7 +39,7 @@ Deno.test("fluent match handles all built-in tagged wrappers", () => {
     }),
     "error: missing",
   );
-  const validation = ValidationDictionary.withError<string>()(
+  const validation = ValidationDictionary.with_error<string>()(
     ["valid", 2] as Validation<string, number>,
   );
 

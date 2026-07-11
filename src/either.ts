@@ -9,6 +9,7 @@ import {
   type UnionDictionary,
   type WrappedData,
 } from "./typeclass.ts";
+import { same_context } from "./internal.ts";
 import {
   Applicative,
   applicative_lift_method,
@@ -24,6 +25,8 @@ import {
   Show,
   Traversable,
 } from "./typeclasses.ts";
+import { Just, type MaybeValue, Nothing } from "./maybe.ts";
+import { inspect } from "./inspect.ts";
 
 export type Either<left, right> =
   | Left<left>
@@ -176,15 +179,69 @@ export function from_number(value: number): EitherValue<string, number> {
   return Left<string, number>("Expected a finite number");
 }
 
+/** Haskell `either :: (a -> c) -> (b -> c) -> Either a b -> c`. */
+export function either<left, right, out>(
+  on_left: (value: left) => out,
+  on_right: (value: right) => out,
+  value: EitherValue<left, right>,
+): out {
+  const [tag, payload] = value.value();
+
+  switch (tag) {
+    case "Left":
+      return on_left(payload as left);
+    case "Right":
+      return on_right(payload as right);
+  }
+}
+
+/** Haskell `fromLeft :: a -> Either a b -> a`. */
+export function from_left<left, right>(
+  fallback: left,
+  value: EitherValue<left, right>,
+): left {
+  return either((error) => error, () => fallback, value);
+}
+
+/** Haskell `fromRight :: b -> Either a b -> b`. */
+export function from_right<left, right>(
+  fallback: right,
+  value: EitherValue<left, right>,
+): right {
+  return either(() => fallback, (item) => item, value);
+}
+
+/** Haskell `hush :: Either a b -> Maybe b`. */
+export function hush<left, right>(
+  value: EitherValue<left, right>,
+): MaybeValue<right> {
+  return either(() => Nothing<right>(), (item) => Just(item), value);
+}
+
+/** Haskell `note :: e -> Maybe a -> Either e a`. */
+export function note<left, right>(
+  error: left,
+  value: MaybeValue<right>,
+): EitherValue<left, right> {
+  const [tag, payload] = value.value();
+
+  switch (tag) {
+    case "Just":
+      return Right<left, right>(payload);
+    case "Nothing":
+      return Left<left, right>(error);
+  }
+}
+
 Show.instance(Either)({
   show() {
     const [tag, payload] = this.value();
 
     switch (tag) {
       case "Right":
-        return "Right(" + Deno.inspect(payload) + ")";
+        return "Right(" + inspect(payload) + ")";
       case "Left":
-        return "Left(" + Deno.inspect(payload) + ")";
+        return "Left(" + inspect(payload) + ")";
     }
   },
 });
@@ -272,6 +329,7 @@ Applicative.instance(Either)({
     return Right(value);
   },
 
+  // The specialized ladder avoids the generic applicative_lift fallback's intermediates.
   [applicative_lift_method](fn, rest) {
     const [tag, payload] = this.value();
 
@@ -394,8 +452,4 @@ function lift_right<out>(
   }
 
   return Right(fn(...values));
-}
-
-function same_context<out>(value: unknown): out {
-  return value as out;
 }

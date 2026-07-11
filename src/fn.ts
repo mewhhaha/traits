@@ -11,6 +11,7 @@ import {
   type ArrowContext,
   Category,
   Functor,
+  Monad,
   Parse,
   Profunctor,
   type ProfunctorContext,
@@ -27,7 +28,7 @@ export interface AsFn<input = unknown>
   extends
     As<AsFn<input>>,
     Show<AsFn<input>>,
-    Functor<AsFn<input>>,
+    Monad<AsFn<input>>,
     Profunctor<AsFn<input>, input, FnContext>,
     Arrow<AsFn<input>, input, FnContext>,
     Parse<AsFn<input>> {
@@ -69,6 +70,20 @@ export function arr<input, item>(
 Show.instance(Fn)({
   show() {
     return "Fn(?)";
+  },
+});
+
+Monad.derive(Fn.withInput<unknown>())({
+  pure(value) {
+    return Fn((_input: unknown) => value);
+  },
+
+  bind(fn) {
+    const run = this.value();
+
+    return Fn((input: unknown) => {
+      return fn(run(input)).value()(input);
+    });
   },
 });
 

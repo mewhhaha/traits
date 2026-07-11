@@ -449,7 +449,7 @@ Deno.test({
   name: "transformer keeps rejecting switch fallthrough",
   permissions: { env: true },
   async fn() {
-    const result = await transform(`
+    const source = `
 import { Program } from "../src/effects.ts";
 
 const program = Program(function* () {
@@ -462,7 +462,8 @@ const program = Program(function* () {
       return 1;
   }
 });
-`);
+`;
+    const result = await transform(source);
 
     assert_equals(result.transformed, 0);
     assert_equals(result.diagnostics.length, 1);
@@ -470,7 +471,7 @@ const program = Program(function* () {
       result.diagnostics[0].message.includes("fallthrough"),
       "diagnostic mentions fallthrough",
     );
-    assert_includes(result.code, "Program(function*");
+    assert_equals(result.code, source);
   },
 });
 
@@ -825,6 +826,43 @@ const value = run(Maybe, function* () { return 1; });
     assert_equals(configured.transformed, 1);
     assert_equals(configured.diagnostics, []);
   },
+});
+
+Deno.test("transformer preserves source text when no rewrite is possible", async () => {
+  const without_targets =
+    `// Deliberately irregular formatting.\nconst answer={value:42};\n`;
+  const type_only_target =
+    `import type { Effect } from "../src/effects.ts";\nconst answer={value:42};\n`;
+
+  const untouched = await transform(without_targets);
+  const type_only = await transform(type_only_target);
+
+  assert_equals(untouched.code, without_targets);
+  assert_equals(untouched.transformed, 0);
+  assert_equals(untouched.diagnostics, []);
+  assert_equals(type_only.code, type_only_target);
+  assert_equals(type_only.transformed, 0);
+  assert_equals(type_only.diagnostics, []);
+});
+
+Deno.test("transformer ignores control flow inside nested functions", async () => {
+  const result = await transform(`
+import { Do } from "../src/typeclasses.ts";
+
+const value = Do(Maybe, function* () {
+  function* nested() {
+    return yield* Just(1);
+  }
+
+  const item = yield* Just(41);
+  return item + 1;
+});
+`);
+
+  assert_equals(result.transformed, 1);
+  assert_equals(result.diagnostics, []);
+  assert_includes(result.code, "function* nested()");
+  assert_includes(result.code, "Just(41).map");
 });
 
 async function transform(source: string) {

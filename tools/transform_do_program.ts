@@ -62,21 +62,50 @@ export function transform_do_program_source(
   file_name = "input.ts",
   config: TransformConfig = {},
 ): TransformResult {
+  if (!might_contain_transform_target(source)) {
+    return unchanged_transform_result(source);
+  }
+
+  const might_diagnose_unanchored = might_contain_unanchored_target(source);
+
   const source_file = ts.createSourceFile(
     file_name,
     source,
     ts.ScriptTarget.Latest,
-    true,
+    false,
     ts.ScriptKind.TS,
   );
   const diagnostics: TransformDiagnostic[] = [];
   const imports = collect_imports(source_file, config);
-  const program_scopes = collect_program_scopes(source_file, imports);
+
+  if (
+    !has_imported_transform_target(imports) &&
+    !might_diagnose_unanchored
+  ) {
+    return unchanged_transform_result(source);
+  }
+
+  const might_declare_program_scope = source.includes("scope") ||
+    source.includes("\\u");
+  const program_scopes = (imports.program_names.size === 0 &&
+      imports.namespaces.size === 0) || !might_declare_program_scope
+    ? imports.program_names
+    : collect_program_scopes(source_file, imports);
+  const might_transform_generator = imports.do_names.size > 0 ||
+    program_scopes.size > 0 || imports.namespaces.size > 0;
+  const might_transform_effect = imports.effect_names.size > 0 ||
+    imports.namespaces.size > 0;
   let transformed = 0;
   let needs_program_helpers = false;
 
   const transformer: ts.TransformerFactory<ts.SourceFile> = (context) => {
     const factory = context.factory;
+    const diagnostic_state: TransformState = {
+      kind: "do",
+      factory,
+      source_file,
+      diagnostics,
+    };
 
     return (source_file) => {
       const visit: ts.Visitor = (node) => {
@@ -109,7 +138,9 @@ export function transform_do_program_source(
         }
 
         if (ts.isCallExpression(node)) {
-          const kind = transform_kind(node, program_scopes, imports);
+          const kind = might_transform_generator
+            ? transform_kind(node, program_scopes, imports)
+            : undefined;
 
           if (kind !== undefined) {
             const transformed_node = transform_call(
@@ -135,7 +166,7 @@ export function transform_do_program_source(
 
           const visited = ts.visitEachChild(node, visit, context);
 
-          if (ts.isCallExpression(visited)) {
+          if (might_transform_effect && ts.isCallExpression(visited)) {
             const interpreted = transform_interpreter_call(
               visited,
               factory,
@@ -159,12 +190,13 @@ export function transform_do_program_source(
             }
           }
 
-          add_unanchored_target_diagnostic(visited, {
-            factory,
-            source_file,
-            diagnostics,
-            kind: "do",
-          }, imports);
+          if (might_diagnose_unanchored) {
+            add_unanchored_target_diagnostic(
+              visited,
+              diagnostic_state,
+              imports,
+            );
+          }
           return visited;
         }
 
@@ -173,23 +205,34 @@ export function transform_do_program_source(
 
       const visited = ts.visitEachChild(source_file, visit, context);
 
-      return update_imports(
-        visited,
-        factory,
-        needs_program_helpers,
-        diagnostics,
-        imports,
-      );
+      return needs_program_helpers
+        ? update_imports(
+          visited,
+          factory,
+          needs_program_helpers,
+          diagnostics,
+          imports,
+        )
+        : visited;
     };
   };
 
   const result = ts.transform(source_file, [transformer]);
-  const output = result.transformed[0];
-  const printer = ts.createPrinter({
-    newLine: ts.NewLineKind.LineFeed,
-  });
 
   try {
+    if (transformed === 0) {
+      return {
+        code: source,
+        diagnostics,
+        transformed,
+      };
+    }
+
+    const output = result.transformed[0];
+    const printer = ts.createPrinter({
+      newLine: ts.NewLineKind.LineFeed,
+    });
+
     return {
       code: printer.printFile(output),
       diagnostics,
@@ -198,6 +241,32 @@ export function transform_do_program_source(
   } finally {
     result.dispose();
   }
+}
+
+function unchanged_transform_result(source: string): TransformResult {
+  return {
+    code: source,
+    diagnostics: [],
+    transformed: 0,
+  };
+}
+
+function might_contain_transform_target(source: string): boolean {
+  if (source.includes("\\u")) {
+    return true;
+  }
+
+  if (source.includes("Do") || source.includes("Program")) {
+    return true;
+  }
+
+  return source.includes("Effect") &&
+    (source.includes("interpret") || source.includes("handle_with"));
+}
+
+function might_contain_unanchored_target(source: string): boolean {
+  return source.includes("Do") || source.includes("Program") ||
+    source.includes("\\u");
 }
 
 if (import.meta.main) {
@@ -2296,6 +2365,11 @@ type ImportedBindings = {
   readonly program_module?: string;
 };
 
+function has_imported_transform_target(imports: ImportedBindings): boolean {
+  return imports.do_names.size > 0 || imports.program_names.size > 0 ||
+    imports.effect_names.size > 0 || imports.namespaces.size > 0;
+}
+
 function collect_imports(
   source_file: ts.SourceFile,
   config: TransformConfig,
@@ -2880,6 +2954,10 @@ function add_import_specifiers(
 }
 
 function contains_yield_or_return(node: ts.Node): boolean {
+  if (ts.isFunctionLike(node)) {
+    return false;
+  }
+
   let found = false;
 
   function visit(node: ts.Node) {
@@ -2887,7 +2965,7 @@ function contains_yield_or_return(node: ts.Node): boolean {
       return;
     }
 
-    if (ts.isFunctionLike(node) && node.parent !== undefined) {
+    if (ts.isFunctionLike(node)) {
       return;
     }
 
@@ -2905,10 +2983,14 @@ function contains_yield_or_return(node: ts.Node): boolean {
 }
 
 function contains_return(node: ts.Node): boolean {
+  if (ts.isFunctionLike(node)) {
+    return false;
+  }
+
   let found = false;
 
   function visit(child: ts.Node) {
-    if (found || (ts.isFunctionLike(child) && child.parent !== undefined)) {
+    if (found || ts.isFunctionLike(child)) {
       return;
     }
     if (ts.isReturnStatement(child)) {
@@ -2923,10 +3005,14 @@ function contains_return(node: ts.Node): boolean {
 }
 
 function contains_yield_or_return_or_break(node: ts.Node): boolean {
+  if (ts.isFunctionLike(node)) {
+    return false;
+  }
+
   let found = false;
 
   function visit(child: ts.Node) {
-    if (found || (ts.isFunctionLike(child) && child.parent !== undefined)) {
+    if (found || ts.isFunctionLike(child)) {
       return;
     }
     if (

@@ -65,6 +65,29 @@ const value = Do(Maybe, function* () { return 42; });
   );
 });
 
+Deno.test("transform plugin recognizes Effect-only rewrites", () => {
+  const source = `
+import { Effect, run } from "../src/effects.ts";
+const value = Effect.interpret(effect).run(run);
+`;
+  const warnings: string[] = [];
+  const transformed = typeclasses_rollup_plugin().transform.call(
+    { warn: (message) => warnings.push(message) },
+    source,
+    "fixture.ts",
+  );
+
+  assert_true(transformed !== null, "expected Effect source to be handled");
+  if (transformed === null) {
+    throw new Error("expected Effect source to be handled");
+  }
+  assert_true(
+    transformed.code.includes("const value = run(effect);"),
+    "expected interpreter wrapper to lower\n\n" + transformed.code,
+  );
+  assert_equals(warnings, []);
+});
+
 Deno.test({
   name: "esbuild bundles examples/monads.ts through the typeclasses plugin",
   permissions: { env: true, read: true, run: true },

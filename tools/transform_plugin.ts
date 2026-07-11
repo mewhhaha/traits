@@ -134,7 +134,10 @@ function is_typescript_file(id: string): boolean {
 function might_contain_target(code: string): boolean {
   // Imported aliases need not retain either public name at the call site, so
   // include the import declaration itself in this cheap pre-parse filter.
-  return code.includes("Do") || code.includes("Program");
+  if (code.includes("\\u")) return true;
+  if (code.includes("Do") || code.includes("Program")) return true;
+  return code.includes("Effect") &&
+    (code.includes("interpret") || code.includes("handle_with"));
 }
 
 function report_diagnostics(

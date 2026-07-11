@@ -630,6 +630,11 @@ deno task transform --write src/file.ts
 deno task transform --check src/file.ts
 ```
 
+Files without possible transform targets, and parsed files that produce no
+rewrites, keep their original source text. This avoids needless TypeScript AST
+construction and printing in build pipelines while preserving diagnostics for
+unsupported `Do` and `Program` calls.
+
 Bundlers can use the dependency-free adapters from `./transform/plugin`:
 
 ```ts

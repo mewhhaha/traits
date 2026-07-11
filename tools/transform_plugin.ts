@@ -15,6 +15,10 @@ type RollupContext = {
   error?(message: string): never;
 };
 
+type TransformHookResult =
+  | { readonly code: string; readonly map: null }
+  | null;
+
 type EsbuildBuild = {
   onLoad(
     options: { readonly filter: RegExp },
@@ -38,7 +42,19 @@ export type RollupTransformPlugin = {
     this: RollupContext,
     code: string,
     id: string,
-  ): { readonly code: string; readonly map: null } | null;
+  ): TransformHookResult;
+};
+
+export type RolldownTransformPlugin = {
+  readonly name: "typeclasses-transform";
+  readonly transform: {
+    readonly filter: { readonly id: RegExp };
+    handler(
+      this: RollupContext,
+      code: string,
+      id: string,
+    ): TransformHookResult;
+  };
 };
 
 /** A small, dependency-free esbuild adapter for the source transformer. */
@@ -69,14 +85,22 @@ export function typeclasses_rollup_plugin(
   return {
     name: "typeclasses-transform",
     transform(this: RollupContext, code: string, id: string) {
-      if (!is_typescript_file(id) || !might_contain_target(code)) return null;
-      const result = transform_do_program_source(code, id, options);
-      for (const diagnostic of result.diagnostics) {
-        const message = format_diagnostic(diagnostic);
-        if (options.check && this.error !== undefined) this.error(message);
-        this.warn(message);
-      }
-      return { code: result.code, map: null };
+      return transform_rollup_source(this, code, id, options);
+    },
+  };
+}
+
+/** A Rolldown adapter with a native hook filter to avoid needless JS calls. */
+export function typeclasses_rolldown_plugin(
+  options: TransformPluginOptions = {},
+): RolldownTransformPlugin {
+  return {
+    name: "typeclasses-transform",
+    transform: {
+      filter: { id: /\.tsx?(?:\?.*)?$/ },
+      handler(this: RollupContext, code: string, id: string) {
+        return transform_rollup_source(this, code, id, options);
+      },
     },
   };
 }
@@ -84,6 +108,23 @@ export function typeclasses_rollup_plugin(
 export const esbuild_plugin = typeclasses_esbuild_plugin;
 export const vite_plugin = typeclasses_rollup_plugin;
 export const rollup_plugin = typeclasses_rollup_plugin;
+export const rolldown_plugin = typeclasses_rolldown_plugin;
+
+function transform_rollup_source(
+  context: RollupContext,
+  code: string,
+  id: string,
+  options: TransformPluginOptions,
+): TransformHookResult {
+  if (!is_typescript_file(id) || !might_contain_target(code)) return null;
+  const result = transform_do_program_source(code, id, options);
+  for (const diagnostic of result.diagnostics) {
+    const message = format_diagnostic(diagnostic);
+    if (options.check && context.error !== undefined) context.error(message);
+    context.warn(message);
+  }
+  return { code: result.code, map: null };
+}
 
 function is_typescript_file(id: string): boolean {
   const path = id.split("?", 1)[0];

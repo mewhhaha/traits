@@ -58,8 +58,8 @@ The published package exposes four entrypoints:
 - `jsr:@mewhhaha/typeclasses` for the library.
 - `jsr:@mewhhaha/typeclasses/prelude` for Haskell-style standalone functions.
 - `jsr:@mewhhaha/typeclasses/transform` for the source transformer.
-- `jsr:@mewhhaha/typeclasses/transform/plugin` for esbuild, Vite, and Rollup
-  adapters.
+- `jsr:@mewhhaha/typeclasses/transform/plugin` for esbuild, Vite, Rollup, and
+  Rolldown adapters.
 
 Before publishing, run the dry-run task:
 
@@ -630,17 +630,20 @@ Bundlers can use the dependency-free adapters from `./transform/plugin`:
 ```ts
 import {
   typeclasses_esbuild_plugin,
+  typeclasses_rolldown_plugin,
   typeclasses_rollup_plugin,
 } from "@mewhhaha/typeclasses/transform/plugin";
 
 const esbuild = typeclasses_esbuild_plugin({ check: true });
 const vite_or_rollup = typeclasses_rollup_plugin({ check: true });
+const rolldown = typeclasses_rolldown_plugin({ check: true });
 ```
 
-Both adapters skip non-TypeScript files and sources without likely transform
+The adapters skip non-TypeScript files and sources without likely transform
 targets, and forward file/line/column diagnostics to the host warning or error
-channel. Printer output currently has no source map, so the Rollup-shaped hook
-returns `map: null`.
+channel. The Rolldown adapter also exposes a native hook filter so skipped files
+do not cross into JavaScript. Printer output currently has no source map, so the
+Rollup-shaped hooks return `map: null`.
 
 ## Tail Loops
 

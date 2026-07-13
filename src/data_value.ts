@@ -48,7 +48,7 @@ export type WrappedData<dictionary, value, item = unknown> =
   & WrappedDataBase<dictionary, value, item>
   & dictionary;
 
-type WrappedDataTarget<dictionary, value, item> = {
+type WrappedDataTarget<value> = {
   [data_value]: value;
 };
 
@@ -59,11 +59,11 @@ type DataConstructor<dictionary extends object = object> = <
   value: value,
 ) => WrappedData<dictionary, value, item>;
 
-type NewWrappedDataTarget<dictionary extends object> = {
+type NewWrappedDataTarget = {
   prototype: object;
-  new <value, item = unknown>(
+  new <value>(
     value: value,
-  ): WrappedDataTarget<dictionary, value, item>;
+  ): WrappedDataTarget<value>;
 };
 
 type DataDictionary<dictionary extends object = object> = object & {
@@ -116,12 +116,12 @@ export function data_constructor<dictionary extends object>(
 }
 
 export function data_dictionary<dictionary extends object>(): dictionary {
-  const NewDataValue = DataValue as unknown as NewWrappedDataTarget<dictionary>;
+  const NewDataValue = DataValue as unknown as NewWrappedDataTarget;
 
   const construct_data = function construct_data<value, item = unknown>(
     value: value,
   ): WrappedData<dictionary, value, item> {
-    const target = new NewDataValue<value, item>(value);
+    const target = new NewDataValue<value>(value);
 
     return target as unknown as WrappedData<dictionary, value, item>;
   } as unknown as DataConstructor<dictionary> & DataDictionary<dictionary>;
@@ -129,7 +129,7 @@ export function data_dictionary<dictionary extends object>(): dictionary {
   const prototype = data_prototype(construct_data);
 
   function DataValue(
-    this: WrappedDataTarget<dictionary, unknown, unknown>,
+    this: WrappedDataTarget<unknown>,
     value: unknown,
   ) {
     this[data_value] = value;
@@ -150,18 +150,18 @@ function create_data_constructor<dictionary extends object>(
 ): DataConstructor<dictionary> {
   const prototype = data_prototype(dictionary);
   const DataValue = function DataValue(
-    this: WrappedDataTarget<dictionary, unknown, unknown>,
+    this: WrappedDataTarget<unknown>,
     value: unknown,
   ) {
     this[data_value] = value;
-  } as unknown as NewWrappedDataTarget<dictionary>;
+  } as unknown as NewWrappedDataTarget;
 
   DataValue.prototype = prototype;
 
   const construct_data = function construct_data<value, item = unknown>(
     value: value,
   ): WrappedData<dictionary, value, item> {
-    const target = new DataValue<value, item>(value);
+    const target = new DataValue<value>(value);
 
     return target as unknown as WrappedData<dictionary, value, item>;
   };
@@ -235,14 +235,14 @@ export function match_tagged<value extends TaggedValue, out>(
   return handler(...payload);
 }
 
-function data_value_of<dictionary, value, item>(
-  this: WrappedDataTarget<dictionary, value, item>,
+function data_value_of<value>(
+  this: WrappedDataTarget<value>,
 ): value {
   return this[data_value];
 }
 
-function data_run<dictionary, value, item>(
-  this: WrappedDataTarget<dictionary, value, item>,
+function data_run(
+  this: WrappedDataTarget<unknown>,
   ...args: unknown[]
 ): unknown {
   const value = this[data_value];
@@ -254,8 +254,8 @@ function data_run<dictionary, value, item>(
   return Reflect.apply(value, undefined, args);
 }
 
-function data_match<dictionary, value, item>(
-  this: WrappedDataTarget<dictionary, value, item>,
+function data_match(
+  this: WrappedDataTarget<unknown>,
   cases: TaggedMatchCases<TaggedValue, unknown>,
 ): unknown {
   const value = this[data_value];
@@ -264,7 +264,7 @@ function data_match<dictionary, value, item>(
     throw new TypeError("Data value is not a tagged tuple");
   }
 
-  return match_tagged(value as TaggedValue, cases);
+  return match_tagged(value as unknown as TaggedValue, cases);
 }
 
 function* data_iterator<dictionary, value, item>(

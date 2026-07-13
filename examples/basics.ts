@@ -1,10 +1,6 @@
 import { from_array } from "../src/list.ts";
 import { Just, type Maybe, Nothing } from "../src/maybe.ts";
 import { type Either, from_number, Left, Right } from "../src/either.ts";
-import {
-  InvalidMessages as ValidationInvalidMessages,
-  Valid as ValidationValid,
-} from "../src/validation.ts";
 import { from_fn } from "../src/task.ts";
 import {
   add_values,
@@ -78,13 +74,6 @@ export async function run_basic_examples() {
     from_fn(() => Promise.resolve("ada")),
     from_fn(() => Promise.resolve(42)),
   );
-  const signup_validation = Applicative.lift(
-    (username, email, password) => ({ username, email, password }),
-    validate_username(""),
-    validate_email("ada.example.test"),
-    validate_password("short"),
-  );
-
   console.log("maybe", doubled_maybe.show());
   console.log("maybe switch", switched_maybe);
   console.log("nothing switch", switched_nothing);
@@ -104,7 +93,6 @@ export async function run_basic_examples() {
   console.log("lift parsed config", parsed_config.show());
   console.log("lift dice scores", dice_scores.show());
   console.log("lift parallel task", await parallel_task.run());
-  console.log("lift validation", signup_validation.show());
 }
 
 function describe_maybe(value: Maybe<number>) {
@@ -135,38 +123,4 @@ function non_empty_string(value: string, name: string) {
   }
 
   return Left<string, string>(name + " must not be empty");
-}
-
-function validate_username(value: string) {
-  if (value.length > 0) {
-    return ValidationValid(value);
-  }
-
-  return ValidationInvalidMessages<string>("username is required");
-}
-
-function validate_email(value: string) {
-  if (value.includes("@")) {
-    return ValidationValid(value);
-  }
-
-  return ValidationInvalidMessages<string>("email must contain @");
-}
-
-function validate_password(value: string) {
-  const errors: string[] = [];
-
-  if (value.length < 12) {
-    errors.push("password must be at least 12 characters");
-  }
-
-  if (!/[0-9]/.test(value)) {
-    errors.push("password must contain a number");
-  }
-
-  if (errors.length === 0) {
-    return ValidationValid(value);
-  }
-
-  return ValidationInvalidMessages<string>(errors[0], ...errors.slice(1));
 }

@@ -18,12 +18,6 @@ export type ParallelMap<input, output> =
     },
   ];
 
-type ParallelMapPayload<input> = {
-  readonly worker: string;
-  readonly inputs: readonly input[];
-  readonly workers: number | undefined;
-};
-
 export type Parallel = ParallelMap<unknown, unknown>;
 
 export type ParallelOptions = {

@@ -40,6 +40,7 @@ Core instance coverage is intentionally visible:
 deno task test
 deno task check
 deno task example
+deno task learn
 deno task case-study
 deno task bench
 ```
@@ -1371,6 +1372,23 @@ This is the same rule as Haskell's `Applicative` versus `Monad`: use applicative
 style when later operations do not need earlier results, and use monadic style
 when they do.
 
+`Task` provides asynchronous concurrency on one JavaScript isolate. CPU-bound
+work can instead cross isolate boundaries with Web Workers:
+
+```ts
+const summaries = await worker_map<LogShard, LogShardSummary>(
+  worker_url,
+  shards,
+  { workers: 4 },
+).run();
+```
+
+`worker_map` creates a one-shot pool. `with_worker_pool` and `worker_pool_map`
+reuse a bounded pool across multiple batches; batches submitted to one pool run
+in order, while the jobs inside each batch are distributed across its workers.
+Worker inputs and outputs must be structured-clone-safe values rather than
+wrapped dictionaries, functions, or `TVar`s.
+
 ### STM
 
 ```hs
@@ -1397,6 +1415,12 @@ atomically(increment);
 `Stm` keeps writes in a journal until `atomically` commits them. `retry` and
 `or_else` provide the familiar transactional choice shape, so failed branches
 can roll back their writes before another transaction is attempted.
+
+This `Stm` implementation is synchronous and isolate-local. Transactions cannot
+span `await`, `retry` selects an immediate `or_else` branch rather than waiting
+for a `TVar` change, and `TVar`s are not shared with Web Workers. It is useful
+for atomic admission and fallback decisions in the coordinator isolate; the
+worker pool remains responsible for parallel execution.
 
 ### Resource Handling
 
@@ -1601,18 +1625,30 @@ aliases onto the dictionary.
 
 ## Examples
 
-Focused repository examples live in `examples/`:
+Focused repository examples live in `examples/` and progress from individual
+operations to application-shaped workflows:
 
-- `examples/basics.ts` covers `Maybe`, `Either`, `Applicative`, validation,
-  pattern guards, and `match`.
-- `examples/custom_typeclass.ts` shows extending a data type with a local
-  typeclass.
+- `examples/basics.ts` covers `Maybe`, `Either`, generic typeclass functions,
+  applicative combination, and tagged-value switches.
+- `examples/validated_request.ts` parses native `FormData` into a typed request
+  while accumulating all independent field errors.
+- `examples/composable_functions.ts` combines reusable predicates and adapts
+  typed function pipelines to an order domain.
 - `examples/built_in_shapes.ts` covers JavaScript-shaped wrappers such as
   arrays, maps, sets, iterables, streams, form data, and binary buffers.
 - `examples/monads.ts` shows `Do` with `Reader`, `State`, `Task`, `Stm`, and
-  decoding with `Either`.
+  fail-fast decoding with `Either`.
+- `examples/task_workflow.ts` starts independent request branches together, fans
+  out account-dependent calls as soon as their input arrives, and recovers an
+  optional-service failure.
+- `examples/worker_pool.ts` reuses a bounded Web Worker pool across ordered
+  batches of structured-clone-safe log analysis jobs.
+- `examples/stm_coordination.ts` uses synchronous local transactions to admit
+  requests into primary and overflow queues with rollback on full queues.
 - `examples/effects.ts` composes `Reader`, `State`, `Writer`, and `Task` with
   `Program`.
+- `examples/custom_typeclass.ts` shows extending a data type with a local
+  typeclass.
 
 `examples/main.ts` is only a runner for those focused files.
 
@@ -1650,6 +1686,9 @@ Larger repository-only application-shaped demos live in `case_studies/`:
   custom `LanguageModel` effect produces tool requests or a final answer; the
   harness executes filesystem tools, appends tool results to the transcript,
   writes stdout with `Writer`, and repeats until the model returns `final`.
+- `case_studies/parallel_analyzer/` compares sequential analysis, one-shot
+  workers, and a reused worker pool. Its `Parallel` effect keeps worker
+  execution behind an interpreter while preserving input order in reports.
 
 ## Benchmarks
 
